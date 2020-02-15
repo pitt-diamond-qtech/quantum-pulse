@@ -1,0 +1,23 @@
+parameters
+sample=50000
+count time=100
+reset time=90
+avg=10
+threshold=0
+AOM delay=820
+microwave delay=0
+scan parameters
+start=2
+step=10
+num of steps=100
+mw PTS
+use this or not=True
+frequency (GHz)=2.7
+scan freq or not=False
+start=0.4
+step=0.001
+AWG
+device=520
+amplitude (mV)=0.1
+pulse width=20
+time resolution (ns)=1

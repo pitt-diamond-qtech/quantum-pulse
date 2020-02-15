@@ -1,0 +1,391 @@
+'''
+Created on Oct 1, 2015
+
+@author: Kai
+'''
+from PyQt4 import QtCore
+from SeqCreator.Wrapper import CreateSeq
+from Hardware.AWG520.Wrapper import FileTransfer, Command
+from Hardware.MCL.NanoDrive import MCL_NanoDrive
+import time,sys,numpy,multiprocessing
+
+class UploadThread(QtCore.QThread):
+    done=QtCore.pyqtSignal()
+    def __init__(self,parent=None):
+        QtCore.QThread.__init__(self,parent)
+        self.timeRes=1
+    def run(self):
+        # create files
+        dirPath='D:\\workspace\\ESRWorking\\ESRWorkingProgram\\Pulsed_ESR\\SeqFiles\\'
+        CreateSeq(self.seq, self.scan, self.parameters,dirPath,self.timeRes)
+        # upload files
+        ####EDIT 08/27/2019 ###########
+        seqType= str(input('pulses (p) or shapes (s)')) #p - use kai's original code s - use .wfm and seq from another source
+        print seqType
+        ft=FileTransfer()
+        if seqType == 'p':
+            for i in range(self.scan[2]+1):
+                print i, self.scan[2]+1
+                ft.sendFile(str(i)+'_1.wfm', dirPath+str(i)+'_1.wfm')
+                #if i==21:
+                    #i=22
+                ft.sendFile(str(i)+'_2.wfm', dirPath+str(i)+'_2.wfm')
+            ft.sendFile('scan.seq', dirPath + 'scan.seq')
+        if seqType == 's':
+            # for i in range(self.scan[2]+1):
+            #     print i, self.scan[2]+1
+            #     newPath = 'D:\\workspace\\awg test\\wfm files\\'
+            #     ft.sendFile(str(i) + '_1.wfm', newPath + str(i) + '_1.wfm')
+            #     # if i==21:
+            #     # i=22
+            #     ft.sendFile(str(i) + '_2.wfm', newPath + str(i) + '_2.wfm')
+            ft.sendFile('scan.seq', dirPath + 'scan.seq')
+
+        ft.close()
+        # set up awg modes
+        self.awgComm=Command()
+        self.awgComm.setup()
+        
+        time.sleep(2)
+        self.done.emit()
+        
+class ScanThread(QtCore.QThread):
+    data=QtCore.pyqtSignal(int,int)
+    tracking=QtCore.pyqtSignal(int)
+    def __init__(self,parent=None):
+        QtCore.QThread.__init__(self,parent)
+    def run(self):
+        self.scanning=True
+        self.proc_running=True
+        self.proc=ScanProcess()
+        self.p_conn,c_conn=multiprocessing.Pipe()
+        self.proc.get_conn(c_conn)
+        self.proc.parameters=self.parameters
+        self.proc.mw=self.mw
+        self.proc.scan=self.scan
+        self.proc.maxcounts=self.maxcounts
+        self.proc.start()
+        while self.scanning:
+            
+            if self.p_conn.poll(1):
+                reply=self.p_conn.recv()
+                print 'reply is ',reply
+                self.p_conn.send((self.parameters[4],self.proc_running))
+                if reply=='Abort!':
+                    self.scanning=False
+                    break
+                elif type(reply) is int:
+                    self.tracking.emit(reply)
+                elif len(reply)==2:
+                    self.data.emit(reply[0],reply[1])
+    
+    
+import ADwin,os
+from PTS3200.Wrapper import PTS
+from SynthUSBII.Wrapper import SynthUSB
+from SynthHD.Wrapper import SynthHD
+from AmpNV.Wrapper import AmpNV
+
+class ScanProcess(multiprocessing.Process):
+    def get_conn(self,conn):
+        self.conn=conn
+        self.scanning=False
+    def run(self):
+        self.scanning=True
+        class Abort(Exception):
+            pass
+        self.initialize()
+        try:
+            for avg in range(self.parameters[3]):
+                self.awgComm.trigger() # Green on
+                time.sleep(0.1) # Not sure why but shorter wait time causes problem.
+                for x in range(self.scan[2]):
+                    print avg,x
+                    if not self.scanning:
+                        raise Abort()
+                    if self.mw['PTS'][0] and self.mw['PTS'][2]:
+                        freq=(self.mw['PTS'][3]+self.mw['PTS'][4]*x)*1000000000
+                        temp=1
+                        while not self.pts.write(long(freq)):
+                            time.sleep(temp)
+                            temp*=2
+                            if temp>10:
+                                self.pts.__init__()
+                                temp=1
+                    if self.mw['USB'][0] and self.mw['USB'][2]:
+                        freq=(self.mw['USB'][3]+self.mw['USB'][4]*x)*1000
+                        self.usb.setFreq(freq)
+                    if self.mw['HD1'][0] and self.mw['HD1'][2]:
+                        freq=(self.mw['HD1'][3]+self.mw['HD1'][4]*x)*1000
+                        self.hd.setSingleFreq(0, freq)
+                    sig,ref=self.getData(x)
+                    print 'id and value are',id(self.parameters[4]),self.parameters[4]
+                    while ref<self.parameters[4]:
+                        if not self.scanning:
+                            raise Abort()
+                        self.finetrack()
+                        sig,ref=self.getData(x,'jump')
+                        if sig==0:
+                            print 'sig is 0'
+                            sig,ref=self.getData(x,'jump')
+                        
+                    self.conn.send([sig,ref])
+                    print 'sent'
+                    self.conn.poll(None)
+                    self.parameters[4],self.scanning=self.conn.recv()
+        except Abort:
+            self.conn.send('Abort!')
+            
+        self.cleanup()
+        
+    def initialize(self):
+        
+        self.adw=ADwin.ADwin()
+        try:
+            self.adw.Boot(self.adw.ADwindir + 'ADwin11.btl')
+            measure_proc = os.path.join(os.path.dirname(__file__),'AdWIN','Measure_Protocol.TB2') # Measurement protocol is configured as process 2, external triggered
+            self.adw.Load_Process(measure_proc)
+            count_proc = os.path.join(os.path.dirname(__file__),'ADWIN\\TrialCounter.TB1') # TrialCounter is configured as process 1
+            self.adw.Load_Process(count_proc)
+            self.adw.Set_Par(3, self.parameters[1])
+            self.adw.Set_Par(4, self.parameters[2])
+            self.adw.Set_Par(5, self.parameters[0])
+            self.adw.Start_Process(2)
+            print self.adw.Get_Par(5)
+        except ADwin.ADwinError as e:
+            sys.stderr.write(e.errorText)
+            self.conn.send('Abort!')
+            self.scanning=False
+            
+        self.awgComm=Command()
+        self.awgComm.run()
+        time.sleep(0.2)
+         
+        
+        if self.mw['PTS'][0]:
+            self.pts=PTS()
+            
+            self.pts.write(long(self.mw['PTS'][1]*1000000000))
+        if self.mw['USB'][0]:
+            self.usb=SynthUSB()
+            self.usb.switch(True)
+            self.usb.setFreq(self.mw['USB'][1]*1000)
+        if self.mw['HD1'][0]:
+            self.hd=SynthHD()
+            self.hd.setSingleSwitch(0, True)
+            self.hd.setSingleFreq(0, self.mw['HD1'][1]*1000)
+            self.hd.setSingleLevel_dBm(0, self.mw['HD1'])
+            
+    '''edited 8/6/2019 to remove ampnv from set up'''
+        #
+        # self.amp=AmpNV()
+        # self.amp.set(self.mw['AMP'])
+        # self.amp.switch(True)
+        
+        #pass
+    
+    def getData(self,x,*args):
+        print 'getData',x
+        flag=self.adw.Get_Par(10)
+        print 'Par_10',flag
+        
+        if x==0 or args!=():
+            self.awgComm.jump(x+2)
+            time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
+        self.awgComm.trigger()
+        
+        if args!=():
+            time.sleep(0.1)
+            self.awgComm.trigger()
+            
+        # wait until data updates
+        while flag==self.adw.Get_Par(10):
+            time.sleep(0.1)
+            print self.adw.Get_Par(20)
+            
+        sig=self.adw.Get_Par(1)
+        ref=self.adw.Get_Par(2)
+        return sig,ref
+    
+    def track(self):
+        self.axis='z'
+        position = self.nd.SingleReadN(self.axis, self.handle)
+    
+    def finetrack(self):
+        print 'track'
+        self.adw.Stop_Process(2)
+        
+        self.awgComm.jump(1)
+        time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
+        self.awgComm.trigger()
+
+        self.nd=MCL_NanoDrive()
+        self.handle=self.nd.InitHandles()['L']
+        self.accuracy=0.025
+        self.axis='x'
+        self.scan_track()
+        self.axis='y'
+        self.scan_track()
+        self.axis='z'
+        self.scan_track(ran=0.5)
+        self.nd.ReleaseAllHandles()
+        
+        self.adw.Start_Process(2)
+        time.sleep(0.3)
+        
+    def go(self,command):
+        position = self.nd.SingleReadN(self.axis, self.handle)
+        i=0
+        while abs(position-command)>self.accuracy:
+            #print 'moving to',command,'from',position
+            position=self.nd.MonitorN(command, self.axis, self.handle)
+            time.sleep(0.1)
+            i+=1
+            if i==20:
+                break
+
+    def count(self):
+        self.adw.Start_Process(1)
+        time.sleep(1.01)
+        counts=self.adw.Get_Par(1)
+        self.adw.Stop_Process(1)
+        return counts
+    
+    def scan_track(self,ran=0.25,step=0.05):
+        positionList=[]
+        position = self.nd.SingleReadN(self.axis, self.handle)
+        counts_data=[]
+        p=position-ran/2
+        while p<=position+ran/2:
+            positionList.append(p)
+            p+=step
+        for each_position in positionList:
+            self.go(each_position)
+            data=self.count()
+            self.conn.send(data)
+            self.conn.poll(None)
+            r=self.conn.recv()
+            self.parameters[4]=r[0]
+            counts_data.append(data)
+        
+        self.go(positionList[counts_data.index(max(counts_data))])
+        
+    def cleanup(self):
+        self.awgComm.stop()
+        self.adw.Stop_Process(2)
+        self.amp.switch(False)
+        
+        
+class KeepThread(QtCore.QThread):
+    status=QtCore.pyqtSignal(str)
+    
+    def __init__(self,parent=None):
+        QtCore.QThread.__init__(self,parent)
+        self.running=False
+    def run(self):
+        self.running=True
+        self.proc=KeepProcess()
+        self.p_conn,c_conn=multiprocessing.Pipe()
+        self.proc.get_conn(c_conn)
+        self.proc.start()
+        while self.running:
+           # print 'keep thread running'
+            if self.p_conn.poll(1):
+                reply=self.p_conn.recv()
+                if reply=='t':
+                    self.status.emit('Tracking...')
+                elif reply[0]=='c':
+                    self.status.emit('Monitoring counts...'+reply[1:])
+        print 'keep thread stoping'
+        self.p_conn.send(False)
+        while self.proc.is_alive():
+            print 'keep proc still alive',id(self.proc.running)
+            time.sleep(1)
+        self.status.emit('Ready!')
+        
+class KeepProcess(multiprocessing.Process):
+    def get_conn(self,conn):
+        self.conn=conn
+        self.running=False
+        
+    def run(self):
+        print 'keep process starts'
+        self.running=True
+        self.initialize()
+        time.sleep(5)
+        
+        maxcount=self.count()
+        self.conn.send('c'+str(maxcount))
+        time.sleep(5)
+        
+        
+        while not self.conn.poll(0.01):
+            print 'process did not receive anything.'
+            c=self.count()
+            if float(c)/maxcount<0.7:
+                self.conn.send('t')
+                self.track()
+                maxcount=self.count()
+                self.conn.send('c'+str(maxcount))
+            time.sleep(5)
+        
+        self.cleanup()
+        
+    def initialize(self):
+        self.nd=MCL_NanoDrive()
+        self.adw=ADwin.ADwin()
+        try:
+            self.adw.Boot(self.adw.ADwindir + 'ADwin11.btl')
+            count_proc = os.path.join(os.path.dirname(__file__),'ADWIN\\TrialCounter.TB1') # TrialCounter is configured as process 1
+            self.adw.Load_Process(count_proc)
+        except ADwin.ADwinError as e:
+            sys.stderr.write(e.errorText)
+            self.conn.send('Abort!')
+            self.running=False
+            
+            
+    def track(self):
+        print 'track'
+        
+        self.handle=self.nd.InitHandles()['L']
+        self.accuracy=0.025
+        self.axis='x'
+        self.scan_track()
+        self.axis='y'
+        self.scan_track()
+        self.axis='z'
+        self.scan_track()
+        
+        
+    def go(self,command):
+        position = self.nd.SingleReadN(self.axis, self.handle)
+        while abs(position-command)>self.accuracy:
+            #print 'moving to',command,'from',position
+            position=self.nd.MonitorN(command, self.axis, self.handle)
+            time.sleep(0.1)
+
+    def count(self):
+        self.adw.Start_Process(1)
+        time.sleep(1.01)
+        counts=self.adw.Get_Par(1)
+        self.adw.Stop_Process(1)
+        return counts
+    
+    def scan_track(self,ran=0.5,step=0.05):
+        positionList=[]
+        position = self.nd.SingleReadN(self.axis, self.handle)
+        counts_data=[]
+        p=position-ran/2
+        while p<=position+ran/2:
+            positionList.append(p)
+            p+=step
+        for each_position in positionList:
+            self.go(each_position)
+            data=self.count()
+            
+            counts_data.append(data)
+        
+        self.go(positionList[counts_data.index(max(counts_data))])
+        
+    def cleanup(self):
+        self.nd.ReleaseAllHandles()
