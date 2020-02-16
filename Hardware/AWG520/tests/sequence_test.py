@@ -2,7 +2,7 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from Pulseshaping.Hardware.AWG520.Sequence import Sequence,SequenceList
+from Hardware.AWG520.Sequence import Sequence,SequenceList
 #import pytest
 
 print('Module name is: ',__name__)
