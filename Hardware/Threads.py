@@ -14,10 +14,10 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 from PyQt5 import QtCore
-from Pulseshaping.Hardware.AWG520 import AWG520
-from Pulseshaping.Hardware.AWG520.Sequence import Sequence,SequenceList
-from Pulseshaping.Hardware.PTS3200 import PTS
-from Pulseshaping.Hardware.MCL.NanoDrive import MCL_NanoDrive
+from Hardware.AWG520 import AWG520
+from Hardware.AWG520.Sequence import Sequence,SequenceList
+from Hardware.PTS3200 import PTS
+from Hardware.MCL.NanoDrive import MCL_NanoDrive
 
 import time,sys,numpy,multiprocessing
 import logging

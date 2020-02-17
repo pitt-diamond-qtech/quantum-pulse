@@ -1,10 +1,10 @@
 ADwin==0.16.2
+certifi==2019.11.28
 Click==7.0
 cycler==0.10.0
 first==2.0.2
-guidata==1.7.6
-guiqwt==3.0.3
 kiwisolver==1.1.0
+lxml==4.4.1
 matplotlib==3.1.2
 numpy==1.17.4
 Pillow==6.2.1
@@ -14,8 +14,12 @@ PyDAQmx==1.4.2
 pyparsing==2.4.5
 PyQt5==5.13.2
 PyQt5-sip==12.7.0
+pyserial==3.4
+PySide2==5.13.1
+pythics==1.0.0
 python-dateutil==2.8.1
 PythonQwt==0.5.5
 PyVISA==1.10.1
 scipy==1.3.3
+shiboken2==5.13.1
 six==1.13.0
