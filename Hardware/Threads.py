@@ -13,6 +13,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+# this code is heavily based on Kai Zhang's code for other experiments in our group
+# and is still being worked on to make it complete with the new pulse sequences introduced by Gurudev Dutt
+
 from PyQt5 import QtCore
 from Hardware.AWG520 import AWG520
 from Hardware.AWG520.Sequence import Sequence,SequenceList
