@@ -16,7 +16,6 @@ PyQt5==5.13.2
 PyQt5-sip==12.7.0
 pyserial==3.4
 PySide2==5.13.1
-pythics==1.0.0
 python-dateutil==2.8.1
 PythonQwt==0.5.5
 PyVISA==1.10.1
