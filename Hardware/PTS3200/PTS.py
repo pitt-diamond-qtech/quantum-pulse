@@ -112,7 +112,18 @@ class PTS(object):
         return bcd_str
 
     def set(self,amp):
-        pass
+        if (int(amp) < 0 or int(amp) > 255):
+            sys.stderr.write('Invalid power given')
+            return False
+        try:
+            self.arduino.query('p' + str(amp) +'#')
+            return True
+        except visa.VisaIOError as error:
+            sys.stderr.write('VISA IO Error: {0}'.format(error))
+            return False
+        except:
+            sys.stderr.write("Unexpected error", sys.exc_info()[0])
+            return False
 
     def reset(self,amp):
         pass
