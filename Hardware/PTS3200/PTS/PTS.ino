@@ -139,6 +139,10 @@ void single_frequency() {
      a="";b="";output="";
      int i;
      //converts freq to bcd
+     '''
+     for ex: if the first digit is an 8, the function first converts it to binary (1000) the function does nothing because it is
+     already 4 digits, therefore in bcd. However, if the incoming digit is 4 for example, 100 in binary, the function adds a 0 to the
+     front to make it 4 digits and bcd. 100 goes to 0100.'''
      for (i=0;i<10;i++){
           digit = String(incomingByte[i]);
           //Serial.println(digit);
