@@ -67,9 +67,12 @@ class AWG520(object):
         self.logger = logging.getLogger('awg520private.awg520cls')
         #logging.basicConfig(format='%(asctime)s %(message)s')
         self.logger.info("Initializing AWG instance...")
-        self.logger.debug('AWG model = %s', self.sendcommand('*IDN?'))  # =='SONY/TEK,AWG520,0,SCPI:95.0 OS:3.0
-        print('AWG model = %s', self.sendcommand('*IDN?'))
+        self.logger.debug('AWG model = ', self.sendcommand('*IDN?'))  # =='SONY/TEK,AWG520,0,SCPI:95.0 OS:3.0
+        print('AWG model = ', self.sendcommand('*IDN?'))
         # USR:4.0\n'
+        self.myftp = FTP('')
+        self.myftp.connect(self.addr[0])  # TODO: will need to check FTP port on AWG
+        self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
         
     def sendcommand(self,command):
         query='?' in command
@@ -98,22 +101,19 @@ class AWG520(object):
             return None
 
     def sendfile(self,fileRemote,fileLocal):
-        self.myftp = FTP('')
-        self.myftp.connect(self.addr[0]) # TODO: will need to check FTP port on AWG
-        self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
         try:
-            strIt='STOR ' + str(fileRemote)
-            self.logger.info('Sending file %s to %s',fileLocal,fileRemote)
+            strIt = 'STOR ' + str(fileRemote)
+            self.logger.info('Sending file {} to {}'.format(fileLocal, fileRemote))
             t = time.process_time()
-            self.myftp.storbinary(strIt, open(fileLocal,'rb')) #store file on awg
+            self.myftp.storbinary(strIt, open(fileLocal, 'rb'))  # store file on awg
             elapsed_time = time.process_time() - t
             self.logger.info("Elapsed time in transferring file is {0:6f} secs".format(elapsed_time))
-            self.myftp.close()
+            # self.myftp.close()
             return 0
         except IOError as err:
-            #sys.stderr.write(str(sys.exc_info()[0]))
-            #sys.stderr.write(str(sys.exc_info()[1]))
-            #sys.stderr.write(e.message+'\n')
+            # sys.stderr.write(str(sys.exc_info()[0]))
+            # sys.stderr.write(str(sys.exc_info()[1]))
+            # sys.stderr.write(e.message+'\n')
             self.logger.error(sys.exc_info())
             self.logger.error("OS Error:{0}".format(err))
             return -1
@@ -123,6 +123,14 @@ class AWG520(object):
 
     def set_clock_internal(self):
         self.sendcommand('AWGC:CLOC:SOUR INT')
+
+    def set_ref_clock_external(self):
+        self.sendcommand('SOUR1:ROSC:SOUR EXT')
+        self.sendcommand('SOUR2:ROSC:SOUR EXT')
+
+    def set_ref_clock_internal(self):
+        self.sendcommand('SOUR1:ROSC:SOUR INT')
+        self.sendcommand('SOUR2:ROSC:SOUR INT')
 
     def trigger(self):
         self.sendcommand('*TRG\n')
@@ -194,8 +202,10 @@ class AWG520(object):
 
     # cleanup the connections
     def cleanup(self):
-        self.mysocket.close()
-        self.myftp.close()
+        if self.mysocket:
+            self.mysocket.close()
+        if self.myftp:
+            self.myftp.close()
     # functions that can help with error checking and remote file manipulation
     def status(self):
         # TODO: this needs to be written referring to section 3-1 of the AWG520 programmer manual
