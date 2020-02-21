@@ -1,5 +1,3 @@
 S2,1000,1300
 Green,2300,5300
 Measure,2300,2400
-
-This is a test message
