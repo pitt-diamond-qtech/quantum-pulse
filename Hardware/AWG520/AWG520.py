@@ -17,7 +17,7 @@
 # and is still being worked on to make it complete with the new pulse sequences introduced by Gurudev Dutt
 
 from ftplib import FTP
-import socket,sys, struct
+import socket,sys, struct,os
 import numpy as np
 from pathlib import Path
 import logging
@@ -31,6 +31,7 @@ _IP_ADDRESS = '172.17.39.2' # comment out for testing
 _PORT = 4000 # comment out for testing
 #_PORT = 65432 #switch ports for loopback
 _FTP_PORT = 21 # 63217 use this for teting
+#_FTP_PORT = 63217
 _MW_S1 = 'S1' #disconnected for now
 _MW_S2 = 'S2'#channel 1, marker 1
 _GREEN_AOM = 'Green' # ch1, marker 2
@@ -47,7 +48,11 @@ privatelogger = logging.getLogger('awg520private')
 dirpath = Path('.') /'sequencefiles'
 privatelogger.setLevel(logging.DEBUG)
 logfilepath = Path('.')/'logs'
+saveawgfilepath = Path('.')/ 'awg_tmpdir'
 # create a file handler that logs even debug messages
+if not logfilepath.exists():
+    os.mkdir(logfilepath)
+    print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
 fh = logging.FileHandler((logfilepath / 'awg520private.log').resolve())
 fh.setLevel(logging.DEBUG)
 # create a console handler with a higher log level
@@ -60,6 +65,9 @@ ch.setFormatter(formatter)
 # add the handlers to the logger
 privatelogger.addHandler(fh)
 privatelogger.addHandler(ch)
+if not saveawgfilepath.exists():
+    os.mkdir(saveawgfilepath)
+    privatelogger.info('Creating directory for saving retrieved AWG files at:{}'.format(saveawgfilepath.resolve()))
 
 class AWG520(object):
     def __init__(self,ip_address=_IP_ADDRESS,port=_PORT):
@@ -67,19 +75,16 @@ class AWG520(object):
         self.logger = logging.getLogger('awg520private.awg520cls')
         #logging.basicConfig(format='%(asctime)s %(message)s')
         self.logger.info("Initializing AWG instance...")
-        self.logger.debug('AWG model = ', self.sendcommand('*IDN?'))  # =='SONY/TEK,AWG520,0,SCPI:95.0 OS:3.0
+        self.logger.debug('AWG model = {}'.format(self.sendcommand('*IDN?')))  # =='SONY/TEK,AWG520,0,SCPI:95.0 OS:3.0
         print('AWG model = ', self.sendcommand('*IDN?'))
         # USR:4.0\n'
-        self.myftp = FTP('')
-        self.myftp.connect(self.addr[0])  # TODO: will need to check FTP port on AWG
-        self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
         
     def sendcommand(self,command):
         query='?' in command
         if not command.endswith('\n'):
             command+='\n'
         try:
-            self.logger.info('Sending AWG command: %s',command)
+            self.logger.info('Sending AWG command: {}'.format(command))
             with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as self.mysocket:
                 self.mysocket.connect(self.addr)
                 self.mysocket.sendall(command.encode()) # check if this works with real AWG later
@@ -89,7 +94,7 @@ class AWG520(object):
                     while not reply.endswith(b'\n'):
                         reply+=self.mysocket.recv(1024)
                         self.logger.info('waiting for AWG reply')
-                    self.logger.info("Received AWG reply: %s", reply.decode())
+                    self.logger.info("Received AWG reply: {}".format(reply.decode()))
                     return reply.decode()
                 else:
                     return None
@@ -102,6 +107,9 @@ class AWG520(object):
 
     def sendfile(self,fileRemote,fileLocal):
         try:
+            self.myftp = FTP('')
+            self.myftp.connect(self.addr[0], port=_FTP_PORT)  # TODO: will need to check FTP port on AWG
+            self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
             strIt = 'STOR ' + str(fileRemote)
             self.logger.info('Sending file {} to {}'.format(fileLocal, fileRemote))
             t = time.process_time()
@@ -205,7 +213,7 @@ class AWG520(object):
         if self.mysocket:
             self.mysocket.close()
         if self.myftp:
-            self.myftp.close()
+            self.myftp.quit()
     # functions that can help with error checking and remote file manipulation
     def status(self):
         # TODO: this needs to be written referring to section 3-1 of the AWG520 programmer manual
@@ -215,13 +223,39 @@ class AWG520(object):
         pass
 
     def list_awg_files(self):
-        pass
+        return self.myftp.nlst()
+
+    def get_awg_file(self,filename):
+        sfile = saveawgfilepath.resolve() + filename
+        try:
+            self.myftp.retrbinary('RETR '+ filename, open(sfile,'wb').write)
+        except IOError as err:
+            self.logger.error('IO Error {0}'.format(err))
+
+
+    def get_select_awg_files(self,pattern):
+        awgfiles = self.myftp.nlst()
+        patternfiles = []
+        t1 = time.process_time()
+        try:
+            for file in awgfiles:
+                if file.count(pattern):
+                    patternfiles.append(file)
+                    sfile = saveawgfilepath.resolve() + file
+                    myftp.retrbinary('RETR ' + file, open(sfile, 'wb').write)
+            download_t = time.process_time() - t1
+            self.logger.info('time for downloading files is {:0.6f}'.format(download_t))
+        except IOError as err:
+            self.logger.error('IO Error {0}'.format(err))
+        return patternfiles
 
     def remove_awg_file(self,filename):
-        pass
+        self.logger.warning('Deleting AWG file:',filename)
+        try:
+            self.myftp.delete(filename)
+        except IOError as err:
+            self.logger.error('IO Error {0}'.format(err))
 
-    def remove_all_awg_files(self):
-        pass
 
     def remove_selected_awg_files(self, pattern):
         pass
@@ -281,7 +315,6 @@ class AWGFile(object):
         4. timeres: clock rate in ns.
          """
         # first we clear out the directory
-        import os
         self.dirpath = dirpath  # will normally write to sequencefiles directory, change this after initialization if
         # you want the files stored elsewhere.
         for filename in os.listdir(self.dirpath):
