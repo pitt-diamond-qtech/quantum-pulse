@@ -16,7 +16,7 @@
 _ARD_COM_PORT = 'COM13'
 _LOWFREQ_LIMIT = 1000000
 _HIGHFREQ_LIMIT = 3200000000
-default_power =
+default_power = 13.01
 import visa
 import sys
 import math
@@ -114,6 +114,8 @@ class PTS(object):
         return bcd_str
 
     # need to account for input being in units of Pdbm, not PWM duty cycle, which is input to PTS.ino
+    # the first line of the function takes a Pdbm input and converts it to the corresponding PWM duty cycle
+    # derivation for the conversion is in my lab notebook
     def set(self, amp):
         pwm_duty = (10 ** (amp / 20)) * (256 / math.sqrt(500))
         if (int(pwm_duty) < 0 or int(pwm_duty) > 255):
