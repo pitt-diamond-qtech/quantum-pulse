@@ -78,7 +78,8 @@ void send_current_bcd_string(){
 }
 
 void single_sweep() {
-
+    //takes one query from PTS.py and reads each parameter of the function and saves it to variables to sweep through
+    //the given frequency range
     //Serial.println("single_sweep");
     Start=Serial.readStringUntil('#');
     A=Start.toFloat();

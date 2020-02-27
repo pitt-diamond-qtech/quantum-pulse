@@ -16,7 +16,7 @@
 _ARD_COM_PORT = 'COM13'
 _LOWFREQ_LIMIT = 1000000
 _HIGHFREQ_LIMIT = 3200000000
-default_power = 13.01
+_DEFAULT_POWER = 13.01
 import visa
 import sys
 import math
@@ -116,7 +116,7 @@ class PTS(object):
     # need to account for input being in units of Pdbm, not PWM duty cycle, which is input to PTS.ino
     # the first line of the function takes a Pdbm input and converts it to the corresponding PWM duty cycle
     # derivation for the conversion is in my lab notebook
-    def set(self, amp):
+    def set_power(self, amp):
         pwm_duty = (10 ** (amp / 20)) * (256 / math.sqrt(500))
         if (int(pwm_duty) < 0 or int(pwm_duty) > 255):
             sys.stderr.write('Invalid power given')
@@ -132,7 +132,7 @@ class PTS(object):
             return False
 
     # need to figure out what default power setting on PTS is so we can set it at top of code
-    def reset(self, default_power):
+    def reset_power(self, default_power):
         self.set(default_power)
 
     def scan(self, start, stop, numsteps, dwelltime):
@@ -152,10 +152,7 @@ class PTS(object):
             sys.stderr.write('Invalid step number given')
             return False
         try:
-            self.arduino.query('s' + str(start) + '#')
-            self.arduino.query('s' + str(stop) + '#')
-            self.arduino.query('s' + str(numsteps) + '#')
-            self.arduino.query('s' + str(dwelltime) + '#')
+            self.arduino.query('s' + str(start) + '#' + str(stop) + '#' + str(numsteps) + '#' + str(dwelltime) + '#')
             return True
         except visa.VisaIOError as error:
             sys.stderr.write('VISA IO Error: {0}'.format(error))
