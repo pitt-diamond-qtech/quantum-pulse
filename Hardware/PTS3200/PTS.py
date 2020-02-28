@@ -133,7 +133,7 @@ class PTS(object):
 
     # need to figure out what default power setting on PTS is so we can set it at top of code
     def reset_power(self, default_power):
-        self.set(default_power)
+        self.set_power(default_power)
 
     def scan(self, start, stop, numsteps, dwelltime):
         # start by setting max and min inputs for each parameter
