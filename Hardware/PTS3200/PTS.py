@@ -16,7 +16,7 @@
 _ARD_COM_PORT = 'COM13'
 _LOWFREQ_LIMIT = 1000000
 _HIGHFREQ_LIMIT = 3200000000
-_DEFAULT_POWER = 13.01
+_DEFAULT_POWER = 3.0
 import visa
 import sys
 import math
@@ -131,8 +131,7 @@ class PTS(object):
             sys.stderr.write("Unexpected error", sys.exc_info()[0])
             return False
 
-    # need to figure out what default power setting on PTS is so we can set it at top of code
-    def reset_power(self, default_power):
+    def reset_power(self, default_power=_DEFAULT_POWER):
         self.set_power(default_power)
 
     def scan(self, start, stop, numsteps, dwelltime):
