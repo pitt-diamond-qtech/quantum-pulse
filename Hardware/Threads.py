@@ -308,7 +308,7 @@ class ScanProcess(multiprocessing.Process):
         self.awgcomm = AWG520()
         self.awgcomm.setup(do_enable_iq) # why are we setting up the AWG again? it should have been done already by Upload thread
 
-        self.awgcomm.run()  # why are we running the sequence once? so that we can wait for the trigger?
+        self.awgcomm.run()  # places the AWG into enhanced run mode.
         time.sleep(0.2)
         # initialize the PTS and output the current frequency
         if use_pts:

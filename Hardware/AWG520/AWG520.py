@@ -44,11 +44,15 @@ _SEQ_MEMORY_LIMIT = 8000
 _IQTYPE = np.dtype('<f4') # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
 
-privatelogger = logging.getLogger('awg520private')
+
 dirpath = Path('.') /'sequencefiles'
-privatelogger.setLevel(logging.DEBUG)
 logfilepath = Path('.')/'logs'
 saveawgfilepath = Path('.')/ 'awg_tmpdir'
+
+
+# create the logger
+privatelogger = logging.getLogger('awg520private')
+privatelogger.setLevel(logging.DEBUG)
 # create a file handler that logs even debug messages
 if not logfilepath.exists():
     os.mkdir(logfilepath)
@@ -436,6 +440,7 @@ class AWGFile(object):
         c1m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
         c2m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
         wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
+        # first we must create a set of
         self.write_waveform('0', 1, wave[0,:], c1m1)
         self.write_waveform('0', 2, wave[1,:], c2m1)
         # create scan.seq file
