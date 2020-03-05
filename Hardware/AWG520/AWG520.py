@@ -328,7 +328,7 @@ class AWGFile(object):
        # now initalize the other variables
         self.logger = logging.getLogger('awg520private.awg520_file')
         self.wfmheader = b'MAGIC 1000 \r\n'
-        self.seqheader = 'MAGIC 3002 \r\n'
+        self.seqheader = b'MAGIC 3002 \r\n'
         # default params if no sequence object is given
         newpulseparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
                      'skew phase': 0.0, 'num pulses': 1}
@@ -433,30 +433,35 @@ class AWGFile(object):
         repeat: number of repetitions of each waveform
         timeres: clock rate
         '''
-        # first create an empty waveform so that measurements can start after a trigger is received.
-        slist = self.sequences.sequencelist
-        wfmlen = len(slist[0].c1markerdata)
+
+        slist = self.sequences.sequencelist # list of sequences
+        wfmlen = len(slist[0].c1markerdata) # get the length of the waveform in the first sequence
         scanlen = len(slist)
-        c1m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
-        c2m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
-        wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
-        # first we must create a set of
-        self.write_waveform('0', 1, wave[0,:], c1m1)
-        self.write_waveform('0', 2, wave[1,:], c2m1)
+        # c1m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
+        # c2m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
+        # wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
+        # first create an empty waveform in channel 1 and turns on the green laser
+        # so that measurements can start after a trigger is received.
+        arm_sequence = Sequence(['Green','0',str(wfmlen)],timeres=self.timeres)
+        arm_sequence.create_sequence()
+        self.write_waveform('0', 1, arm_sequence.wavedata[0,:], arm_sequence.c1markerdata)
+        self.write_waveform('0', 2, arm_sequence.wavedata[1,:], arm_sequence.c2markerdata)
         # create scan.seq file
         try:
-            with open(self.dirpath / seqfilename, 'w') as sfile:
+            with open(self.dirpath / seqfilename, 'wb') as sfile:
                 sfile.write(self.seqheader)
-                sfile.write('LINES ' + str(scanlen + 1) + '\r\n')
-                sfile.write('"0_1.wfm","0_2.wfm",0,1,0,0\r\n')
+                temp_str = 'LINES ' + str(scanlen + 1) + '\r\n'
+                sfile.write(temp_str.encode()) # have to convert to binary format
+                temp_str = '"0_1.wfm","0_2.wfm",0,1,0,0\r\n'
+                sfile.write(temp_str.encode())
                 for i in list(range(scanlen)):
                     self.write_waveform('' + str(i + 1), 1, slist[i].wavedata[0, :], slist[i].c1markerdata)
                     self.write_waveform('' + str(i + 1), 2, slist[i].wavedata[1, :], \
                         slist[i].c2markerdata)
                     linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(repeat) \
                               + ',1,0,0\r\n'
-                    sfile.write(linestr)
-                sfile.write('JUMP_MODE SOFTWARE\r\n')
+                    sfile.write(linestr.encode())
+                sfile.write(b'JUMP_MODE SOFTWARE\r\n')
         except (IOError, ValueError) as error:
             # sys.stderr.write(sys.exc_info())
             # sys.stderr.write(error.message+'\n')
