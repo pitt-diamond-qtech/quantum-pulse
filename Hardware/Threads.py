@@ -118,7 +118,7 @@ class UploadThread(QtCore.QThread):
         try:
             if self.awgparamgs['device'] == 'awg520':
                 self.awgcomm = AWG520()
-                self.awgcomm.setup(do_enable_iq) # pass the enable IQ flag otherwise the AWG will only use one channel
+                #self.awgcomm.setup(do_enable_iq) # pass the enable IQ flag otherwise the AWG will only use one channel
                 #  transfer all files to AWG
                 t = time.process_time()
                 for filename in os.listdir(dirPath):
