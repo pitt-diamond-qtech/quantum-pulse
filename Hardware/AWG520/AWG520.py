@@ -80,9 +80,11 @@ class AWG520(object):
         #logging.basicConfig(format='%(asctime)s %(message)s')
         self.logger.info("Initializing AWG instance...")
         self.logger.debug('AWG model = {}'.format(self.sendcommand('*IDN?')))  # =='SONY/TEK,AWG520,0,SCPI:95.0 OS:3.0
-        print('AWG model = ', self.sendcommand('*IDN?'))
+        #print('AWG model = ', self.sendcommand('*IDN?'))
         # USR:4.0\n'
-        
+        if self.login_ftp():
+           self.awgfiles = self.list_awg_files()
+
     def sendcommand(self,command):
         query='?' in command
         if not command.endswith('\n'):
@@ -108,6 +110,21 @@ class AWG520(object):
             self.logger.error(sys.exc_info())
             self.logger.error("OS Error:{0}".format(error))
             return None
+
+    def login_ftp(self):
+        try:
+            self.myftp = FTP('')
+            self.myftp.connect(self.addr[0], port=_FTP_PORT)  # TODO: will need to check FTP port on AWG
+            self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
+            self.logger.info('FTP login successful')
+            return True
+        except IOError as err:
+            # sys.stderr.write(str(sys.exc_info()[0]))
+            # sys.stderr.write(str(sys.exc_info()[1]))
+            # sys.stderr.write(e.message+'\n')
+            self.logger.error(sys.exc_info())
+            self.logger.error("OS Error:{0}".format(err))
+            return False
 
     def sendfile(self,fileRemote,fileLocal):
         try:
@@ -156,8 +173,9 @@ class AWG520(object):
     def setup(self,enableiq=False):
         self.logger.info('Setting up AWG...')
 
-        self.set_clock_external()
-        # load seq
+        self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        self.set_enhanced_run_mode()
+        # load seq to both channels -- I think it may be enough to just load one but will do both
         self.sendcommand('SOUR1:FUNC:USER "scan.seq","MAIN"\n')
         self.sendcommand('SOUR2:FUNC:USER "scan.seq","MAIN"\n')
 
@@ -173,6 +191,8 @@ class AWG520(object):
         # mysocket.sendall('SOUR2:MARK1:VOLT:HIGH 2.0\n')
         # mysocket.sendall('SOUR2:MARK2:VOLT:LOW 0\n')
         # mysocket.sendall('SOUR2:MARK2:VOLT:HIGH 2.0\n')
+        self.sendcommand('SOUR1:VOLT:AMPL 2000mV\n')
+        self.sendcommand('SOUR1:VOLT:OFFS 1000mV\n')
         self.sendcommand('SOUR2:VOLT:AMPL 2000mV\n')
         self.sendcommand('SOUR2:VOLT:OFFS 1000mV\n')
         '''edited on 8/6/2019 for use w/ IQ modulator: max Vpp = 1.0'''
@@ -199,6 +219,10 @@ class AWG520(object):
     def stop(self):
         self.sendcommand('AWGC:STOP\n')
 
+    def set_enhanced_run_mode(self):
+        # setup the AWG in enhanced run mode
+        self.sendcommand('AWGC:RMOD:ENH')
+
 
     #TODO: these 3 funcs needs to be altered if our connections change
     def green_on(self):
@@ -212,12 +236,7 @@ class AWG520(object):
     def mw_on(self):
         self.sendcommand('SOUR1:MARK1:VOLT:LOW 2.0\n')
 
-    # cleanup the connections
-    def cleanup(self):
-        if self.mysocket:
-            self.mysocket.close()
-        if self.myftp:
-            self.myftp.quit()
+
     # functions that can help with error checking and remote file manipulation
     def status(self):
         # TODO: this needs to be written referring to section 3-1 of the AWG520 programmer manual
@@ -225,7 +244,7 @@ class AWG520(object):
 
     def error_check(self):
         pass
-
+    # functions that carry out ftp operations
     def list_awg_files(self):
         return self.myftp.nlst()
 
@@ -262,12 +281,31 @@ class AWG520(object):
 
 
     def remove_selected_awg_files(self, pattern):
-        pass
+        awgfiles = self.myftp.nlst()
+        patternfiles = []
+        t1 = time.process_time()
+        try:
+            for file in awgfiles:
+                if file.count(pattern):
+                    patternfiles.append(file)
+                    self.myftp.delete(file)
+            delete_t = time.process_time() - t1
+            self.logger.warning('Deleted following AWG files:', patternfiles)
+            self.logger.info('time for deleting files is {:0.6f}'.format(delete_t))
+        except IOError as err:
+            self.logger.error('IO Error {0}'.format(err))
+        return patternfiles
 
     def get_awg_ftp_status(self):
         pass
 
-
+    # cleanup the connections
+    def cleanup(self):
+        self.stop()
+        if self.mysocket:
+            self.mysocket.close()
+        if self.myftp:
+            self.myftp.quit()
     # def __del__(self):
     #     self.mysocket.close()
     #     self.myftp.close()

@@ -190,20 +190,21 @@ class ScanThread(QtCore.QThread):
         self.proc_running=True
 
         self.p_conn,c_conn=multiprocessing.Pipe() # create parent and child connectors
-
-        self.proc = ScanProcess(conn = c_conn)
-        #self.proc.get_conn(c_conn) # give the process the child connector
+        # give the process the child connector and all the params
+        self.proc = ScanProcess(conn = c_conn,params= self.parameters,mwparams=self.mw,scan=self.scan,
+                                awgparams=self.awgparams,maxcounts=self.maxcounts,timeRes=self.timeRes)
+        #self.proc.get_conn(c_conn)
         # pass the parameters to the process
-        self.proc.parameters=self.parameters
-        # pass the mw info
-        self.proc.mw=self.mw
-        # pass the scan info
-        self.proc.scan=self.scan
-        # pass the awg info
-        self.proc.awg = self.awg
-        # keep track of the maxcounts
-        self.maxcounts = maxcounts
-        self.proc.maxcounts=self.maxcounts
+        # self.proc.parameters=self.parameters
+        # # pass the mw info
+        # self.proc.mw=self.mw
+        # # pass the scan info
+        # self.proc.scan=self.scan
+        # # pass the awg info
+        # self.proc.awg = self.awg
+        # # keep track of the maxcounts
+        # self.maxcounts = maxcounts
+        # self.proc.maxcounts=self.maxcounts
         # start the scan process
         self.proc.start()
 

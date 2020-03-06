@@ -78,7 +78,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                             'phase': 0.0, 'skew phase': 0.0,'num pulses': 1}
 
-        self.parameters = [50000, 300, 1000, 10, 10, 820,
+        self.parameters = [50000, 300, 2000, 10, 10, 820,
                            10]  # should make into dictionary with keys 'sample', 'count time',
         # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
 
@@ -133,10 +133,11 @@ class appGUI(QtWidgets.QMainWindow):
 
         # PTS controls
         self.ui.checkBoxUsePTS.stateChanged.connect(self.enablePTS)
-        self.ui.lineEditPTSFreq.setValidator(QtGui.QDoubleValidator(0.0,3200.0,3))
+        # setup the line edit only to accept frequencies in allowed PTS range
+        self.ui.lineEditPTSFreq.setValidator(QtGui.QDoubleValidator(10.0,3200.0,3))
+        self.ui.lineEditPTSFreq.editingFinished.connect(self.updatePTSFreq)
         # removed these next 4 controls in GUI on 2/6/20
         # self.ui.checkBoxScanPTS.stateChanged.connect(self.enablePTSScan)
-        self.ui.lineEditPTSFreq.editingFinished.connect(self.updatePTSFreq)
         # self.ui.lineEditPTSScanStart.editingFinished.connect(self.updatePTSScanStop)
         # self.ui.lineEditPTSScanStep.editingFinished.connect(self.updatePTSScanStop)
         # AWG controls
@@ -184,7 +185,7 @@ class appGUI(QtWidgets.QMainWindow):
             if device == 0:
                 self.awgparams['awg device'] = 'awg520'
             elif device == 1:
-                self.awgparams['awg device'][0] = 'awg5014c'
+                self.awgparams['awg device'] = 'awg5014c'
             else:
                 raise ValueError
         except ValueError:
