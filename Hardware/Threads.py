@@ -19,10 +19,10 @@
 from PyQt5 import QtCore
 from Hardware.AWG520 import AWG520
 from Hardware.AWG520.Sequence import Sequence,SequenceList
-from Hardware.PTS3200 import PTS
+from Hardware.PTS3200.PTS import PTS
 from Hardware.MCL.NanoDrive import MCL_NanoDrive
 
-import time,sys,numpy,multiprocessing
+import time,sys,multiprocessing
 import logging
 
 
@@ -125,7 +125,7 @@ class UploadThread(QtCore.QThread):
                     self.awgcomm.sendfile(filename, filename)
                 transfer_time = time.process_time() - t
                 time.sleep(1)
-                modlogger.info('time elapsed for all files to be transferred is:{0:d}'.format(transfer_time))
+                modlogger.info('time elapsed for all files to be transferred is:{0:6f}'.format(transfer_time))
                 self.awgcomm.cleanup()
                 self.done.emit()
             else:
@@ -335,6 +335,7 @@ class ScanProcess(multiprocessing.Process):
         # TODO: this is still a bit ugly but because I moved the number of pulses to be scanned into pulseparams
         # TODO: I need to check if the iterate pulses is on.
         # TODO: maybe simples if in the main GUI i simply replace the scan line edits and do strict type checking in the app
+        # TODO: above todo is now nearly implemented but keeping it here jic i forgot something.
         npulses = self.pulseparams['numpulses']
         if enable_scan_pts:
             # we can scan frequency either using PTS or using the SB freq
@@ -343,6 +344,10 @@ class ScanProcess(multiprocessing.Process):
             num_scan_points = num_freq_steps
         else:
             num_scan_points = numsteps
+        # to understand the code, it helps to know that the AWGFile class that was used to upload the sequences first
+        # creates an arm_sequence which is the 1st sequence in the scan.seq file. so in between execing each line of the
+        # scan.seq file which contains a sequence, if the counts fall below the threshold, the code jumps back to line 1
+        # and execs that again while carrying out scan_track function to optimize the counts.
         try:
             for avg in list(range(numavgs)):
                 self.awgcomm.trigger() # trigger the awg sequence
@@ -351,7 +356,7 @@ class ScanProcess(multiprocessing.Process):
                     modlogger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(avg,numavgs,x,num_scan_points))
                     if not self.scanning:
                         raise Abort()
-                    if use_pts and enable_scan_pts:
+                    if use_pts and enable_scan_pts: # this part implements frequency scanning
                         freq=int((start_freq+ step_freq * x)* _MHZ)
                         temp=1
                         # try to communicate with PTS and make sure it has put out the right frequency
@@ -370,9 +375,9 @@ class ScanProcess(multiprocessing.Process):
                         if not self.scanning:
                             raise Abort()
                         self.finetrack()
-                        sig,ref=self.getData(x,'jump')
+                        sig,ref=self.getData(x,'jump') # we have to execute the sequence again.
                         if sig==0:
-                            print('sig is 0')
+                            modlogger.warning('sig is 0 ,executing again')
                             sig,ref=self.getData(x,'jump')
                         
                     self.conn.send([sig,ref])
@@ -387,27 +392,28 @@ class ScanProcess(multiprocessing.Process):
 
     
     def getData(self,x,*args):
-        modlogger.info('entering getData with arguments {0:d},{1:}'.format(x,args))
+        modlogger.info('entering getData with arguments line number {0:d},{1:}'.format(x,args))
         flag=self.adw.Get_Par(10)
         modlogger.info('Adwin Par_10 is {0:d}'.format(flag))
         
-        if x==0 or args!=():
-            self.awgcomm.jump(x+2) # we jump over the first 2 points in the scan?
+        if x==0 or args!=(): # if this is the first point we need to jump over the arm_sequence
+            self.awgcomm.jump(x+2) # we jump over the arm_sequence, and maybe(?) the first point in the scan
             time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
 
-        self.awgcomm.trigger()
+        self.awgcomm.trigger() # now we execute the line number x in the scan.seq file
         
         if args!=():
             time.sleep(0.1)
-            self.awgcomm.trigger()
+            self.awgcomm.trigger() # if the arg is 'jump' we trigger again.
             
         # wait until data updates
         while flag==self.adw.Get_Par(10):
             time.sleep(0.1)
-            print(self.adw.Get_Par(20))
+            modlogger.info(f'Adwin Par_20 is {self.adw.Get_Par(20):d}')
             
         sig=self.adw.Get_Par(1)
         ref=self.adw.Get_Par(2)
+
         return sig,ref
     
     def track(self):
@@ -418,7 +424,7 @@ class ScanProcess(multiprocessing.Process):
         modlogger.info('entering tracking from ScanProc')
         self.adw.Stop_Process(2)
         
-        self.awgcomm.jump(1) # jumping to line 1 ?
+        self.awgcomm.jump(1) # jumping to line 1 which turns the green light on
         time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
         self.awgcomm.trigger()
 
@@ -430,17 +436,19 @@ class ScanProcess(multiprocessing.Process):
         self.axis='y'
         self.scan_track()
         self.axis='z'
-        self.scan_track(ran=0.5)
+        self.scan_track(ran=0.5) # increase range for z
         self.nd.ReleaseAllHandles()
         
         self.adw.Start_Process(2)
         time.sleep(0.3)
         
     def go(self,command):
+        # we need to check if the position has really gone to the command position
         position = self.nd.SingleReadN(self.axis, self.handle)
         i=0
         while abs(position-command)>self.accuracy:
             #print 'moving to',command,'from',position
+            modlogger.info(f'moving to {command} from {position}')
             position=self.nd.MonitorN(command, self.axis, self.handle)
             time.sleep(0.1)
             i+=1
@@ -448,13 +456,18 @@ class ScanProcess(multiprocessing.Process):
                 break
 
     def count(self):
+        # this function uses the Adwin process 1 to simply record the counts
         self.adw.Start_Process(1)
-        time.sleep(1.01)
+        time.sleep(1.01) # feels like an excessive delay, check by decreasing if it can be made smaller
         counts=self.adw.Get_Par(1)
         self.adw.Stop_Process(1)
         return counts
     
     def scan_track(self,ran=0.25,step=0.05):
+        '''This is the function that maximizes the counts by scanning a small range around the current position.
+        Params are
+         1. ran : range to scan in microns ie 250 nm is default
+         2. step = step size in microns, 50 nm is default'''
         positionList=[]
         position = self.nd.SingleReadN(self.axis, self.handle)
         counts_data=[]
