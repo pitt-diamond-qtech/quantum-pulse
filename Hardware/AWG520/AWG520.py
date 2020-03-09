@@ -244,7 +244,7 @@ class AWG520(object):
         self.logger.info('turning off green')
         self.sendcommand('SOUR1:MARK2:VOLT:HIGH 0.0\n')
 
-    def mw_on(self,enable_iq = False):
+    def mw_on_sb10MHz(self,enable_iq = False):
         '''Turns the MW on, param to be passed is whether IQ modulator is connected '''
         self.set_ref_clock_external()  # setup the ref to be the Rubidium lab clock
         self.set_clock_internal()  # use the internal clock which is now derived from ext clock
@@ -263,7 +263,7 @@ class AWG520(object):
             self.sendcommand('AWGC:FG1:FREQ 10MHz')
             self.sendcommand('AWGC:FG1:VOLT 2.0')
 
-    def mw_off(self,enable_iq = False):
+    def mw_off_sb10MHz(self,enable_iq = False):
         """We assume that we will always call this after a call to mw_on"""
         self.sendcommand('SOUR1:MARK1:VOLT:HIGH 0.0\n') # doesn't really turn off MW right now since we are using the
         # IQ modulator, so we now use the FG mode to send out sine and cosine waves at 10MHz
