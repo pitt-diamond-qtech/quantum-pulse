@@ -188,7 +188,7 @@ class ScanThread(QtCore.QThread):
 
     def run(self):
         self.scanning=True
-        self.proc_running=True
+        #self.proc_running=True
 
         self.p_conn,c_conn=multiprocessing.Pipe() # create parent and child connectors
         # give the process the child connector and all the params
@@ -208,13 +208,19 @@ class ScanThread(QtCore.QThread):
         # self.proc.maxcounts=self.maxcounts
         # start the scan process
         self.proc.start()
+        # TODO: verify whether proc.join() is needed here
 
         threshold = self.parameters[4]
         while self.scanning:
             if self.p_conn.poll(1): # check if there is data
                 reply=self.p_conn.recv() # get the data
                 self.logger.info('reply is ',reply)
-                self.p_conn.send((threshold,self.proc_running)) # send the scan process the threshold and whether to keep running
+                # 3/6/20 - I noticed this next line sends the proc_running parameter which is never really altered
+                # by the main thread, whereas the param scanning is altered depending on the reply from the process,
+                # therefore I believe this line was a mistake and the new line I have added should be correct
+                #self.p_conn.send((threshold,self.proc_running))
+                # send the scan process the threshold and whether to keep running
+                self.p_conn.send((threshold,self.scanning))
                 if reply=='Abort!':
                     self.scanning = False
                     self.logger.debug('reply is',reply)
@@ -345,7 +351,8 @@ class ScanProcess(multiprocessing.Process):
         # TODO: above todo is now nearly implemented but keeping it here jic i forgot something.
         npulses = self.pulseparams['numpulses']
         if enable_scan_pts:
-            # we can scan frequency either using PTS or using the SB freq
+            # we can scan frequency either using PTS or using the SB freq, but if we are scanning a wide range using
+            # the PTS we must simply output the sequence specified by user on the AWG.
             # self.scan['type'] = 'frequency'
             self.scan['type'] = 'no scan'
             num_scan_points = num_freq_steps
@@ -353,8 +360,8 @@ class ScanProcess(multiprocessing.Process):
             num_scan_points = numsteps
 
         try:
-            for avg in list(range(numavgs)):
-                self.awgcomm.trigger() # trigger the awg sequence
+            for avg in list(range(numavgs)): # we will keep scanning for this many averages
+                self.awgcomm.trigger() # trigger the awg for the arm sequence which turns on the laser.
                 time.sleep(0.1) # Not sure why but shorter wait time causes problem.
                 for x in list(range(num_scan_points)):
                     self.logger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(
@@ -386,7 +393,8 @@ class ScanProcess(multiprocessing.Process):
                             sig,ref=self.getData(x,'jump')
                         
                     self.conn.send([sig,ref])
-                    self.logger.info('signal and reference data sent from ScanProc to ScanThread')
+                    self.logger.info('signal {0:d} and reference {1:d} sent from ScanProc to ScanThread'.format(sig,
+                        ref))
                     self.conn.poll(None)
                     self.parameters[4],self.scanning = self.conn.recv() # receive the threshold and scanning status
         except Abort:
@@ -411,16 +419,20 @@ class ScanProcess(multiprocessing.Process):
             point, then the scan index is x (because python indexing starts at 0 for lists). So again when we come
             back from finetrack, we need to jump the (x+2) line of the scan.seq function and output that wfm by
             triggering. For some reason the trigger has to be done twice here according to Kai Zhang.
+            Thus the params to be sent are:
+            1. x : data point number
+            2. args : only one arg 'jump' is supported at this time
         '''
-        modlogger.info('entering getData with arguments line number {0:d},{1:}'.format(x,args))
+        modlogger.info('entering getData with arguments data point {0:d}, and {1:}'.format(x,args))
         flag=self.adw.Get_Par(10)
         self.logger.info('Adwin Par_10 is {0:d}'.format(flag))
         
-        if x==0 or args!=(): # if this is the first point we need to jump over the arm_sequence
-            self.awgcomm.jump(x+2) # we jump over the arm_sequence, and maybe(?) the first point in the scan
+        if x==0 or args!=(): # if this is the first point we need to jump over the arm_sequence to the 2nd line of
+            # scan.seq. If not first point, we still need to add 2 again to get to the right line number
+            self.awgcomm.jump(x+2)
             time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
 
-        self.awgcomm.trigger() # now we execute the line number x in the scan.seq file
+        self.awgcomm.trigger() # now we output the line number in the scan.seq file
         
         if args!=():
             time.sleep(0.1)
