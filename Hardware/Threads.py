@@ -52,7 +52,7 @@ modlogger.addHandler(ch)
 _GHZ = 1000000000
 _MHZ = 1000000
 class UploadThread(QtCore.QThread):
-    """this is the upload thread. it has following variables:
+    """this is the upload thread to send all the files to teh AWG. it has following variables:
     1. seq = the sequence list of strings
     2. scan = scan parameters dictionary
     3. params = misc. params list such as count time etc
@@ -64,19 +64,20 @@ class UploadThread(QtCore.QThread):
     This class emits one Pyqtsignal
     1. done  - when the upload is finished
     """
-    # this method only has one signal done
+    # this method only has one PyQt signal done which is emitted once the upload is finished
     done=QtCore.pyqtSignal()
     def __init__(self,parent=None,seq = None,scan = None,params = None,awgparams = None,pulseparams = None,
                  mwparams = None, timeRes = 1):
         #super().__init__(self)
         QtCore.QThread.__init__(self,parent)
         self.timeRes = timeRes
+        self.logger = logging.getLogger('threadlogger.uploadThread')
         if scan == None:
             self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
         else:
             self.scan = scan
         if seq == None:
-            self.seq = [['Green','0','1000'],['Measure','10','400']]
+            self.seq = [['Green','0','1000'],['Measure','10','400']] # minimal measurement sequence
         else:
             self.seq = seq
         if mwparams == None:
@@ -125,16 +126,15 @@ class UploadThread(QtCore.QThread):
                     self.awgcomm.sendfile(filename, filename)
                 transfer_time = time.process_time() - t
                 time.sleep(1)
-                modlogger.info('time elapsed for all files to be transferred is:{0:6f}'.format(transfer_time))
+                self.logger.info('time elapsed for all files to be transferred is:{0:.3f}'.format(transfer_time))
                 self.awgcomm.cleanup()
                 self.done.emit()
             else:
                 raise ValueError('AWG520 is the only AWG supported')
-        except ValueError:
-            modlogger.error('AWG520 is only AWG supported')
-            raise
+        except ValueError as err:
+            self.logger.error('Value Error {0}'.format(err))
         except RuntimeError as err:
-            modlogger.error('Run time error'.format(err))
+            self.logger.error('Run time error {0}'.format(err))
 
 
 
@@ -165,6 +165,7 @@ class ScanThread(QtCore.QThread):
         super().__init__(parent)
         self.timeRes = timeRes
         self.maxcounts = maxcounts
+        self.logger = logging.getLogger('threadlogger.scanThread')
         if scan == None:
             self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
         else:
@@ -212,18 +213,18 @@ class ScanThread(QtCore.QThread):
         while self.scanning:
             if self.p_conn.poll(1): # check if there is data
                 reply=self.p_conn.recv() # get the data
-                modlogger.info('reply is ',reply)
+                self.logger.info('reply is ',reply)
                 self.p_conn.send((threshold,self.proc_running)) # send the scan process the threshold and whether to keep running
                 if reply=='Abort!':
                     self.scanning = False
-                    modlogger.debug('reply is',reply)
+                    self.logger.debug('reply is',reply)
                     break
                 elif type(reply) is int: # if the reply is tracking counts, send that signal to main app
                     self.tracking.emit(reply)
-                    modlogger.debug('reply emitted from tracking is {:d}'.format(reply))
+                    self.logger.debug('reply emitted from tracking is {:d}'.format(reply))
                 elif len(reply)==2:
                     self.data.emit(reply[0],reply[1]) # if the reply is a tuple with signal and ref,send that signal to main app
-                    modlogger.debug('signal and ref emitted is {:d}'.format(reply))
+                    self.logger.debug('signal and ref emitted is {:d}'.format(reply))
 
 
 class Abort(Exception):
@@ -237,6 +238,7 @@ class ScanProcess(multiprocessing.Process):
         super().__init__(parent)
         self.timeRes = timeRes
         self.maxcounts = maxcounts
+        self.logger = logging.getLogger('threadlogger.scanThread.scanproc')
         if scan == None:
             self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
         else:
@@ -300,23 +302,27 @@ class ScanProcess(multiprocessing.Process):
             self.adw.Set_Par(5, samples)
             # start the Measure protocol
             self.adw.Start_Process(2)
-            modlogger.info('Adwin parameter 5 is {:d}'.format(self.adw.Get_Par(5))) # seem to be printing the samples value again?
+            self.logger.info('Adwin parameter 5 is {:d}'.format(self.adw.Get_Par(5))) # seem to be printing the samples
+            # value
+            # again?
+
         except ADwin.ADwinError as e:
             sys.stderr.write(e.errorText)
             self.conn.send('Abort!')
             self.scanning = False
 
-        self.awgcomm = AWG520()
-        self.awgcomm.setup(do_enable_iq) # why are we setting up the AWG again? it should have been done already by Upload thread
 
-        self.awgcomm.run()  # places the AWG into enhanced run mode.
-        time.sleep(0.2)
         # initialize the PTS and output the current frequency
         if use_pts:
             self.pts = PTS()
             self.pts.write(int(current_freq * _MHZ))
         else:
-            modlogger.error('No microwave synthesizer selected')
+            self.logger.error('No microwave synthesizer selected')
+        self.awgcomm = AWG520()
+        self.awgcomm.setup(do_enable_iq)  # removed the setup of AWG in Upload thread, so do it now.
+        self.awgcomm.run()  # places the AWG into enhanced run mode.
+        time.sleep(0.2)
+
 
     def run(self):
         self.scanning=True
@@ -345,16 +351,14 @@ class ScanProcess(multiprocessing.Process):
             num_scan_points = num_freq_steps
         else:
             num_scan_points = numsteps
-        # to understand the code, it helps to know that the AWGFile class that was used to upload the sequences first
-        # creates an arm_sequence which is the 1st sequence in the scan.seq file. so in between execing each line of the
-        # scan.seq file which contains a sequence, if the counts fall below the threshold, the code jumps back to line 1
-        # and execs that again while carrying out scan_track function to optimize the counts.
+
         try:
             for avg in list(range(numavgs)):
                 self.awgcomm.trigger() # trigger the awg sequence
                 time.sleep(0.1) # Not sure why but shorter wait time causes problem.
                 for x in list(range(num_scan_points)):
-                    modlogger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(avg,numavgs,x,num_scan_points))
+                    self.logger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(
+                        avg,numavgs,x,num_scan_points))
                     if not self.scanning:
                         raise Abort()
                     if use_pts and enable_scan_pts: # this part implements frequency scanning
@@ -378,11 +382,11 @@ class ScanProcess(multiprocessing.Process):
                         self.finetrack()
                         sig,ref=self.getData(x,'jump') # we have to execute the sequence again.
                         if sig==0:
-                            modlogger.warning('sig is 0 ,executing again')
+                            self.logger.warning('sig is 0 ,executing again')
                             sig,ref=self.getData(x,'jump')
                         
                     self.conn.send([sig,ref])
-                    modlogger.info('signal and reference data sent from ScanProc to ScanThread')
+                    self.logger.info('signal and reference data sent from ScanProc to ScanThread')
                     self.conn.poll(None)
                     self.parameters[4],self.scanning = self.conn.recv() # receive the threshold and scanning status
         except Abort:
@@ -393,9 +397,24 @@ class ScanProcess(multiprocessing.Process):
 
     
     def getData(self,x,*args):
+        '''This is the main function that gets the data from teh Adwin.
+        to understand the code, it helps to know that the AWGFile class that was used to upload the sequences first
+        creates an arm_sequence which is the 1st line in the scan.seq file. The 2md line of the scan.seq file will
+        therefore be the 1st point in the scan list and so on. The arm_sequence is executed during the
+        finetrack function when the counts from NV are low. There are 3 possible ways getData function is called:
+            getData(0) = 1st time getData is called it will jump to the 2nd line of the scan.seq file which
+            corresponds to the first actual point in the scan. it will then trigger to output that wfm on the AWG
+            getData(x) = not the 1st time, will direct trigger to output the current line of the scan.seq file and
+            move to the next
+            getData(x,'jump') = including the case x = 0, this is called when we finished tracking and maximizing
+            counts using fine_track func. If we have taken x points of data and now want to move to the (x+1)th
+            point, then the scan index is x (because python indexing starts at 0 for lists). So again when we come
+            back from finetrack, we need to jump the (x+2) line of the scan.seq function and output that wfm by
+            triggering. For some reason the trigger has to be done twice here according to Kai Zhang.
+        '''
         modlogger.info('entering getData with arguments line number {0:d},{1:}'.format(x,args))
         flag=self.adw.Get_Par(10)
-        modlogger.info('Adwin Par_10 is {0:d}'.format(flag))
+        self.logger.info('Adwin Par_10 is {0:d}'.format(flag))
         
         if x==0 or args!=(): # if this is the first point we need to jump over the arm_sequence
             self.awgcomm.jump(x+2) # we jump over the arm_sequence, and maybe(?) the first point in the scan
@@ -405,12 +424,12 @@ class ScanProcess(multiprocessing.Process):
         
         if args!=():
             time.sleep(0.1)
-            self.awgcomm.trigger() # if the arg is 'jump' we trigger again.
+            self.awgcomm.trigger() # if the arg is 'jump' we have to trigger again for some reason.
             
         # wait until data updates
         while flag==self.adw.Get_Par(10):
             time.sleep(0.1)
-            modlogger.info(f'Adwin Par_20 is {self.adw.Get_Par(20):d}')
+            self.logger.info(f'Adwin Par_20 is {self.adw.Get_Par(20):d}')
             
         sig=self.adw.Get_Par(1)
         ref=self.adw.Get_Par(2)
@@ -449,7 +468,7 @@ class ScanProcess(multiprocessing.Process):
         i=0
         while abs(position-command)>self.accuracy:
             #print 'moving to',command,'from',position
-            modlogger.info(f'moving to {command} from {position}')
+            self.logger.info(f'moving to {command} from {position}')
             position=self.nd.MonitorN(command, self.axis, self.handle)
             time.sleep(0.1)
             i+=1
@@ -496,6 +515,9 @@ class ScanProcess(multiprocessing.Process):
         
         
 class KeepThread(QtCore.QThread):
+    """This thread should be run automatically after the scan thread is done, so as to keep the NV in focus even when the user
+    is not scanning. It works on a very similar basis as the scan thread."""
+
     status=QtCore.pyqtSignal(str)
     
     def __init__(self,parent=None):
