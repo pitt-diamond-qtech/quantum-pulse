@@ -528,55 +528,64 @@ class ScanProcess(multiprocessing.Process):
         
 class KeepThread(QtCore.QThread):
     """This thread should be run automatically after the scan thread is done, so as to keep the NV in focus even when the user
-    is not scanning. It works on a very similar basis as the scan thread."""
+    is not scanning. It works on a very similar basis as the scan thread. It has one signal:
+        1. status = string which updates the main app with the counts"""
 
     status=QtCore.pyqtSignal(str)
     
     def __init__(self,parent=None):
-        QtCore.QThread.__init__(self,parent)
+        super().__init__(parent)
         self.running=False
+        self.logger = logging.getLogger('threadlogger.KeepThread')
+
     def run(self):
         self.running=True
-        self.proc=KeepProcess()
+        # create the keep process in a separate process and pass it a child connector
         self.p_conn,c_conn=multiprocessing.Pipe()
-        self.proc.get_conn(c_conn)
-        self.proc.start()
+        self.proc = KeepProcess(conn=c_conn)
+        self.proc.start() # start the keep process
         while self.running:
-           # print 'keep thread running'
+            self.logger.info('keep process still running')
             if self.p_conn.poll(1):
                 reply=self.p_conn.recv()
-                if reply=='t':
+                if reply=='t': # if the reply from Keep process is t, then it is tracking
                     self.status.emit('Tracking...')
-                elif reply[0]=='c':
+                    self.logger.debug('signal emitted by KeepThread is Tracking..')
+                elif reply[0]=='c': # if the reply starts with c, then we can get the counts
                     self.status.emit('Monitoring counts...'+reply[1:])
-        print('keep thread stoping')
+                    self.logger.debug('signal emitted by KeepThread is Monitoring counts...{0}'.format(reply[1:]))
+        #self.logger.info('keep thread stopping')
         self.p_conn.send(False)
         while self.proc.is_alive():
-            print('keep proc still alive',id(self.proc.running))
+            self.logger.info('keep proc still alive {0}'.format(id(self.proc.running)))
             time.sleep(1)
-        self.status.emit('Ready!')
+        self.status.emit('Ready!') # we finished the keep process and can now go back to main program
         
 class KeepProcess(multiprocessing.Process):
-    def get_conn(self,conn):
-        self.conn=conn
-        self.running=False
-        
-    def run(self):
-        print('keep process starts')
-        self.running=True
+    def __init__(self,parent,conn):
+        super().__init__(parent)
+        self.conn = conn
+        self.running = False
+        self.logger = logging.getLogger('threadlogger.KeepThread.keepproc')
         self.initialize()
-        time.sleep(5)
+        self.accuracy = 0.025 # accuracy for moves of nanostage is 25 nm
+        self.count_threshold_percent = 0.7
+
+    def run(self):
+        self.logger.info('keep process starts')
+        self.running=True
+        time.sleep(5) # wait 5 seconds before counting again
         
         maxcount=self.count()
         self.conn.send('c'+str(maxcount))
-        time.sleep(5)
+        time.sleep(5) # wait 5 seconds before counting again
         
         
         while not self.conn.poll(0.01):
-            print('process did not receive anything.')
+            # self.logger.info('keep process did not receive anything.')
             c=self.count()
-            if float(c)/maxcount<0.7:
-                self.conn.send('t')
+            if float(c)/maxcount<self.count_threshold_percent: # if the counts fall below threshold
+                self.conn.send('t') # tell Keep thread that we are now tracking
                 self.track()
                 maxcount=self.count()
                 self.conn.send('c'+str(maxcount))
@@ -587,6 +596,8 @@ class KeepProcess(multiprocessing.Process):
     def initialize(self):
         self.nd=MCL_NanoDrive()
         self.adw=ADwin.ADwin()
+        self.awgcomm = AWG520()
+
         try:
             self.adw.Boot(self.adw.ADwindir + 'ADwin11.btl')
             count_proc = os.path.join(os.path.dirname(__file__),'ADWIN\\TrialCounter.TB1') # TrialCounter is configured as process 1
@@ -598,10 +609,10 @@ class KeepProcess(multiprocessing.Process):
             
             
     def track(self):
-        print('track')
+        self.logger.info('entered track function')
         
         self.handle=self.nd.InitHandles()['L']
-        self.accuracy=0.025
+        # track each axis one by one
         self.axis='x'
         self.scan_track()
         self.axis='y'
@@ -611,6 +622,8 @@ class KeepProcess(multiprocessing.Process):
         
         
     def go(self,command):
+        ''' this function moves nanostage to the position given by param:
+        1. command'''
         position = self.nd.SingleReadN(self.axis, self.handle)
         while abs(position-command)>self.accuracy:
             #print 'moving to',command,'from',position
@@ -618,13 +631,20 @@ class KeepProcess(multiprocessing.Process):
             time.sleep(0.1)
 
     def count(self):
+        '''this function uses the Adwin process 1 to simply record the counts '''
+        self.awgcomm.green_on()
         self.adw.Start_Process(1)
-        time.sleep(1.01)
+        time.sleep(1.01) # very long delay, check if truly needed
         counts=self.adw.Get_Par(1)
         self.adw.Stop_Process(1)
+        self.awgcomm.green_off()
         return counts
     
     def scan_track(self,ran=0.5,step=0.05):
+        '''This is the function that maximizes the counts by scanning a small range around the current position.
+        Params are
+         1. ran : range to scan in microns ie 500 nm is default
+         2. step = step size in microns, 50 nm is default'''
         positionList=[]
         position = self.nd.SingleReadN(self.axis, self.handle)
         counts_data=[]
@@ -642,4 +662,6 @@ class KeepProcess(multiprocessing.Process):
         
     def cleanup(self):
         self.nd.ReleaseAllHandles()
+        self.awgcomm.cleanup()
+
 
