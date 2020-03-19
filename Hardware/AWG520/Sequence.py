@@ -310,6 +310,10 @@ def fix_minimum_duration(event_dict, channel, deviation=20):
     return dict(tmp_dict)
 
 
+def compress_long_sequences(event_dict,channel):
+    pass
+
+
 """"End helper methods section"""
 
 
