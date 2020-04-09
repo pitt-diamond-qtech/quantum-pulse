@@ -22,7 +22,7 @@ from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.servers import ThreadedFTPServer,FTPServer
 import os
-import logging
+#import logging
 
 class MyHandler(FTPHandler):
     def on_connect(self):
@@ -60,13 +60,10 @@ def main():
     authorizer = DummyAuthorizer()
     authorizer.add_user("usr", "pw", "./dummyAWG", perm="elradfmw")
     authorizer.add_anonymous("./dummyAWG")
-    logging.basicConfig(filename='./logs/pyftpd.log', level=logging.INFO)
+    #logging.basicConfig(filename='./logs/pyftpd.log', level=logging.INFO)
 
     handler = MyHandler
     handler.authorizer = authorizer
 
     server = ThreadedFTPServer((HOST, PORT), handler)
     server.serve_forever()
-
-if __name__ == '__main__':
-    main()

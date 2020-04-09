@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 from Hardware.AWG520.Sequence import Sequence,SequenceList
+
 #import pytest
 
 print('Module name is: ',__name__)
@@ -67,6 +68,18 @@ def make_seq_list():
 
     # raise RuntimeError('test the runtime handling')
 
+def make_long_seq():
+    seq = [['S2','1000','1050'],['Green','100000','102000'],['Measure','100100','100400']]
+    newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
+                 'skew phase': 0.0, 'num pulses': 1}
+    s = Sequence(seq, pulseparams=newparams, timeres=1)
+    s.create_sequence(dt=0)
+    tt = np.linspace(0, s.maxend, len(s.c1markerdata))
+    plt.plot(tt, s.wavedata[0, :], 'r-', tt, s.wavedata[1, :], 'b-', tt, s.c1markerdata, 'g--', tt, s.c2markerdata,
+             'y-')
+    # plt.plot(tt,s.wavedata[1,:])
+    plt.show()
+    # raise RuntimeError('test the runtime handling')
 
 def test_sequence():
     make_seq()
@@ -75,5 +88,7 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
+
     test_sequence()
     #test_seq_list()
+
