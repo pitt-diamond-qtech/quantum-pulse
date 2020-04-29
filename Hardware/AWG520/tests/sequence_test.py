@@ -25,11 +25,10 @@ def make_seq():
     s.create_sequence(dt=10)
     tt = np.linspace(0,s.maxend,len(s.c1markerdata))
 
-
     with h5py.File("DBSEQUENCE.hf5","w") as f:  # create hdf5 file
         subgroup = f.create_group("unitary operation A") # group within our file
-        subgroup.attrs["SeqDefinition"] = "['Wave', '900+t', '1400+t', 'Gauss'], ['Green', '1500', '2500'],['S2','500','1500'],['Measure','1500','1800']"
-        subgroup.attrs["params"] = "amplitude: 100, pulsewidth: 50, SB freq: 0.01, IQ scale factor: 1.0, phase: 0.0, skew phase:0.0, num pulses: 1"
+        subgroup.attrs["SeqDefinition"] = f'{seq}'
+        subgroup.attrs["params"] = f"{newparams}"
         # set attributes (metadata) for our data
         subgroup['wave_1'] = s.wavedata[0, :] # create dataset inside subgroup
         subgroup['wave_2'] = s.wavedata[1, :]
@@ -39,10 +38,8 @@ def make_seq():
     #retrieve data to see if it worked
     with h5py.File("DBSEQUENCE.hf5", "r") as f:
         testdset = f["unitary operation A/wave_1"]
-
-    plt.plot(tt,testdset,'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
-    #plt.plot(tt,s.wavedata[1,:])
-    plt.show()
+        plt.plot(tt,testdset,'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
+        plt.show()
     # raise RuntimeError('test the runtime handling')
 def make_seq_list():
     wfmdir = Path('../../..') / 'arbpulseshape'
@@ -91,4 +88,5 @@ if __name__ == '__main__':
 
     test_sequence()
     #test_seq_list()
+
 
