@@ -2,7 +2,9 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+import h5py
 from Hardware.AWG520.Sequence import Sequence,SequenceList
+
 #import pytest
 
 print('Module name is: ',__name__)
@@ -22,15 +24,27 @@ def make_seq():
     s = Sequence(seq,pulseparams=newparams,timeres=1)
     s.create_sequence(dt=10)
     tt = np.linspace(0,s.maxend,len(s.c1markerdata))
-    plt.plot(tt,s.wavedata[0,:],'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
-    #plt.plot(tt,s.wavedata[1,:])
-    plt.show()
-    #raise RuntimeError('test the runtime handling')
 
+    with h5py.File("DBSEQUENCE.hf5","w") as f:  # create hdf5 file
+        subgroup = f.create_group("unitary operation A") # group within our file
+        subgroup.attrs["SeqDefinition"] = f'{seq}'
+        subgroup.attrs["params"] = f"{newparams}"
+        # set attributes (metadata) for our data
+        subgroup['wave_1'] = s.wavedata[0, :] # create dataset inside subgroup
+        subgroup['wave_2'] = s.wavedata[1, :]
+        subgroup['marker_1'] = s.c1markerdata
+        subgroup['marker_2'] = s.c2markerdata
+
+    #retrieve data to see if it worked
+    with h5py.File("DBSEQUENCE.hf5", "r") as f:
+        testdset = f["unitary operation A/wave_1"]
+        plt.plot(tt,testdset,'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
+        plt.show()
+    # raise RuntimeError('test the runtime handling')
 def make_seq_list():
     wfmdir = Path('../../..') / 'arbpulseshape'
     # print(str(wfmdir.resolve()))
-    # notice the sequence below scans time by setting all times after the pulse that is being scanned are also moved
+
     seq = [['Green', '1600+t', '2500+t'],['Wave', '1000+t', '1500+t', 'Sech'],['Measure','1500+t','1800+t']]
     # seq = [['Green', '0', '1000']]
     newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
@@ -51,6 +65,18 @@ def make_seq_list():
 
     # raise RuntimeError('test the runtime handling')
 
+def make_long_seq():
+    seq = [['S2','1000','1050'],['Green','100000','102000'],['Measure','100100','100400']]
+    newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
+                 'skew phase': 0.0, 'num pulses': 1}
+    s = Sequence(seq, pulseparams=newparams, timeres=1)
+    s.create_sequence(dt=0)
+    tt = np.linspace(0, s.maxend, len(s.c1markerdata))
+    plt.plot(tt, s.wavedata[0, :], 'r-', tt, s.wavedata[1, :], 'b-', tt, s.c1markerdata, 'g--', tt, s.c2markerdata,
+             'y-')
+    # plt.plot(tt,s.wavedata[1,:])
+    plt.show()
+    # raise RuntimeError('test the runtime handling')
 
 def test_sequence():
     make_seq()
@@ -59,5 +85,8 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    #test_sequence()
-    test_seq_list()
+
+    test_sequence()
+    #test_seq_list()
+
+
