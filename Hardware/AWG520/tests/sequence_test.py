@@ -52,18 +52,29 @@ def make_seq_list():
     newscanparams = {'type':'number','start': 0, 'stepsize': 1, 'steps': 3}
     s = SequenceList(seq, pulseparams=newparams, timeres=1,scanparams = newscanparams)
     s.create_sequence_list()
-    for nn in list(range(len(s.sequencelist))):
-        xstop = s.sequencelist[nn].maxend
-        points = len(s.sequencelist[nn].c1markerdata)
-        ydat = s.sequencelist[nn].wavedata
-        c1dat = s.sequencelist[nn].c1markerdata
-        c2dat = s.sequencelist[nn].c2markerdata
-        tt = np.linspace(0, xstop, points)
-        plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
-        plt.show()
+    with h5py.File("DBSEQUENCE.hf5", "r+") as f:  # write on hdf5 file (without rewriting)
+        subgroup = f.create_group("B")  # group within our file
+        subgroup.attrs["SeqDefinition"] = f'{seq}'
+        subgroup.attrs["params"] = f"{newparams}"
+        subgroup.attrs["ScanParams"] = f"{newscanparams}"
+        # set attributes (metadata) for our data
+        for nn in list(range(len(s.sequencelist))):
+            xstop = s.sequencelist[nn].maxend
+            points = len(s.sequencelist[nn].c1markerdata)
+            ydat = s.sequencelist[nn].wavedata
+            c1dat = s.sequencelist[nn].c1markerdata
+            c2dat = s.sequencelist[nn].c2markerdata
+            tt = np.linspace(0, xstop, points)
+            plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
+            plt.show()
+            subsubgroup = subgroup.create_group(f"sequence {nn}")
+            subsubgroup['ydat'] = s.sequencelist[nn].wavedata  # create dataset inside subgroup
+            subsubgroup['c1dat'] = s.sequencelist[nn].c1markerdata
+            subsubgroup['c2dat'] = s.sequencelist[nn].c2markerdata
     # plt.plot(tt,s.wavedata[1,:])
 
     # raise RuntimeError('test the runtime handling')
+
 
 def make_long_seq():
     seq = [['S2','1000','1050'],['Green','100000','102000'],['Measure','100100','100400']]
@@ -87,6 +98,6 @@ def test_seq_list():
 if __name__ == '__main__':
 
     test_sequence()
-    #test_seq_list()
+    test_seq_list()
 
 
