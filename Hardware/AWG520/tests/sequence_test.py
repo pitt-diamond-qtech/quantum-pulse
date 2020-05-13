@@ -53,7 +53,7 @@ def make_seq_list():
     s = SequenceList(seq, pulseparams=newparams, timeres=1,scanparams = newscanparams)
     s.create_sequence_list()
     with h5py.File("DBSEQUENCE.hf5", "r+") as f:  # write on hdf5 file (without rewriting)
-        subgroup = f.create_group("B")  # group within our file
+        subgroup = f.create_group("unitary operation B")  # group within our file
         subgroup.attrs["SeqDefinition"] = f'{seq}'
         subgroup.attrs["params"] = f"{newparams}"
         subgroup.attrs["ScanParams"] = f"{newscanparams}"
@@ -88,6 +88,15 @@ def make_long_seq():
     # plt.plot(tt,s.wavedata[1,:])
     plt.show()
     # raise RuntimeError('test the runtime handling')
+    with h5py.File("DBSEQUENCE.hf5", "r+") as f:  # open hdf5 file as read + write
+        subgroup = f.create_group("unitary operation C")  # group within our file
+        subgroup.attrs["SeqDefinition"] = f'{seq}'
+        subgroup.attrs["params"] = f"{newparams}"
+        # set attributes (metadata) for our data
+        subgroup['wave_1'] = s.wavedata[0, :]  # create dataset inside subgroup
+        subgroup['wave_2'] = s.wavedata[1, :]
+        subgroup['marker_1'] = s.c1markerdata
+        subgroup['marker_2'] = s.c2markerdata
 
 def test_sequence():
     make_seq()
@@ -95,9 +104,11 @@ def test_sequence():
 def test_seq_list():
     make_seq_list()
 
+
+
 if __name__ == '__main__':
 
     test_sequence()
     test_seq_list()
-
+    make_long_seq()
 
