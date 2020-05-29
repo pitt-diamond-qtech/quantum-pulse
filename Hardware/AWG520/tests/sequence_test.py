@@ -1,4 +1,7 @@
 # Created on 2/1/20 by gurudev
+import os
+if not os.path.exists('./logs/'):
+     os.makedirs('./logs/')
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
