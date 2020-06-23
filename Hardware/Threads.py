@@ -19,10 +19,10 @@
 from PyQt5 import QtCore
 from Hardware.AWG520 import AWG520
 from Hardware.AWG520.Sequence import Sequence,SequenceList
-from Hardware.PTS3200 import PTS
+from Hardware.PTS3200.PTS import PTS
 from Hardware.MCL.NanoDrive import MCL_NanoDrive
 
-import time,sys,numpy,multiprocessing
+import time,sys,multiprocessing
 import logging
 
 
@@ -52,7 +52,7 @@ modlogger.addHandler(ch)
 _GHZ = 1000000000
 _MHZ = 1000000
 class UploadThread(QtCore.QThread):
-    """this is the upload thread. it has following variables:
+    """this is the upload thread to send all the files to teh AWG. it has following variables:
     1. seq = the sequence list of strings
     2. scan = scan parameters dictionary
     3. params = misc. params list such as count time etc
@@ -64,19 +64,20 @@ class UploadThread(QtCore.QThread):
     This class emits one Pyqtsignal
     1. done  - when the upload is finished
     """
-    # this method only has one signal done
+    # this method only has one PyQt signal done which is emitted once the upload is finished
     done=QtCore.pyqtSignal()
     def __init__(self,parent=None,seq = None,scan = None,params = None,awgparams = None,pulseparams = None,
                  mwparams = None, timeRes = 1):
         #super().__init__(self)
         QtCore.QThread.__init__(self,parent)
         self.timeRes = timeRes
+        self.logger = logging.getLogger('threadlogger.uploadThread')
         if scan == None:
             self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
         else:
             self.scan = scan
         if seq == None:
-            self.seq = [['Green','0','1000'],['Measure','10','400']]
+            self.seq = [['Green','0','1000'],['Measure','10','400']] # minimal measurement sequence
         else:
             self.seq = seq
         if mwparams == None:
@@ -118,23 +119,22 @@ class UploadThread(QtCore.QThread):
         try:
             if self.awgparamgs['device'] == 'awg520':
                 self.awgcomm = AWG520()
-                self.awgcomm.setup(do_enable_iq) # pass the enable IQ flag otherwise the AWG will only use one channel
+                #self.awgcomm.setup(do_enable_iq) # pass the enable IQ flag otherwise the AWG will only use one channel
                 #  transfer all files to AWG
                 t = time.process_time()
                 for filename in os.listdir(dirPath):
                     self.awgcomm.sendfile(filename, filename)
                 transfer_time = time.process_time() - t
                 time.sleep(1)
-                modlogger.info('time elapsed for all files to be transferred is:{0:d}'.format(transfer_time))
+                self.logger.info('time elapsed for all files to be transferred is:{0:.3f}'.format(transfer_time))
                 self.awgcomm.cleanup()
                 self.done.emit()
             else:
                 raise ValueError('AWG520 is the only AWG supported')
-        except ValueError:
-            modlogger.error('AWG520 is only AWG supported')
-            raise
+        except ValueError as err:
+            self.logger.error('Value Error {0}'.format(err))
         except RuntimeError as err:
-            modlogger.error('Run time error'.format(err))
+            self.logger.error('Run time error {0}'.format(err))
 
 
 
@@ -165,6 +165,7 @@ class ScanThread(QtCore.QThread):
         super().__init__(parent)
         self.timeRes = timeRes
         self.maxcounts = maxcounts
+        self.logger = logging.getLogger('threadlogger.scanThread')
         if scan == None:
             self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
         else:
@@ -187,42 +188,49 @@ class ScanThread(QtCore.QThread):
 
     def run(self):
         self.scanning=True
-        self.proc_running=True
+        #self.proc_running=True
 
         self.p_conn,c_conn=multiprocessing.Pipe() # create parent and child connectors
-
-        self.proc = ScanProcess(conn = c_conn)
-        #self.proc.get_conn(c_conn) # give the process the child connector
+        # give the process the child connector and all the params
+        self.proc = ScanProcess(conn = c_conn,params= self.parameters,mwparams=self.mw,scan=self.scan,
+                                awgparams=self.awgparams,maxcounts=self.maxcounts,timeRes=self.timeRes)
+        #self.proc.get_conn(c_conn)
         # pass the parameters to the process
-        self.proc.parameters=self.parameters
-        # pass the mw info
-        self.proc.mw=self.mw
-        # pass the scan info
-        self.proc.scan=self.scan
-        # pass the awg info
-        self.proc.awg = self.awg
-        # keep track of the maxcounts
-        self.maxcounts = maxcounts
-        self.proc.maxcounts=self.maxcounts
+        # self.proc.parameters=self.parameters
+        # # pass the mw info
+        # self.proc.mw=self.mw
+        # # pass the scan info
+        # self.proc.scan=self.scan
+        # # pass the awg info
+        # self.proc.awg = self.awg
+        # # keep track of the maxcounts
+        # self.maxcounts = maxcounts
+        # self.proc.maxcounts=self.maxcounts
         # start the scan process
         self.proc.start()
+        # TODO: verify whether proc.join() is needed here
 
         threshold = self.parameters[4]
         while self.scanning:
             if self.p_conn.poll(1): # check if there is data
                 reply=self.p_conn.recv() # get the data
-                modlogger.info('reply is ',reply)
-                self.p_conn.send((threshold,self.proc_running)) # send the scan process the threshold and whether to keep running
+                self.logger.info('reply is ',reply)
+                # 3/6/20 - I noticed this next line sends the proc_running parameter which is never really altered
+                # by the main thread, whereas the param scanning is altered depending on the reply from the process,
+                # therefore I believe this line was a mistake and the new line I have added should be correct
+                #self.p_conn.send((threshold,self.proc_running))
+                # send the scan process the threshold and whether to keep running
+                self.p_conn.send((threshold,self.scanning))
                 if reply=='Abort!':
                     self.scanning = False
-                    modlogger.debug('reply is',reply)
+                    self.logger.debug('reply is',reply)
                     break
                 elif type(reply) is int: # if the reply is tracking counts, send that signal to main app
                     self.tracking.emit(reply)
-                    modlogger.debug('reply emitted from tracking is {:d}'.format(reply))
+                    self.logger.debug('reply emitted from tracking is {:d}'.format(reply))
                 elif len(reply)==2:
                     self.data.emit(reply[0],reply[1]) # if the reply is a tuple with signal and ref,send that signal to main app
-                    modlogger.debug('signal and ref emitted is {:d}'.format(reply))
+                    self.logger.debug('signal and ref emitted is {:d}'.format(reply))
 
 
 class Abort(Exception):
@@ -236,6 +244,7 @@ class ScanProcess(multiprocessing.Process):
         super().__init__(parent)
         self.timeRes = timeRes
         self.maxcounts = maxcounts
+        self.logger = logging.getLogger('threadlogger.scanThread.scanproc')
         if scan == None:
             self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
         else:
@@ -299,23 +308,27 @@ class ScanProcess(multiprocessing.Process):
             self.adw.Set_Par(5, samples)
             # start the Measure protocol
             self.adw.Start_Process(2)
-            modlogger.info('Adwin parameter 5 is {:d}'.format(self.adw.Get_Par(5))) # seem to be printing the samples value again?
+            self.logger.info('Adwin parameter 5 is {:d}'.format(self.adw.Get_Par(5))) # seem to be printing the samples
+            # value
+            # again?
+
         except ADwin.ADwinError as e:
             sys.stderr.write(e.errorText)
             self.conn.send('Abort!')
             self.scanning = False
 
-        self.awgcomm = AWG520()
-        self.awgcomm.setup(do_enable_iq) # why are we setting up the AWG again? it should have been done already by Upload thread
 
-        self.awgcomm.run()  # places the AWG into enhanced run mode.
-        time.sleep(0.2)
         # initialize the PTS and output the current frequency
         if use_pts:
             self.pts = PTS()
             self.pts.write(int(current_freq * _MHZ))
         else:
-            modlogger.error('No microwave synthesizer selected')
+            self.logger.error('No microwave synthesizer selected')
+        self.awgcomm = AWG520()
+        self.awgcomm.setup(do_enable_iq)  # removed the setup of AWG in Upload thread, so do it now.
+        self.awgcomm.run()  # places the AWG into enhanced run mode.
+        time.sleep(0.2)
+
 
     def run(self):
         self.scanning=True
@@ -335,23 +348,27 @@ class ScanProcess(multiprocessing.Process):
         # TODO: this is still a bit ugly but because I moved the number of pulses to be scanned into pulseparams
         # TODO: I need to check if the iterate pulses is on.
         # TODO: maybe simples if in the main GUI i simply replace the scan line edits and do strict type checking in the app
+        # TODO: above todo is now nearly implemented but keeping it here jic i forgot something.
         npulses = self.pulseparams['numpulses']
         if enable_scan_pts:
-            # we can scan frequency either using PTS or using the SB freq
+            # we can scan frequency either using PTS or using the SB freq, but if we are scanning a wide range using
+            # the PTS we must simply output the sequence specified by user on the AWG.
             # self.scan['type'] = 'frequency'
             self.scan['type'] = 'no scan'
             num_scan_points = num_freq_steps
         else:
             num_scan_points = numsteps
+
         try:
-            for avg in list(range(numavgs)):
-                self.awgcomm.trigger() # trigger the awg sequence
+            for avg in list(range(numavgs)): # we will keep scanning for this many averages
+                self.awgcomm.trigger() # trigger the awg for the arm sequence which turns on the laser.
                 time.sleep(0.1) # Not sure why but shorter wait time causes problem.
                 for x in list(range(num_scan_points)):
-                    modlogger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(avg,numavgs,x,num_scan_points))
+                    self.logger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(
+                        avg,numavgs,x,num_scan_points))
                     if not self.scanning:
                         raise Abort()
-                    if use_pts and enable_scan_pts:
+                    if use_pts and enable_scan_pts: # this part implements frequency scanning
                         freq=int((start_freq+ step_freq * x)* _MHZ)
                         temp=1
                         # try to communicate with PTS and make sure it has put out the right frequency
@@ -370,13 +387,14 @@ class ScanProcess(multiprocessing.Process):
                         if not self.scanning:
                             raise Abort()
                         self.finetrack()
-                        sig,ref=self.getData(x,'jump')
+                        sig,ref=self.getData(x,'jump') # we have to execute the sequence again.
                         if sig==0:
-                            print('sig is 0')
+                            self.logger.warning('sig is 0 ,executing again')
                             sig,ref=self.getData(x,'jump')
                         
                     self.conn.send([sig,ref])
-                    modlogger.info('signal and reference data sent from ScanProc to ScanThread')
+                    self.logger.info('signal {0:d} and reference {1:d} sent from ScanProc to ScanThread'.format(sig,
+                        ref))
                     self.conn.poll(None)
                     self.parameters[4],self.scanning = self.conn.recv() # receive the threshold and scanning status
         except Abort:
@@ -387,27 +405,47 @@ class ScanProcess(multiprocessing.Process):
 
     
     def getData(self,x,*args):
-        modlogger.info('entering getData with arguments {0:d},{1:}'.format(x,args))
+        '''This is the main function that gets the data from teh Adwin.
+        to understand the code, it helps to know that the AWGFile class that was used to upload the sequences first
+        creates an arm_sequence which is the 1st line in the scan.seq file. The 2md line of the scan.seq file will
+        therefore be the 1st point in the scan list and so on. The arm_sequence is executed during the
+        finetrack function when the counts from NV are low. There are 3 possible ways getData function is called:
+            getData(0) = 1st time getData is called it will jump to the 2nd line of the scan.seq file which
+            corresponds to the first actual point in the scan. it will then trigger to output that wfm on the AWG
+            getData(x) = not the 1st time, will direct trigger to output the current line of the scan.seq file and
+            move to the next
+            getData(x,'jump') = including the case x = 0, this is called when we finished tracking and maximizing
+            counts using fine_track func. If we have taken x points of data and now want to move to the (x+1)th
+            point, then the scan index is x (because python indexing starts at 0 for lists). So again when we come
+            back from finetrack, we need to jump the (x+2) line of the scan.seq function and output that wfm by
+            triggering. For some reason the trigger has to be done twice here according to Kai Zhang.
+            Thus the params to be sent are:
+            1. x : data point number
+            2. args : only one arg 'jump' is supported at this time
+        '''
+        modlogger.info('entering getData with arguments data point {0:d}, and {1:}'.format(x,args))
         flag=self.adw.Get_Par(10)
-        modlogger.info('Adwin Par_10 is {0:d}'.format(flag))
+        self.logger.info('Adwin Par_10 is {0:d}'.format(flag))
         
-        if x==0 or args!=():
-            self.awgcomm.jump(x+2) # we jump over the first 2 points in the scan?
+        if x==0 or args!=(): # if this is the first point we need to jump over the arm_sequence to the 2nd line of
+            # scan.seq. If not first point, we still need to add 2 again to get to the right line number
+            self.awgcomm.jump(x+2)
             time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
 
-        self.awgcomm.trigger()
+        self.awgcomm.trigger() # now we output the line number in the scan.seq file
         
         if args!=():
             time.sleep(0.1)
-            self.awgcomm.trigger()
+            self.awgcomm.trigger() # if the arg is 'jump' we have to trigger again for some reason.
             
         # wait until data updates
         while flag==self.adw.Get_Par(10):
             time.sleep(0.1)
-            print(self.adw.Get_Par(20))
+            self.logger.info(f'Adwin Par_20 is {self.adw.Get_Par(20):d}')
             
         sig=self.adw.Get_Par(1)
         ref=self.adw.Get_Par(2)
+
         return sig,ref
     
     def track(self):
@@ -418,7 +456,7 @@ class ScanProcess(multiprocessing.Process):
         modlogger.info('entering tracking from ScanProc')
         self.adw.Stop_Process(2)
         
-        self.awgcomm.jump(1) # jumping to line 1 ?
+        self.awgcomm.jump(1) # jumping to line 1 which turns the green light on
         time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
         self.awgcomm.trigger()
 
@@ -430,17 +468,19 @@ class ScanProcess(multiprocessing.Process):
         self.axis='y'
         self.scan_track()
         self.axis='z'
-        self.scan_track(ran=0.5)
+        self.scan_track(ran=0.5) # increase range for z
         self.nd.ReleaseAllHandles()
         
         self.adw.Start_Process(2)
         time.sleep(0.3)
         
     def go(self,command):
+        # we need to check if the position has really gone to the command position
         position = self.nd.SingleReadN(self.axis, self.handle)
         i=0
         while abs(position-command)>self.accuracy:
             #print 'moving to',command,'from',position
+            self.logger.info(f'moving to {command} from {position}')
             position=self.nd.MonitorN(command, self.axis, self.handle)
             time.sleep(0.1)
             i+=1
@@ -448,13 +488,18 @@ class ScanProcess(multiprocessing.Process):
                 break
 
     def count(self):
+        # this function uses the Adwin process 1 to simply record the counts
         self.adw.Start_Process(1)
-        time.sleep(1.01)
+        time.sleep(1.01) # feels like an excessive delay, check by decreasing if it can be made smaller
         counts=self.adw.Get_Par(1)
         self.adw.Stop_Process(1)
         return counts
     
     def scan_track(self,ran=0.25,step=0.05):
+        '''This is the function that maximizes the counts by scanning a small range around the current position.
+        Params are
+         1. ran : range to scan in microns ie 250 nm is default
+         2. step = step size in microns, 50 nm is default'''
         positionList=[]
         position = self.nd.SingleReadN(self.axis, self.handle)
         counts_data=[]
@@ -482,53 +527,65 @@ class ScanProcess(multiprocessing.Process):
         
         
 class KeepThread(QtCore.QThread):
+    """This thread should be run automatically after the scan thread is done, so as to keep the NV in focus even when the user
+    is not scanning. It works on a very similar basis as the scan thread. It has one signal:
+        1. status = string which updates the main app with the counts"""
+
     status=QtCore.pyqtSignal(str)
     
     def __init__(self,parent=None):
-        QtCore.QThread.__init__(self,parent)
+        super().__init__(parent)
         self.running=False
+        self.logger = logging.getLogger('threadlogger.KeepThread')
+
     def run(self):
         self.running=True
-        self.proc=KeepProcess()
+        # create the keep process in a separate process and pass it a child connector
         self.p_conn,c_conn=multiprocessing.Pipe()
-        self.proc.get_conn(c_conn)
-        self.proc.start()
+        self.proc = KeepProcess(conn=c_conn)
+        self.proc.start() # start the keep process
         while self.running:
-           # print 'keep thread running'
+            self.logger.info('keep process still running')
             if self.p_conn.poll(1):
                 reply=self.p_conn.recv()
-                if reply=='t':
+                if reply=='t': # if the reply from Keep process is t, then it is tracking
                     self.status.emit('Tracking...')
-                elif reply[0]=='c':
+                    self.logger.debug('signal emitted by KeepThread is Tracking..')
+                elif reply[0]=='c': # if the reply starts with c, then we can get the counts
                     self.status.emit('Monitoring counts...'+reply[1:])
-        print('keep thread stoping')
+                    self.logger.debug('signal emitted by KeepThread is Monitoring counts...{0}'.format(reply[1:]))
+        #self.logger.info('keep thread stopping')
         self.p_conn.send(False)
         while self.proc.is_alive():
-            print('keep proc still alive',id(self.proc.running))
+            self.logger.info('keep proc still alive {0}'.format(id(self.proc.running)))
             time.sleep(1)
-        self.status.emit('Ready!')
+        self.status.emit('Ready!') # we finished the keep process and can now go back to main program
         
 class KeepProcess(multiprocessing.Process):
-    def get_conn(self,conn):
-        self.conn=conn
-        self.running=False
-        
-    def run(self):
-        print('keep process starts')
-        self.running=True
+    def __init__(self,parent,conn):
+        super().__init__(parent)
+        self.conn = conn
+        self.running = False
+        self.logger = logging.getLogger('threadlogger.KeepThread.keepproc')
         self.initialize()
-        time.sleep(5)
+        self.accuracy = 0.025 # accuracy for moves of nanostage is 25 nm
+        self.count_threshold_percent = 0.7
+
+    def run(self):
+        self.logger.info('keep process starts')
+        self.running=True
+        time.sleep(5) # wait 5 seconds before counting again
         
         maxcount=self.count()
         self.conn.send('c'+str(maxcount))
-        time.sleep(5)
+        time.sleep(5) # wait 5 seconds before counting again
         
         
         while not self.conn.poll(0.01):
-            print('process did not receive anything.')
+            # self.logger.info('keep process did not receive anything.')
             c=self.count()
-            if float(c)/maxcount<0.7:
-                self.conn.send('t')
+            if float(c)/maxcount<self.count_threshold_percent: # if the counts fall below threshold
+                self.conn.send('t') # tell Keep thread that we are now tracking
                 self.track()
                 maxcount=self.count()
                 self.conn.send('c'+str(maxcount))
@@ -539,6 +596,8 @@ class KeepProcess(multiprocessing.Process):
     def initialize(self):
         self.nd=MCL_NanoDrive()
         self.adw=ADwin.ADwin()
+        self.awgcomm = AWG520()
+
         try:
             self.adw.Boot(self.adw.ADwindir + 'ADwin11.btl')
             count_proc = os.path.join(os.path.dirname(__file__),'ADWIN\\TrialCounter.TB1') # TrialCounter is configured as process 1
@@ -550,10 +609,10 @@ class KeepProcess(multiprocessing.Process):
             
             
     def track(self):
-        print('track')
+        self.logger.info('entered track function')
         
         self.handle=self.nd.InitHandles()['L']
-        self.accuracy=0.025
+        # track each axis one by one
         self.axis='x'
         self.scan_track()
         self.axis='y'
@@ -563,6 +622,8 @@ class KeepProcess(multiprocessing.Process):
         
         
     def go(self,command):
+        ''' this function moves nanostage to the position given by param:
+        1. command'''
         position = self.nd.SingleReadN(self.axis, self.handle)
         while abs(position-command)>self.accuracy:
             #print 'moving to',command,'from',position
@@ -570,13 +631,20 @@ class KeepProcess(multiprocessing.Process):
             time.sleep(0.1)
 
     def count(self):
+        '''this function uses the Adwin process 1 to simply record the counts '''
+        self.awgcomm.green_on()
         self.adw.Start_Process(1)
-        time.sleep(1.01)
+        time.sleep(1.01) # very long delay, check if truly needed
         counts=self.adw.Get_Par(1)
         self.adw.Stop_Process(1)
+        self.awgcomm.green_off()
         return counts
     
     def scan_track(self,ran=0.5,step=0.05):
+        '''This is the function that maximizes the counts by scanning a small range around the current position.
+        Params are
+         1. ran : range to scan in microns ie 500 nm is default
+         2. step = step size in microns, 50 nm is default'''
         positionList=[]
         position = self.nd.SingleReadN(self.axis, self.handle)
         counts_data=[]
@@ -594,4 +662,6 @@ class KeepProcess(multiprocessing.Process):
         
     def cleanup(self):
         self.nd.ReleaseAllHandles()
+        self.awgcomm.cleanup()
+
 

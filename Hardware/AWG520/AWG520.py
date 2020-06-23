@@ -74,15 +74,25 @@ if not saveawgfilepath.exists():
     privatelogger.info('Creating directory for saving retrieved AWG files at:{}'.format(saveawgfilepath.resolve()))
 
 class AWG520(object):
+    '''This is the class def for the AWG520. The IP Address and Port default to the ones setup on the AWG.
+    Example of how to call and setup the AWG:
+        awgcomm = AWG520()
+        awgcomm.setup()  -- use this if you want to put the AWG into enhanced run mode to execute sequences from file
+        awgcomm.mw_on() - use this if you just want to turn on the MW
+        awgcomm.green_on() - or green laser
+
+    '''
     def __init__(self,ip_address=_IP_ADDRESS,port=_PORT):
         self.addr=(ip_address,port)
         self.logger = logging.getLogger('awg520private.awg520cls')
         #logging.basicConfig(format='%(asctime)s %(message)s')
         self.logger.info("Initializing AWG instance...")
         self.logger.debug('AWG model = {}'.format(self.sendcommand('*IDN?')))  # =='SONY/TEK,AWG520,0,SCPI:95.0 OS:3.0
-        print('AWG model = ', self.sendcommand('*IDN?'))
+        #print('AWG model = ', self.sendcommand('*IDN?'))
         # USR:4.0\n'
-        
+        if self.login_ftp():
+           self.awgfiles = self.list_awg_files()
+
     def sendcommand(self,command):
         query='?' in command
         if not command.endswith('\n'):
@@ -108,6 +118,21 @@ class AWG520(object):
             self.logger.error(sys.exc_info())
             self.logger.error("OS Error:{0}".format(error))
             return None
+
+    def login_ftp(self):
+        try:
+            self.myftp = FTP('')
+            self.myftp.connect(self.addr[0], port=_FTP_PORT)  # TODO: will need to check FTP port on AWG
+            self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
+            self.logger.info('FTP login successful')
+            return True
+        except IOError as err:
+            # sys.stderr.write(str(sys.exc_info()[0]))
+            # sys.stderr.write(str(sys.exc_info()[1]))
+            # sys.stderr.write(e.message+'\n')
+            self.logger.error(sys.exc_info())
+            self.logger.error("OS Error:{0}".format(err))
+            return False
 
     def sendfile(self,fileRemote,fileLocal):
         try:
@@ -153,11 +178,15 @@ class AWG520(object):
     def jump(self, line):
         self.sendcommand('AWGC:EVEN:SOFT ' + str(line) + '\n')
 
-    def setup(self,enableiq=False):
+    def setup(self,enable_iq=False):
+        '''Sets up the AWG into enhanced run mode. Param to be passed is whether IQ modulator is connected to both
+        channels. '''
         self.logger.info('Setting up AWG...')
 
-        self.set_clock_external()
-        # load seq
+        self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        self.set_enhanced_run_mode() # put AWG into enhanced run mode when the run command is received
+        self.set_clock_internal() # use the internal clock which is now derived from ext clock
+        # load seq to both channels -- I think it may be enough to just load one but will do both
         self.sendcommand('SOUR1:FUNC:USER "scan.seq","MAIN"\n')
         self.sendcommand('SOUR2:FUNC:USER "scan.seq","MAIN"\n')
 
@@ -173,6 +202,8 @@ class AWG520(object):
         # mysocket.sendall('SOUR2:MARK1:VOLT:HIGH 2.0\n')
         # mysocket.sendall('SOUR2:MARK2:VOLT:LOW 0\n')
         # mysocket.sendall('SOUR2:MARK2:VOLT:HIGH 2.0\n')
+        self.sendcommand('SOUR1:VOLT:AMPL 2000mV\n')
+        self.sendcommand('SOUR1:VOLT:OFFS 1000mV\n')
         self.sendcommand('SOUR2:VOLT:AMPL 2000mV\n')
         self.sendcommand('SOUR2:VOLT:OFFS 1000mV\n')
         '''edited on 8/6/2019 for use w/ IQ modulator: max Vpp = 1.0'''
@@ -186,7 +217,7 @@ class AWG520(object):
         self.sendcommand('SOUR2:MARK2:VOLT:HIGH 2.0\n')
 
         # turn on channels
-        if enableiq:
+        if enable_iq:
             self.sendcommand('OUTP1:STAT ON\n')
             self.sendcommand('OUTP2:STAT ON\n')
         else:
@@ -199,6 +230,10 @@ class AWG520(object):
     def stop(self):
         self.sendcommand('AWGC:STOP\n')
 
+    def set_enhanced_run_mode(self):
+        # setup the AWG in enhanced run mode
+        self.sendcommand('AWGC:RMOD:ENH')
+
 
     #TODO: these 3 funcs needs to be altered if our connections change
     def green_on(self):
@@ -209,15 +244,35 @@ class AWG520(object):
         self.logger.info('turning off green')
         self.sendcommand('SOUR1:MARK2:VOLT:HIGH 0.0\n')
 
-    def mw_on(self):
-        self.sendcommand('SOUR1:MARK1:VOLT:LOW 2.0\n')
+    def mw_on_sb10MHz(self,enable_iq = False):
+        '''Turns the MW on, param to be passed is whether IQ modulator is connected '''
+        self.set_ref_clock_external()  # setup the ref to be the Rubidium lab clock
+        self.set_clock_internal()  # use the internal clock which is now derived from ext clock
+        self.sendcommand('SOUR1:MARK1:VOLT:LOW 2.0\n') # doesn't really turn on MW right now since we are using the
+        # IQ modulator, so we now use the FG mode to send out sine and cosine waves at 10MHz
+        if enable_iq:
+            self.sendcommand('AWGC:FG1:FUNC SIN')
+            self.sendcommand('AWGC:FG2:FUNC SIN')
+            self.sendcommand('AWGC:FG1:FREQ 10MHz')
+            self.sendcommand('AWGC:FG2:FREQ 10MHz')
+            self.sendcommand('AWGC:FG2:PHAS 90DEG') # channel 2 will output a cosine wave
+            self.sendcommand('AWGC:FG1:VOLT 2.0')
+            self.sendcommand('AWGC:FG2:VOLT 2.0')
+        else:
+            self.sendcommand('AWGC:FG1:FUNC SIN')
+            self.sendcommand('AWGC:FG1:FREQ 10MHz')
+            self.sendcommand('AWGC:FG1:VOLT 2.0')
 
-    # cleanup the connections
-    def cleanup(self):
-        if self.mysocket:
-            self.mysocket.close()
-        if self.myftp:
-            self.myftp.quit()
+    def mw_off_sb10MHz(self,enable_iq = False):
+        """We assume that we will always call this after a call to mw_on"""
+        self.sendcommand('SOUR1:MARK1:VOLT:HIGH 0.0\n') # doesn't really turn off MW right now since we are using the
+        # IQ modulator, so we now use the FG mode to send out sine and cosine waves at 10MHz
+        if enable_iq:
+            self.sendcommand('AWGC:FG1:VOLT 0.0')
+            self.sendcommand('AWGC:FG2:VOLT 0.0')
+        else:
+            self.sendcommand('AWGC:FG1:VOLT 0.0')
+
     # functions that can help with error checking and remote file manipulation
     def status(self):
         # TODO: this needs to be written referring to section 3-1 of the AWG520 programmer manual
@@ -225,7 +280,7 @@ class AWG520(object):
 
     def error_check(self):
         pass
-
+    # functions that carry out ftp operations
     def list_awg_files(self):
         return self.myftp.nlst()
 
@@ -248,26 +303,52 @@ class AWG520(object):
                     sfile = saveawgfilepath.resolve() + file
                     myftp.retrbinary('RETR ' + file, open(sfile, 'wb').write)
             download_t = time.process_time() - t1
-            self.logger.info('time for downloading files is {:0.6f}'.format(download_t))
+            self.logger.info('time for downloading files is {:.3f}'.format(download_t))
         except IOError as err:
             self.logger.error('IO Error {0}'.format(err))
         return patternfiles
 
     def remove_awg_file(self,filename):
-        self.logger.warning('Deleting AWG file:',filename)
+        """Use with caution : DO NOT delete parameter.dat and leave clocktest wfms on the AWG"""
         try:
-            self.myftp.delete(filename)
-        except IOError as err:
-            self.logger.error('IO Error {0}'.format(err))
+            if filename == 'parameter.dat':
+                raise ValueError('Cannot delete this file!')
+            else:
+                self.logger.warning('Deleting AWG file:',filename)
+                try:
+                    self.myftp.delete(filename)
+                except IOError as err:
+                    self.logger.error('IO Error {0}'.format(err))
+        except ValueError as err:
+            self.logger.error('Value Error {0}'.format(err))
 
 
     def remove_selected_awg_files(self, pattern):
-        pass
+        awgfiles = self.myftp.nlst()
+        patternfiles = []
+        t1 = time.process_time()
+        try:
+            for file in awgfiles:
+                if file.count(pattern):
+                    patternfiles.append(file)
+                    self.remove_awg_file(file)
+            delete_t = time.process_time() - t1
+            self.logger.warning('Deleted following AWG files:', patternfiles)
+            self.logger.info('time for deleting files is {:.3f}'.format(delete_t))
+        except IOError as err:
+            self.logger.error('IO Error {0}'.format(err))
+        return patternfiles
 
     def get_awg_ftp_status(self):
         pass
 
-
+    # cleanup the connections
+    def cleanup(self):
+        self.stop()
+        if self.mysocket:
+            self.mysocket.close()
+        if self.myftp:
+            self.myftp.quit()
     # def __del__(self):
     #     self.mysocket.close()
     #     self.myftp.close()
@@ -328,7 +409,7 @@ class AWGFile(object):
        # now initalize the other variables
         self.logger = logging.getLogger('awg520private.awg520_file')
         self.wfmheader = b'MAGIC 1000 \r\n'
-        self.seqheader = 'MAGIC 3002 \r\n'
+        self.seqheader = b'MAGIC 3002 \r\n'
         # default params if no sequence object is given
         newpulseparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
                      'skew phase': 0.0, 'num pulses': 1}
@@ -432,31 +513,43 @@ class AWGFile(object):
         seqfilename: str with seq file name to be written
         repeat: number of repetitions of each waveform
         timeres: clock rate
+
+        It first creates an arm_sequence which is the laser being on and then writes the rest of the sequences that
+        are in the sequences object to files.
         '''
-        # first create an empty waveform so that measurements can start after a trigger is received.
-        slist = self.sequences.sequencelist
-        wfmlen = len(slist[0].c1markerdata)
+
+        slist = self.sequences.sequencelist # list of sequences
+        wfmlen = len(slist[0].c1markerdata) # get the length of the waveform in the first sequence
         scanlen = len(slist)
-        c1m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
-        c2m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
-        wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
-        # first we must create a set of
-        self.write_waveform('0', 1, wave[0,:], c1m1)
-        self.write_waveform('0', 2, wave[1,:], c2m1)
+        # c1m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
+        # c2m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
+        # wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
+        # first create an empty waveform in channel 1 and 2 but turn on the green laser
+        # so that measurements can start after a trigger is received.
+        arm_sequence = Sequence(['Green','0',str(wfmlen)],timeres=self.timeres)
+        arm_sequence.create_sequence()
+        self.write_waveform('0', 1, arm_sequence.wavedata[0,:], arm_sequence.c1markerdata)
+        self.write_waveform('0', 2, arm_sequence.wavedata[1,:], arm_sequence.c2markerdata)
         # create scan.seq file
         try:
-            with open(self.dirpath / seqfilename, 'w') as sfile:
+            with open(self.dirpath / seqfilename, 'wb') as sfile:
                 sfile.write(self.seqheader)
-                sfile.write('LINES ' + str(scanlen + 1) + '\r\n')
-                sfile.write('"0_1.wfm","0_2.wfm",0,1,0,0\r\n')
+                temp_str = 'LINES ' + str(scanlen + 1) + '\r\n'
+                sfile.write(temp_str.encode()) # have to convert to binary format
+                temp_str = '"0_1.wfm","0_2.wfm",0,1,0,0\r\n' # the arm sequence will be loaded and will wait for trigger
+                sfile.write(temp_str.encode())
                 for i in list(range(scanlen)):
+                    # now we take each sequence in the slist arry and write it to a wfm file with the name given by
+                    # "i+1_1.wfm and i+1_2.wfm
                     self.write_waveform('' + str(i + 1), 1, slist[i].wavedata[0, :], slist[i].c1markerdata)
                     self.write_waveform('' + str(i + 1), 2, slist[i].wavedata[1, :], \
                         slist[i].c2markerdata)
+                    # the scan.seq file is now updated to execute those 2 wfms for repeat number of times and wait
+                    # for a trigger to move to the next point.
                     linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(repeat) \
                               + ',1,0,0\r\n'
-                    sfile.write(linestr)
-                sfile.write('JUMP_MODE SOFTWARE\r\n')
+                    sfile.write(linestr.encode())
+                sfile.write(b'JUMP_MODE SOFTWARE\r\n') # tells the AWG that jump trigger is controlled by the computer.
         except (IOError, ValueError) as error:
             # sys.stderr.write(sys.exc_info())
             # sys.stderr.write(error.message+'\n')

@@ -78,7 +78,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                             'phase': 0.0, 'skew phase': 0.0,'num pulses': 1}
 
-        self.parameters = [50000, 300, 1000, 10, 10, 820,
+        self.parameters = [50000, 300, 2000, 10, 10, 820,
                            10]  # should make into dictionary with keys 'sample', 'count time',
         # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
 
@@ -133,10 +133,11 @@ class appGUI(QtWidgets.QMainWindow):
 
         # PTS controls
         self.ui.checkBoxUsePTS.stateChanged.connect(self.enablePTS)
-        self.ui.lineEditPTSFreq.setValidator(QtGui.QDoubleValidator(0.0,3200.0,3))
+        # setup the line edit only to accept frequencies in allowed PTS range
+        self.ui.lineEditPTSFreq.setValidator(QtGui.QDoubleValidator(10.0,3200.0,3))
+        self.ui.lineEditPTSFreq.editingFinished.connect(self.updatePTSFreq)
         # removed these next 4 controls in GUI on 2/6/20
         # self.ui.checkBoxScanPTS.stateChanged.connect(self.enablePTSScan)
-        self.ui.lineEditPTSFreq.editingFinished.connect(self.updatePTSFreq)
         # self.ui.lineEditPTSScanStart.editingFinished.connect(self.updatePTSScanStop)
         # self.ui.lineEditPTSScanStep.editingFinished.connect(self.updatePTSScanStop)
         # AWG controls
@@ -184,7 +185,7 @@ class appGUI(QtWidgets.QMainWindow):
             if device == 0:
                 self.awgparams['awg device'] = 'awg520'
             elif device == 1:
-                self.awgparams['awg device'][0] = 'awg5014c'
+                self.awgparams['awg device'] = 'awg5014c'
             else:
                 raise ValueError
         except ValueError:
@@ -241,12 +242,12 @@ class appGUI(QtWidgets.QMainWindow):
     def hardware_init(self):
         '''This function creates all the threads needed to carry out I/O with hardware. '''
         self.uThread = UploadThread()
-        self.uThread.done.connect(self.uploadDone)
+        self.uThread.done.connect(self.uploadDone) # when the done signal is emitted we handle it using uploadDone
         self.sThread = ScanThread()
-        self.sThread.data.connect(self.dataBack)
-        self.sThread.tracking.connect(self.trackingBack)
-        # self.kThread = KeepThread()
-        # self.kThread.status.connect(self.keepStatus)
+        self.sThread.data.connect(self.dataBack) # when data signal is emitted we handle using dataBack
+        self.sThread.tracking.connect(self.trackingBack) # when tracking signal is emitted we handle using trackingback
+        self.kThread = KeepThread()
+        self.kThread.status.connect(self.keepStatus) # when status signal is emitted we handle using keepstatus
 
     def save_defaults(self):
         ''' Saves the parameters to the defaults.txt file '''
@@ -475,13 +476,13 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.pushButtonStart.setEnabled(True)
     # end upload functions    
     # begin KeepNV  functions
-    # def standby(self):
-    #     self.standingby = True
-    #     self.ui.pushButtonStart.setEnabled(False)
-    #     self.kThread.start()
+    def standby(self):
+        self.standingby = True
+        self.ui.pushButtonStart.setEnabled(False)
+        self.kThread.start()
 
-    # def getReady(self):
-    #     self.kThread.running = False
+    def getReady(self):
+        self.kThread.running = False
 
     def keepStatus(self, s):
         self.ui.statusbar.showMessage(s)
@@ -490,13 +491,14 @@ class appGUI(QtWidgets.QMainWindow):
             self.standingby = False
             self.ui.pushButtonUpload.setEnabled(True)
             self.ui.pushButtonStart.setEnabled(True)
-            try:
-                self.seq # TODO: this makes no sense , taken from old code, fix later
-            except AttributeError:
-                self.ui.pushButtonStart.setEnabled(False)
+            # TODO: this next section makes no sense , taken from old code, fix later
+            # try:
+            #     self.seq
+            # except AttributeError:
+            #     self.ui.pushButtonStart.setEnabled(False)
         elif s.startswith('Monitoring counts...'):
-            self.maxcounts = int(s[20:]) # why is the string after 20 characters containing the counts? presumably should
-                                        # check the status functions
+            self.maxcounts = int(s[20:]) # the keep thread emits a string signal which can be either 1. "Tracking..."
+            # or 2. "Monitoring counts...NNN" where NNN is the counts
             
     def updateThreshold(self):
         self.parameters[4] = int(self.ui.lineEditThreshold.text())
@@ -620,7 +622,8 @@ class appGUI(QtWidgets.QMainWindow):
     def scanDone(self):
         self.sThread.scanning = False
         # self.ui.pushButtonStart.setEnabled(True)
-        # self.ui.pushButtonUpload.setEnabled(True)
+        self.ui.pushButtonUpload.setEnabled(True)
+        self.ui.checkBoxAutoSave.setEnabled(True)
         self.ui.checkBoxAutoSave.setEnabled(True)
         self.dataPlot_renew = True
 
