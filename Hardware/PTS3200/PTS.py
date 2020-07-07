@@ -53,19 +53,46 @@ class PTS(object):
             return None
         return self.decode(s)
 
-    def write(self, freq):
+    class Write(object):
+
+            def __init__(self, f, PTSport=_ARD_COM_PORT):
+                self.f = f
+                self.rm = visa.ResourceManager()
+                self.arduino = self.rm.open_resource(PTSport)
+
+            def __call__(self, *args):
+                    if type(self.f) == int or type(self.f) == float:
+                        if (int(self.f) < _LOWFREQ_LIMIT or int(self.f) > _HIGHFREQ_LIMIT):
+                            sys.stderr.write('Invalid frequency given')
+                            return False
+                        try:
+                            self.arduino.query('f' + str(self.f) + '#')
+                            return True
+                        except visa.VisaIOError as error:
+                            sys.stderr.write('VISA IO Error: {0}'.format(error))
+                            return False
+                        except:
+                            sys.stderr.write("Unexpected error", sys.exc_info()[0])
+                            return False
+                    else:
+                        frequency = self.f(*args)
+                        try:
+                            self.arduino.query('f' + str(frequency) + '#')
+                            return True
+                        except visa.VisaIOError as error:
+                            sys.stderr.write('VISA IO Error: {0}'.format(error))
+                            return False
+                        except:
+                            sys.stderr.write("Unexpected error", sys.exc_info()[0])
+                            return False
+
+    @Write
+    def set_frequency(freq):
         if (int(freq) < _LOWFREQ_LIMIT or int(freq) > _HIGHFREQ_LIMIT):
             sys.stderr.write('Invalid frequency given')
             return False
-        try:
-            self.arduino.query('f' + str(freq) + '#')
-            return True
-        except visa.VisaIOError as error:
-            sys.stderr.write('VISA IO Error: {0}'.format(error))
-            return False
-        except:
-            sys.stderr.write("Unexpected error", sys.exc_info()[0])
-            return False
+        else:
+            return freq
 
     def decode(self, s):
         '''
