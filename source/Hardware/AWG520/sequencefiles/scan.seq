@@ -1,0 +1,5 @@
+MAGIC 3002 
+LINES 2
+"0_1.wfm","0_2.wfm",0,1,0,0
+"1_1.wfm","1_2.wfm",50000,1,0,0
+JUMP_MODE SOFTWARE
