@@ -24,6 +24,7 @@ import logging
 # from Pulse import Gaussian,Sech,Square,Marker
 from .Sequence import Sequence, SequenceList
 import time
+from source.common.utils import get_project_root
 
 _DAC_BITS = 10
 _IP_ADDRESS = '172.17.39.2' # comment out for testing
@@ -45,8 +46,8 @@ _IQTYPE = np.dtype('<f4') # AWG520 stores analog values as 4 bytes in little-end
 _MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
 
 
-dirpath = Path('.') /'sequencefiles'
-logfilepath = Path('.')/'logs'
+maindir = get_project_root()
+logfilepath = maindir/'logs'
 saveawgfilepath = Path('.')/ 'awg_tmpdir'
 
 
@@ -54,10 +55,10 @@ saveawgfilepath = Path('.')/ 'awg_tmpdir'
 privatelogger = logging.getLogger('awg520private')
 privatelogger.setLevel(logging.DEBUG)
 # create a file handler that logs even debug messages
-if not logfilepath.exists():
-    os.mkdir(logfilepath)
-    print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
-fh = logging.FileHandler((logfilepath / 'awg520private.log').resolve())
+# if not logfilepath.exists():
+#     os.mkdir(logfilepath)
+#     print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
+fh = logging.FileHandler((logfilepath / 'qpulse-app.log').resolve())
 fh.setLevel(logging.DEBUG)
 # create a console handler with a higher log level
 ch = logging.StreamHandler()

@@ -20,10 +20,11 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 from .Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave
+from source.common.utils import get_project_root
 import copy
 
-maindir = Path('.')
-seqfiledir = maindir / 'sequencefiles/'
+maindir = get_project_root()
+seqfiledir = Path('.') / 'sequencefiles/'
 logfiledir = maindir / 'logs/'
 # print('the sequence file directory is {0} and log file directory is {1}'.format(seqfiledir.resolve(),logfiledir.resolve()))
 
@@ -46,7 +47,7 @@ _MARKTYPE = np.dtype('<i1')  # AWG520 stores marker values as 1 byte
 modlogger = logging.getLogger('seqlogger')
 modlogger.setLevel(logging.DEBUG)
 # create a file handler that logs even debug messages
-fh = logging.FileHandler(logfiledir / 'seqlog.log')
+fh = logging.FileHandler((logfiledir / 'seqlog.log').resolve())
 fh.setLevel(logging.DEBUG)
 # create a console handler with a higher log level
 ch = logging.StreamHandler()

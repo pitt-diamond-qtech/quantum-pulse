@@ -17,12 +17,15 @@
 # .28or_default.29
 
 import functools, logging
+from .utils import get_project_root
 
+rootdir = get_project_root()
+logfiledir = rootdir / 'logs/'
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 # create a file handler that logs even debug messages
-fh = logging.FileHandler(__name__ + '.log')
+fh = logging.FileHandler(logfiledir/str(__name__ + '.log'))
 fh.setLevel(logging.DEBUG)
 # create a console handler with a higher log level
 ch = logging.StreamHandler()
@@ -55,7 +58,7 @@ class log_with(object):
             self.logger = logging.getLogger(func.__module__)
             self.logger.setLevel(logging.DEBUG)
             # create a file handler that logs even debug messages
-            fh = logging.FileHandler('./logs/pulsehaperapp.log')
+            fh = logging.FileHandler(logfiledir / str(__name__ + '.log')
             fh.setLevel(logging.DEBUG)
             # create a console handler with a higher log level
             ch = logging.StreamHandler()
