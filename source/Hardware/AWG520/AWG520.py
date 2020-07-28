@@ -55,9 +55,9 @@ saveawgfilepath = Path('.')/ 'awg_tmpdir'
 privatelogger = logging.getLogger('awg520private')
 privatelogger.setLevel(logging.DEBUG)
 # create a file handler that logs even debug messages
-# if not logfilepath.exists():
-#     os.mkdir(logfilepath)
-#     print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
+if not logfilepath.exists():
+    os.mkdir(logfilepath)
+    print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
 fh = logging.FileHandler((logfilepath / 'qpulse-app.log').resolve())
 fh.setLevel(logging.DEBUG)
 # create a console handler with a higher log level
