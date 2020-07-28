@@ -16,16 +16,19 @@
 # this code is adapted from https://wiki.python.org/moin/PythonDecoratorLibrary#Logging_decorator_with_specified_logger_
 # .28or_default.29
 
-import functools, logging
-from .utils import get_project_root
+from source.common.utils import log_with, get_project_root
+import logging
 
 rootdir = get_project_root()
 logfiledir = rootdir / 'logs/'
+if not logfiledir.exists():
+    os.mkdir(logfiledir)
+    print('Creating directory for logging at:'.format(logfiledir.resolve()))
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('utilslogger')
 log.setLevel(logging.DEBUG)
 # create a file handler that logs even debug messages
-fh = logging.FileHandler(logfiledir/str(__name__ + '.log'))
+fh = logging.FileHandler((logfiledir/str('utilslogger'+ '.log')).resolve())
 fh.setLevel(logging.DEBUG)
 # create a console handler with a higher log level
 ch = logging.StreamHandler()
@@ -38,43 +41,31 @@ ch.setFormatter(formatter)
 log.addHandler(fh)
 log.addHandler(ch)
 
-class log_with(object):
-    '''Logging decorator that allows you to log with a specific logger.
-    '''
-    # Customize these messages
-    ENTRY_MESSAGE = 'Entering {}'
-    EXIT_MESSAGE = 'Exiting {}'
+@log_with(log)
+class TestLog:
+    def __init__(self):
+        print('creating test log class')
+        self.logger = logging.getLogger('utilslogger.testlogcls')
 
-    def __init__(self, logger=None):
-        self.logger = logger
+    def foo3(self):
+        print('this is foo3')
+        self.logger.info('this is foo3')
 
-    def __call__(self, func):
-        '''Returns a wrapper that wraps func. The wrapper will log the entry and exit points of the function
-        with logging.INFO level.
-        '''
-        # set logger if it was not set earlier
-        if not self.logger:
-            logging.basicConfig()
-            self.logger = logging.getLogger(func.__module__)
-            self.logger.setLevel(logging.DEBUG)
-            # create a file handler that logs even debug messages
-            fh = logging.FileHandler(logfiledir / str(__name__ + '.log')
-            fh.setLevel(logging.DEBUG)
-            # create a console handler with a higher log level
-            ch = logging.StreamHandler()
-            ch.setLevel(logging.ERROR)
-            # create formatter and add it to the handlers
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            fh.setFormatter(formatter)
-            ch.setFormatter(formatter)
-            # add the handlers to the logger
-            self.logger.addHandler(fh)
-            self.logger.addHandler(ch)
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwds):
-            self.logger.info(self.ENTRY_MESSAGE.format(func.__name__))  # logging level .info(). Set to .debug() if you want to
-            f_result = func(*args, **kwds)
-            self.logger.info(self.EXIT_MESSAGE.format(func.__name__))   # logging level .info(). Set to .debug() if you want to
-            return f_result
-        return wrapper
+    def foo4(self):
+        print('this is foo4')
+#
+@log_with(log)
+def foo():
+    print('this is foo')
+
+@log_with()
+def foo2():
+    print('this is foo2')
+
+
+foo()
+foo2()
+tlog = TestLog()
+tlog.foo3()
+tlog.foo4()
