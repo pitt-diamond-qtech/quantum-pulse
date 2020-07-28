@@ -15,22 +15,26 @@
 
 
 from source.Hardware.Threads import UploadThread,ScanThread,KeepThread
+from source.common.utils import get_project_root
 #from SeqEditor.Wrapper import GUI_Wrapper as SeqEditorWrapper
 from PyQt5 import QtCore, QtWidgets, QtGui,uic
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
-import sys,numpy,copy,datetime,os
+import sys,numpy,datetime,os
 import logging
 # if I import the Ui_Pulseshaper class from the python file then I will have to inherit from it in the main appGUI
 # class
 # from appgui load Ui_Pulseshaper
 # instead I use the uic module to directly load GUI, then I dont have to inherit from it and can assign a ui variable
 # inside the appGUI class. Either method is fine.
-thisdir = Path('.')
+thisdir = get_project_root()
 qtdesignerfile = thisdir /'appgui.ui' # this is the .ui file created in QtCreator
-
+logfilepath = thisdir/'logs'
+if not logfilepath.exists():
+    os.mkdir(logfilepath)
+    print('Creating directory for app logging at:'.format(logfilepath.resolve()))
 Ui_Pulseshaper,junk = uic.loadUiType(qtdesignerfile)
 
 class appGUI(QtWidgets.QMainWindow):
@@ -684,10 +688,10 @@ class appGUI(QtWidgets.QMainWindow):
     
 if __name__ == '__main__':
     # start the logger
-    logger = logging.getLogger('pulseshaperapp')
+    logger = logging.getLogger('qpulseapp')
     logger.setLevel(logging.DEBUG)
     # create a file handler that logs even debug messages
-    fh = logging.FileHandler('./logs/pulsehaperapp.log')
+    fh = logging.FileHandler((logfilepath / 'qpulse-app.log').resolve())
     fh.setLevel(logging.DEBUG)
     # create a console handler with a higher log level
     ch = logging.StreamHandler()
