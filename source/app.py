@@ -14,7 +14,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from Hardware.Threads import UploadThread,ScanThread,KeepThread
+from source.Hardware.Threads import UploadThread,ScanThread,KeepThread
 #from SeqEditor.Wrapper import GUI_Wrapper as SeqEditorWrapper
 from PyQt5 import QtCore, QtWidgets, QtGui,uic
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas

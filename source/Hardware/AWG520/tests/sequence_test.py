@@ -2,7 +2,7 @@
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from Hardware.AWG520.Sequence import Sequence,SequenceList
+from source.Hardware.AWG520.Sequence import Sequence,SequenceList
 
 #import pytest
 

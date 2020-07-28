@@ -17,10 +17,10 @@
 # and is still being worked on to make it complete with the new pulse sequences introduced by Gurudev Dutt
 
 from PyQt5 import QtCore
-from Hardware.AWG520 import AWG520
-from Hardware.AWG520.Sequence import Sequence,SequenceList
-from Hardware.PTS3200.PTS import PTS
-from Hardware.MCL.NanoDrive import MCL_NanoDrive
+from source.Hardware.AWG520 import AWG520
+from source.Hardware.AWG520.Sequence import Sequence,SequenceList
+from source.Hardware.PTS3200.PTS import PTS
+from source.Hardware.MCL.NanoDrive import MCL_NanoDrive
 
 import time,sys,multiprocessing
 import logging
