@@ -392,7 +392,7 @@ here <chX_filename> is the wfm file name for the specified channel x (which can 
          """
 
 class AWGFile(object):
-    def __init__(self,sequence = None,sequencelist = None,ftype='WFM',timeres=1,dirpath=dirpath):
+    def __init__(self,sequence = None,sequencelist = None,ftype='WFM',timeres=1,dirpath=saveawgfilepath):
         """This class will create and write files of sequences and sequencelists to the default sequencfiles
         directory specified. Args are:
         1. sequence: an object of Sequence type. If you don't specify any, a default sequence is used.

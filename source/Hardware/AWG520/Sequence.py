@@ -18,6 +18,7 @@ import logging
 import matplotlib.pyplot as plt
 # from collections import deque
 from pathlib import Path
+import os
 
 from .Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave
 from source.common.utils import get_project_root
@@ -47,10 +48,10 @@ _MARKTYPE = np.dtype('<i1')  # AWG520 stores marker values as 1 byte
 modlogger = logging.getLogger('seqlogger')
 modlogger.setLevel(logging.DEBUG)
 # create a file handler that logs even debug messages
-if not logfilepath.exists():
-    os.mkdir(logfilepath)
-    print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
-fh = logging.FileHandler((logfiledir / 'seqlog.log').resolve())
+if not logfiledir.exists():
+    os.mkdir(logfiledir)
+    print('Creating directory for AWG logging at:'.format(logfiledir.resolve()))
+fh = logging.FileHandler((logfiledir / 'qpulse-app.log').resolve())
 fh.setLevel(logging.DEBUG)
 # create a console handler with a higher log level
 ch = logging.StreamHandler()
