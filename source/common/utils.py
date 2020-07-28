@@ -21,13 +21,13 @@ def get_project_root() -> Path: # new feature in Python 3.x i.e. annotations
     """Returns project root folder."""
     return Path(__file__).parent.parent
 
-
-
-rootdir = get_project_root()
-logfiledir = rootdir / 'logs/'
-if not logfiledir.exists():
-    os.mkdir(logfiledir)
-    print('Creating directory for logging at:'.format(logfiledir.resolve()))
+#
+#
+# rootdir = get_project_root()
+# logfiledir = rootdir / 'logs/'
+# if not logfiledir.exists():
+#     os.mkdir(logfiledir)
+#     print('Creating directory for logging at:'.format(logfiledir.resolve()))
 # logging.basicConfig()
 # log = logging.getLogger('custom_log')
 # log.setLevel(logging.DEBUG)
@@ -40,6 +40,29 @@ def get_module_name():
     return p.parts[-1].split('.')[0]
 
 
+def create_logger(loggername):
+    rootdir = get_project_root()
+    logfiledir = rootdir / 'logs/'
+    if not logfiledir.exists():
+        os.mkdir(logfiledir)
+        print('Creating directory for logging at:'.format(logfiledir.resolve()))
+
+    log = logging.getLogger(loggername)
+    log.setLevel(logging.DEBUG)
+    # create a file handler that logs even debug messages
+    fh = logging.FileHandler((logfiledir / str(loggername+ '.log')).resolve())
+    fh.setLevel(logging.DEBUG)
+    # create a console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.ERROR)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(formatter)
+    ch.setFormatter(formatter)
+    # add the handlers to the logger
+    log.addHandler(fh)
+    log.addHandler(ch)
+    return log
 
 
 # this code is adapted from https://wiki.python.org/moin/PythonDecoratorLibrary#Logging_decorator_with_specified_logger_
@@ -64,21 +87,22 @@ class log_with(object):
         if not self.logger:
             #logging.basicConfig()
             modname = get_module_name() #func.__module__
-            self.logger = logging.getLogger(modname)
-            self.logger.setLevel(logging.DEBUG)
-            # create a file handler that logs info messages
-            fh = logging.FileHandler((logfiledir / str(modname + '.log')).resolve())
-            fh.setLevel(logging.INFO)
-            # create a console handler with a higher log level
-            ch = logging.StreamHandler()
-            ch.setLevel(logging.ERROR)
-            # create formatter and add it to the handlers
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            fh.setFormatter(formatter)
-            ch.setFormatter(formatter)
-            # add the handlers to the logger
-            self.logger.addHandler(fh)
-            self.logger.addHandler(ch)
+            self.logger = create_logger(modname)
+            # self.logger = logging.getLogger(modname)
+            # self.logger.setLevel(logging.DEBUG)
+            # # create a file handler that logs info messages
+            # fh = logging.FileHandler((logfiledir / str(modname + '.log')).resolve())
+            # fh.setLevel(logging.INFO)
+            # # create a console handler with a higher log level
+            # ch = logging.StreamHandler()
+            # ch.setLevel(logging.ERROR)
+            # # create formatter and add it to the handlers
+            # formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            # fh.setFormatter(formatter)
+            # ch.setFormatter(formatter)
+            # # add the handlers to the logger
+            # self.logger.addHandler(fh)
+            # self.logger.addHandler(ch)
 
         @functools.wraps(func)
         def wrapper(*args, **kwds):

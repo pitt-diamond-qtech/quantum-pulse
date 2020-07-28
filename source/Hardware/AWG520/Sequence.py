@@ -15,18 +15,16 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 import numpy as np
 import logging
-import matplotlib.pyplot as plt
-# from collections import deque
 from pathlib import Path
 import os
 
 from .Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave
-from source.common.utils import get_project_root
+from source.common.utils import log_with, create_logger,get_project_root
 import copy
 
 maindir = get_project_root()
 seqfiledir = Path('.') / 'sequencefiles/'
-logfiledir = maindir / 'logs/'
+# logfiledir = maindir / 'logs/'
 # print('the sequence file directory is {0} and log file directory is {1}'.format(seqfiledir.resolve(),logfiledir.resolve()))
 
 _GHZ = 1.0  # we assume the time units is in ns for the AWG
@@ -45,24 +43,24 @@ _DAC_MID = 512
 _IQTYPE = np.dtype('<f4')  # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1')  # AWG520 stores marker values as 1 byte
 
-modlogger = logging.getLogger('seqlogger')
-modlogger.setLevel(logging.DEBUG)
-# create a file handler that logs even debug messages
-if not logfiledir.exists():
-    os.mkdir(logfiledir)
-    print('Creating directory for AWG logging at:'.format(logfiledir.resolve()))
-fh = logging.FileHandler((logfiledir / 'qpulse-app.log').resolve())
-fh.setLevel(logging.DEBUG)
-# create a console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-modlogger.addHandler(fh)
-modlogger.addHandler(ch)
+modlogger = create_logger('seqlogger')
+# modlogger.setLevel(logging.DEBUG)
+# # create a file handler that logs even debug messages
+# if not logfiledir.exists():
+#     os.mkdir(logfiledir)
+#     print('Creating directory for AWG logging at:'.format(logfiledir.resolve()))
+# fh = logging.FileHandler((logfiledir / 'qpulse-app.log').resolve())
+# fh.setLevel(logging.DEBUG)
+# # create a console handler with a higher log level
+# ch = logging.StreamHandler()
+# ch.setLevel(logging.ERROR)
+# # create formatter and add it to the handlers
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# fh.setFormatter(formatter)
+# ch.setFormatter(formatter)
+# # add the handlers to the logger
+# modlogger.addHandler(fh)
+# modlogger.addHandler(ch)
 
 
 def to_int(iterable):
@@ -317,7 +315,7 @@ def fix_minimum_duration(event_dict, channel, deviation=20):
 
 """"End helper methods section"""
 
-
+@log_with(modlogger)
 class Sequence(object):
     def __init__(self, sequence, delay=[0, 0], pulseparams=None, connectiondict=None, timeres=1):
         """Class that implements a sequence, with args:

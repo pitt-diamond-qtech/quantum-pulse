@@ -16,30 +16,10 @@
 # this code is adapted from https://wiki.python.org/moin/PythonDecoratorLibrary#Logging_decorator_with_specified_logger_
 # .28or_default.29
 
-from source.common.utils import log_with, get_project_root
+from source.common.utils import log_with, get_project_root,create_logger
 import logging
 
-rootdir = get_project_root()
-logfiledir = rootdir / 'logs/'
-if not logfiledir.exists():
-    os.mkdir(logfiledir)
-    print('Creating directory for logging at:'.format(logfiledir.resolve()))
-
-log = logging.getLogger('utilslogger')
-log.setLevel(logging.DEBUG)
-# create a file handler that logs even debug messages
-fh = logging.FileHandler((logfiledir/str('utilslogger'+ '.log')).resolve())
-fh.setLevel(logging.DEBUG)
-# create a console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-log.addHandler(fh)
-log.addHandler(ch)
+log = create_logger('utilslogger')
 
 @log_with(log)
 class TestLog:

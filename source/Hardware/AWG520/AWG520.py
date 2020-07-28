@@ -24,7 +24,9 @@ import logging
 # from Pulse import Gaussian,Sech,Square,Marker
 from .Sequence import Sequence, SequenceList
 import time
-from source.common.utils import get_project_root
+from source.common.utils import log_with, create_logger
+
+
 
 _DAC_BITS = 10
 _IP_ADDRESS = '172.17.39.2' # comment out for testing
@@ -45,35 +47,35 @@ _SEQ_MEMORY_LIMIT = 8000
 _IQTYPE = np.dtype('<f4') # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
 
-
-maindir = get_project_root()
-logfilepath = maindir/'logs'
-saveawgfilepath = Path('.')/ 'awg_tmpdir'
+saveawgfilepath = Path('.')/'sequencefiles/'
+if not saveawgfilepath.exists():
+    os.mkdir(saveawgfilepath)
+    print('Creating directory for logging at:'.format(saveawgfilepath.resolve()))
 
 
 # create the logger
-privatelogger = logging.getLogger('awg520private')
-privatelogger.setLevel(logging.DEBUG)
-# create a file handler that logs even debug messages
-if not logfilepath.exists():
-    os.mkdir(logfilepath)
-    print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
-fh = logging.FileHandler((logfilepath / 'qpulse-app.log').resolve())
-fh.setLevel(logging.DEBUG)
-# create a console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-privatelogger.addHandler(fh)
-privatelogger.addHandler(ch)
+privatelogger = create_logger('awg520private')
+# privatelogger = logging.getLogger('awg520private')
+# privatelogger.setLevel(logging.DEBUG)
+# fh = logging.FileHandler((logfilepath / 'qpulse-app.log').resolve())
+# fh.setLevel(logging.DEBUG)
+# # create a console handler with a higher log level
+# ch = logging.StreamHandler()
+# ch.setLevel(logging.ERROR)
+# # create formatter and add it to the handlers
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# fh.setFormatter(formatter)
+# ch.setFormatter(formatter)
+# # add the handlers to the logger
+# privatelogger.addHandler(fh)
+# privatelogger.addHandler(ch)
+
+# ensure that the awg files can be saved
 if not saveawgfilepath.exists():
     os.mkdir(saveawgfilepath)
     privatelogger.info('Creating directory for saving retrieved AWG files at:{}'.format(saveawgfilepath.resolve()))
 
+@log_with(privatelogger)
 class AWG520(object):
     '''This is the class def for the AWG520. The IP Address and Port default to the ones setup on the AWG.
     Example of how to call and setup the AWG:
