@@ -24,7 +24,7 @@ import logging
 # from Pulse import Gaussian,Sech,Square,Marker
 from .Sequence import Sequence, SequenceList
 import time
-from source.common.utils import log_with, create_logger
+from source.common.utils import log_with, create_logger,get_project_root
 
 
 
@@ -50,7 +50,7 @@ _MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
 saveawgfilepath = Path('.')/'sequencefiles/'
 if not saveawgfilepath.exists():
     os.mkdir(saveawgfilepath)
-    print('Creating directory for logging at:'.format(saveawgfilepath.resolve()))
+    print('Creating directory for AWG files at:'.format(saveawgfilepath.resolve()))
 
 
 # create the logger
