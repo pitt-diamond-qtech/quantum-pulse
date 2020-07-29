@@ -38,6 +38,7 @@ class TestLog:
 @log_with(log)
 def foo():
     print('this is foo')
+    log.info('i saw this foo2 and it was foobar')
 
 @log_with()
 def foo2():
