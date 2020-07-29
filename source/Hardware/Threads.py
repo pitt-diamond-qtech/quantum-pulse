@@ -21,7 +21,7 @@ from source.Hardware.AWG520 import AWG520
 from source.Hardware.AWG520.Sequence import Sequence,SequenceList
 from source.Hardware.PTS3200.PTS import PTS
 from source.Hardware.MCL.NanoDrive import MCL_NanoDrive
-
+from source.common.utils import log_with, create_logger,get_project_root
 import time,sys,multiprocessing
 import logging
 
@@ -33,24 +33,26 @@ from pathlib import Path
 hwdir  = Path('.')
 dirPath = hwdir / 'AWG520/sequencefiles/'
 
-modlogger = logging.getLogger('threadlogger')
-modlogger.setLevel(logging.DEBUG)
-# create a file handler that logs even debug messages
-fh = logging.FileHandler('./logs/threadlog.log')
-fh.setLevel(logging.DEBUG)
-# create a console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-modlogger.addHandler(fh)
-modlogger.addHandler(ch)
+modlogger = create_logger('threadlogger')
+# modlogger.setLevel(logging.DEBUG)
+# # create a file handler that logs even debug messages
+# fh = logging.FileHandler('./logs/threadlog.log')
+# fh.setLevel(logging.DEBUG)
+# # create a console handler with a higher log level
+# ch = logging.StreamHandler()
+# ch.setLevel(logging.ERROR)
+# # create formatter and add it to the handlers
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# fh.setFormatter(formatter)
+# ch.setFormatter(formatter)
+# # add the handlers to the logger
+# modlogger.addHandler(fh)
+# modlogger.addHandler(ch)
 
 _GHZ = 1000000000
 _MHZ = 1000000
+
+@log_with(modlogger)
 class UploadThread(QtCore.QThread):
     """this is the upload thread to send all the files to teh AWG. it has following variables:
     1. seq = the sequence list of strings
@@ -138,7 +140,7 @@ class UploadThread(QtCore.QThread):
 
 
 
-        
+@log_with(modlogger)
 class ScanThread(QtCore.QThread):
     """this is the Scan thread. it has following variables:
         1. seq = the sequence list of strings
@@ -236,6 +238,7 @@ class ScanThread(QtCore.QThread):
 class Abort(Exception):
     pass
 
+@log_with(modlogger)
 class ScanProcess(multiprocessing.Process):
     """This is where teh scanning actually happens. It inherits nearly all the same params as the ScanThread, except for
     one more parameter: conn which is the child connector of the Pipe used to communicate to ScanThread."""
@@ -525,7 +528,7 @@ class ScanProcess(multiprocessing.Process):
         #self.amp.switch(False)
         self.pts.cleanup()
         
-        
+@log_with(modlogger)
 class KeepThread(QtCore.QThread):
     """This thread should be run automatically after the scan thread is done, so as to keep the NV in focus even when the user
     is not scanning. It works on a very similar basis as the scan thread. It has one signal:
