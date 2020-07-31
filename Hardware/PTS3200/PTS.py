@@ -17,7 +17,7 @@ _ARD_COM_PORT = 'COM13'
 _LOWFREQ_LIMIT = 1000000
 _HIGHFREQ_LIMIT = 3200000000
 _DEFAULT_POWER = 3.0
-import visa
+import pyvisa
 import sys
 import math
 
@@ -38,7 +38,7 @@ class PTS(object):
     '''
 
     def __init__(self, PTSport=_ARD_COM_PORT):
-        self.rm = visa.ResourceManager()
+        self.rm = pyvisa.ResourceManager()
         self.arduino = self.rm.open_resource(PTSport)
         try:
             self.arduino.read()
@@ -53,58 +53,19 @@ class PTS(object):
             return None
         return self.decode(s)
 
-    class Write(object):
-        '''
-        This is a function that was rewritten as a class in order to function as a decorator
-        for the better-named method, set_frequency(). Calling set_frequency will check to make
-        sure the frequency is within the allowed range and then return the frequency and pass itself into
-        the class Write(), which is then called using the built-in __call__() method. You can still
-        call Write() directly as a function by creating an instance with the frequency value
-        and then calling the instance with no arguments. For example:
-
-        w = PTS.Write(frequency)
-        w()
-
-        '''
-
-        def __init__(self, f, PTSport=_ARD_COM_PORT):
-            self.f = f
-            self.rm = visa.ResourceManager()
-            self.arduino = self.rm.open_resource(PTSport)
-
-        def __call__(self, *args):
-            if type(self.f) == int or type(self.f) == float:
-                if (int(self.f) < _LOWFREQ_LIMIT or int(self.f) > _HIGHFREQ_LIMIT):
-                    sys.stderr.write('Invalid frequency given')
-                    return False
-                try:
-                    self.arduino.query('f' + str(self.f) + '#')
-                    return True
-                except visa.VisaIOError as error:
-                    sys.stderr.write('VISA IO Error: {0}'.format(error))
-                    return False
-                except:
-                    sys.stderr.write("Unexpected error", sys.exc_info()[0])
-                    return False
-            else:
-                frequency = self.f(*args)
-                try:
-                    self.arduino.query('f' + str(frequency) + '#')
-                    return True
-                except visa.VisaIOError as error:
-                    sys.stderr.write('VISA IO Error: {0}'.format(error))
-                    return False
-                except:
-                    sys.stderr.write("Unexpected error", sys.exc_info()[0])
-                    return False
-
-    @Write
-    def set_frequency(freq):
+    def write(self, freq):
         if (int(freq) < _LOWFREQ_LIMIT or int(freq) > _HIGHFREQ_LIMIT):
             sys.stderr.write('Invalid frequency given')
             return False
-        else:
-            return freq
+        try:
+            self.arduino.query('f' + str(freq) + '#')
+            return True
+        except visa.VisaIOError as error:
+            sys.stderr.write('VISA IO Error: {0}'.format(error))
+            return False
+        except:
+            sys.stderr.write("Unexpected error", sys.exc_info()[0])
+            return False
 
     def decode(self, s):
         '''
