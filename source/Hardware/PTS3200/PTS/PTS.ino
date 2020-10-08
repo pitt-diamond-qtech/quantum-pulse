@@ -86,7 +86,7 @@ void single_sweep() {
     Stop=Serial.readStringUntil('#');
     B=Stop.toFloat();
     Steps=Serial.readStringUntil('#');
-    s=Steps.toInt();
+    s=Steps.toInt(); //s is the number of readings that we need starting from A and ending in B
     Dwell_Time=Serial.readStringUntil('#');
     t=Dwell_Time.toFloat();
     Serial.println(A);
@@ -96,13 +96,16 @@ void single_sweep() {
     // read the incoming byte:
     int k;int p;
     //loops through many frequencies within a desired range? Converts to bcd and then sends output to PTS
-    for (k=0;k<s+1;k++){
-         freq=String(k*(B-A)/s+A);
+
+    String c[s+2]; //initiate an array of dimension, (no. of readings + 2) because we need to get rid of the first two pulses
+    c[0] = c[1] = A; //define first two values of the array as A
+    for (k=2;k<s+2;k++){ //loops through the frequencies and saves those in c (s values from c[2] to c[s+1])
+         freq=String((k-2)*(B-A)/(s-1) + A); //define the freq. that needs to be sent to the PTS
          //Serial.println(freq);
          incomingByte = freq;
          a="";b="";output="";
          int i;
-         for (i=0;i<10;i++){
+         for (i=0;i<10;i++){ //this converts the frequency to a BCD value
               digit = String(incomingByte[i]);
               //Serial.println(digit);
               a=String(digit.toInt(),BIN);
@@ -110,20 +113,23 @@ void single_sweep() {
                   a=String(0,BIN)+a;}
               if (a.length()==2){
                   a=String(0,BIN)+String(0,BIN)+a;}
-              if (a.length()==1){
+              if (a.length()==  1){
                   a=String(0,BIN)+String(0,BIN)+String(0,BIN)+a;}
                b+=a;
               }
+              c[k]=b; //saves the generated BCD frequency to the array
+    }
+     int i;
+     for (k=0;k<s+2;k++){ //loops through the array and generates trigger pulses
          for (i=0;i<38;i++){
-              if (b[i+2]=='0'){digitalWrite(pin[i],HIGH);}
-              else{digitalWrite(pin[i],LOW); output += pin[i]+d;}
+              if (c[k][i+2]=='0'){digitalWrite(pin[i],HIGH);}
+              else{digitalWrite(pin[i],LOW);}// output += pin[i]+d;}
              }
          digitalWrite(LED_BUILTIN,HIGH);
-         delay(t);
+         delay(t/2);
          digitalWrite(LED_BUILTIN,LOW);
-         delay(t);
-
-         }
+         delay(t/2);
+     }
    //resets all pins to default high at end of function
    for (ard=2;ard<12;ard++)
        {digitalWrite(ard,HIGH);}
