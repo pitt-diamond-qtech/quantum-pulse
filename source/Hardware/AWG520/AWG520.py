@@ -530,7 +530,7 @@ class AWGFile(object):
         # wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
         # first create an empty waveform in channel 1 and 2 but turn on the green laser
         # so that measurements can start after a trigger is received.
-        arm_sequence = Sequence(['Green','0',str(wfmlen)],timeres=self.timeres)
+        arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
         arm_sequence.create_sequence()
         self.write_waveform('0', 1, arm_sequence.wavedata[0,:], arm_sequence.c1markerdata)
         self.write_waveform('0', 2, arm_sequence.wavedata[1,:], arm_sequence.c2markerdata)
