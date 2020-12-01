@@ -95,6 +95,8 @@ class AWG520(object):
         # USR:4.0\n'
         if self.login_ftp():
            self.awgfiles = self.list_awg_files()
+        else:
+            raise(IOError("Unable to login via FTP to the device"))
 
     def sendcommand(self,command):
         query='?' in command
@@ -139,9 +141,9 @@ class AWG520(object):
 
     def sendfile(self,fileRemote,fileLocal):
         try:
-            self.myftp = FTP('')
-            self.myftp.connect(self.addr[0], port=_FTP_PORT)  # TODO: will need to check FTP port on AWG
-            self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
+            # self.myftp = FTP('')
+            # self.myftp.connect(self.addr[0], port=_FTP_PORT)  # TODO: will need to check FTP port on AWG
+            # self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
             strIt = 'STOR ' + str(fileRemote)
             self.logger.info('Sending file {} to {}'.format(fileLocal, fileRemote))
             t = time.process_time()
