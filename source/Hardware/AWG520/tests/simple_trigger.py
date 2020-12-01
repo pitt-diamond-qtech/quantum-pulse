@@ -111,7 +111,7 @@ def getdata(numavgs):
     # in source/Hardware/Threads > getData function
     try:
         awg = AWG520()
-        awg.setup()  # i don't need IQ modulator for this part
+        awg.setup('odmr_trigger.seq')  # i don't need IQ modulator for this part
         awg.run()  # places AWG into enhanced run mode
         time.sleep(0.2)  # delay needed to exec the previous 2 commands
         for ascan in list(range(numavgs)):
