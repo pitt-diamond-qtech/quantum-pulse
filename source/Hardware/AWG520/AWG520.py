@@ -407,8 +407,9 @@ class AWGFile(object):
         # you want the files stored elsewhere.
         for filename in os.listdir(self.dirpath):
             if (filename.endswith('.wfm') or filename.endswith('.seq')):
-                os.unlink(filename)
-                #print(filename) # used this to test that it works correctly
+                #print(filename)  # used this to test that it works correctly
+                os.unlink(self.dirpath / filename)
+
        # now initalize the other variables
         self.logger = logging.getLogger('awg520private.awg520_file')
         self.wfmheader = b'MAGIC 1000 \r\n'

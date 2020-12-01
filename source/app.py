@@ -708,7 +708,7 @@ class appGUI(QtWidgets.QMainWindow):
 if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
-    window = appGUI(nohardware=False)
+    window = appGUI(nohardware=True)
     #myClass.load_defaults()
     window.show()
     #finish logger
