@@ -47,7 +47,9 @@ _SEQ_MEMORY_LIMIT = 8000
 _IQTYPE = np.dtype('<f4') # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
 
-saveawgfilepath = Path('.')/'sequencefiles/'
+sourcedir = get_project_root()
+saveawgfilepath = sourcedir /'Hardware/AWG520/sequencefiles/'
+# ensure that the awg files can be saved
 if not saveawgfilepath.exists():
     os.mkdir(saveawgfilepath)
     print('Creating directory for AWG files at:'.format(saveawgfilepath.resolve()))
@@ -70,10 +72,7 @@ privatelogger = create_logger('awg520private')
 # privatelogger.addHandler(fh)
 # privatelogger.addHandler(ch)
 
-# ensure that the awg files can be saved
-if not saveawgfilepath.exists():
-    os.mkdir(saveawgfilepath)
-    privatelogger.info('Creating directory for saving retrieved AWG files at:{}'.format(saveawgfilepath.resolve()))
+
 
 @log_with(privatelogger)
 class AWG520(object):
@@ -188,9 +187,10 @@ class AWG520(object):
         channels. '''
         self.logger.info('Setting up AWG...')
 
-        self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        #self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        self.set_ref_clock_internal() # use the ref to be the internal clock when Rb clock is broken
         self.set_enhanced_run_mode() # put AWG into enhanced run mode when the run command is received
-        self.set_clock_internal() # use the internal clock which is now derived from ext clock
+        #self.set_clock_internal() # use the internal clock which is now derived from ext clock
         # load seq to both channels -- I think it may be enough to just load one but will do both
         self.sendcommand('SOUR1:FUNC:USER'+ seqfilename+',"MAIN"\n')
         self.sendcommand('SOUR2:FUNC:USER'+ seqfilename+',"MAIN"\n')
@@ -237,7 +237,7 @@ class AWG520(object):
 
     def set_enhanced_run_mode(self):
         # setup the AWG in enhanced run mode
-        self.sendcommand('AWGC:RMOD:ENH')
+        self.sendcommand('AWGC:RMOD ENH\n')
 
 
     #TODO: these 3 funcs needs to be altered if our connections change

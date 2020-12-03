@@ -19,13 +19,15 @@ from source.Hardware.AWG520.Sequence import Sequence,SequenceList
 from source.common.utils import get_project_root
 import numpy as np
 import matplotlib.pyplot as plt
-import time,sys
+import time,sys,os
+import ADwin #ADwin python module
+import pyvisa as visa #Virt. Instr. Soft. Arch. to control the Arduino
 
 # time constants
 _ns = 1e-9 # ns
 _us = 1e-6 # micro-sec
 _ms = 1e-3 # ms
-
+_ARDUINO_PORT = 'COM7'
 
 d_time = 1 * _ms # change as needed, but max is 1048512*100 ns ~ 100 ms
 nsteps = 100 # we will send out this many triggers to arduino for one scan
@@ -51,10 +53,10 @@ def write_trigger_sequence(dwell_time,numsteps,tres):
     s.create_sequence()
     # this part here is not necessary in the actual program, I am just using it to check that the above sequence will do
     # what I want it to do
-    tt = np.linspace(0, s.maxend, len(s.c1markerdata))
-    plt.plot(tt, s.wavedata[0, :], 'r-', tt, s.wavedata[1, :], 'b-', tt, s.c1markerdata, 'g--', tt, s.c2markerdata,
-             'y-')
-    plt.show()
+    # tt = np.linspace(0, s.maxend, len(s.c1markerdata))
+    # plt.plot(tt, s.wavedata[0, :], 'r-', tt, s.wavedata[1, :], 'b-', tt, s.c1markerdata, 'g--', tt, s.c2markerdata,
+    #          'y-')
+    # plt.show()
     # this is the section where I actually write the waveform to a file,  to repeat it for numsteps,
     # and then wait to receive a software trigger from the Pc before doing it again
     awgfile = AWGFile(s,timeres=tres,dirpath=dirPath)
@@ -88,14 +90,31 @@ def write_trigger_sequence(dwell_time,numsteps,tres):
         sys.stderr.write(sys.exc_info())
         sys.stderr.write(error.message+'\n')
 
-def upload_trigger_seq(dirPath):
+
+def initialize_arduino_adwin():
+    # initialize the Arduino
+    rm = visa.ResourceManager()
+    arduino = rm.open_resource(_ARDUINO_PORT)
+    print((arduino.read()))
+
+    # initialize the ADwin
+    try:
+        adw = ADwin.ADwin()
+        adw.Boot(adw.ADwindir + 'ADwin11.btl')
+        count_proc = 'D:\PyCharmProjects\qcomp-qapps\ESRWorking\ESRWorkingProgram\CW_ESR\Hardware\AdWIN\Trigger_Count_test_1.TB1'
+        adw.Load_Process(count_proc)
+        print("Adwin was successfully initialized")
+    except ADWin.ADWinError as e:
+        sys.stderr.write(e.errorText)
+
+def upload_trigger_seq(seqdir):
     # here comes the section where I actually communicate to the AWG and upload the files
     try:
         awg = AWG520()
         #  transfer all files to AWG
         t = time.process_time()
-        for filename in os.listdir(dirPath):
-            awg.sendfile(filename, filename)
+        for filename in os.listdir(seqdir):
+            awg.sendfile(filename, seqdir / filename)
         transfer_time = time.process_time() - t
         time.sleep(1)
         sys.stdout.write('time elapsed for all files to be transferred is:{0:.3f}'.format(transfer_time))
@@ -111,16 +130,18 @@ def getdata(numavgs):
     # in source/Hardware/Threads > getData function
     try:
         awg = AWG520()
-        awg.setup('odmr_trigger.seq')  # i don't need IQ modulator for this part
+        awg.setup(seqfilename='odmr_trigger.seq')  # i don't need IQ modulator for this part
         awg.run()  # places AWG into enhanced run mode
         time.sleep(0.2)  # delay needed to exec the previous 2 commands
         for ascan in list(range(numavgs)):
+            # awg.jump(1)
+            # time.sleep(0.005)
             awg.trigger() # first trigger the arm sequence
-            time.sleep(0.1) # needed for trigger to execute
+            time.sleep(0.2) # needed for trigger to execute
             awg.jump(2) # jump to the 2nd line i.e. the actual trigger to arduino
             time.sleep(0.005) # needed for the jump
             awg.trigger() # now output that line
-            time.sleep(0.1) # delay for trigger to exec
+            time.sleep(0.2) # delay for trigger to exec
             # here is where you would put code for reading the adwin data
         awg.cleanup()
     except RuntimeError as error:
@@ -130,7 +151,44 @@ def getdata(numavgs):
 
 if __name__ == '__main__':
     write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
+    upload_trigger_seq(seqdir=dirPath)
+    getdata(100)
 
 
 
+avg = 0
+nor = 10 #Number of Readings
+noa = 2 #Number of Averages (Runs)
+dwell = 5 #Dwell time in ms
 
+def read_adwin()
+    adw.Set_Par(1, nor)
+
+
+    while avg < noa:
+        adw.Start_Process(1) #Start Counter 1 of the ADWin
+
+        # String sent to the Arduino (This string is controlled by the arduino sketch External_Trigger)
+        arduino.write('2870000000#2880000000#' + str(nor) + '#' + str(dwell) + '#')
+
+        t1 = time.perf_counter() #Elapsed time up to this point
+
+        while adw.Process_Status(1) == 1: #While the ADwin is already running, delay the process
+            time.sleep(0.001)
+
+        dataList = adw.GetData_Long(1, 1, nor) # Get the data collected from the ADwin Counter 1
+
+        print((len(dataList), ' points done.'))
+
+        t2 = time.perf_counter() #Elapsed time up to this point
+
+        print(("It takes: ", t2 - t1, 'for ', nor, " steps"))
+        print(list(dataList))
+
+        avg += 1
+        print("Average ", avg, " is done")
+        #time.sleep(1)
+    #close ADwin and Arduino
+    adw.Clear_Process(1)
+    arduino.close()
+    rm.close()
