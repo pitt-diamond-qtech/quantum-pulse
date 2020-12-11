@@ -29,10 +29,11 @@ _us = 1e-6 # micro-sec
 _ms = 1e-3 # ms
 _ARDUINO_PORT = 'COM7'
 
-d_time = 1 * _ms # change as needed, but max is 1048512*100 ns ~ 100 ms
-nsteps = 100 # we will send out this many triggers to arduino for one scan
+d_time = 5.0 * _ms # change as needed, but max is 1048512*100 ns ~ 100 ms
+nsteps = 1 # we will send out this many triggers to arduino for one scan
 sampclk = 100 # we will use 100 ns time resolution on the AWG, the assumption is that the dwell time is quite long.
 navgs = 100 # we will repeat the measurement this many times
+avg=0
 
 sourcedir = get_project_root()
 #print(sourcedir)
@@ -130,18 +131,20 @@ def getdata(numavgs):
     # in source/Hardware/Threads > getData function
     try:
         awg = AWG520()
-        awg.setup(seqfilename='odmr_trigger.seq')  # i don't need IQ modulator for this part
+        awg.setup(enable_iq=True,seqfilename="odmr_trigger.seq")
+        time.sleep(0.2)
         awg.run()  # places AWG into enhanced run mode
         time.sleep(0.2)  # delay needed to exec the previous 2 commands
         for ascan in list(range(numavgs)):
-            # awg.jump(1)
-            # time.sleep(0.005)
+            awg.jump(1)
+            time.sleep(0.005)
             awg.trigger() # first trigger the arm sequence
             time.sleep(0.2) # needed for trigger to execute
             awg.jump(2) # jump to the 2nd line i.e. the actual trigger to arduino
             time.sleep(0.005) # needed for the jump
             awg.trigger() # now output that line
             time.sleep(0.2) # delay for trigger to exec
+            print('this is {0:d} avg out of {1:d} averages'.format(ascan,numavgs))
             # here is where you would put code for reading the adwin data
         awg.cleanup()
     except RuntimeError as error:
@@ -149,23 +152,10 @@ def getdata(numavgs):
         sys.stderr.write(sys.exc_info())
         sys.stderr.write(error.message+'\n')
 
-if __name__ == '__main__':
-    write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
-    upload_trigger_seq(seqdir=dirPath)
-    getdata(100)
-
-
-
-avg = 0
-nor = 10 #Number of Readings
-noa = 2 #Number of Averages (Runs)
-dwell = 5 #Dwell time in ms
-
-def read_adwin()
+def read_adwin(nor=nsteps,navgs=navgs,dwell=d_time):
     adw.Set_Par(1, nor)
 
-
-    while avg < noa:
+    while avg < navgs:
         adw.Start_Process(1) #Start Counter 1 of the ADWin
 
         # String sent to the Arduino (This string is controlled by the arduino sketch External_Trigger)
@@ -192,3 +182,11 @@ def read_adwin()
     adw.Clear_Process(1)
     arduino.close()
     rm.close()
+
+if __name__ == '__main__':
+    write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
+    upload_trigger_seq(seqdir=dirPath)
+    getdata(1)
+
+
+

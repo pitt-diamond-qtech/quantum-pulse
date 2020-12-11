@@ -1,5 +1,5 @@
 MAGIC 3002 
 LINES 2
 "arm_1.wfm","arm_2.wfm",0,1,0,0
-"trig_1.wfm","trig_2.wfm",100,1,0,0
+"trig_1.wfm","trig_2.wfm",1,1,0,0
 JUMP_MODE SOFTWARE

@@ -192,8 +192,8 @@ class AWG520(object):
         self.set_enhanced_run_mode() # put AWG into enhanced run mode when the run command is received
         #self.set_clock_internal() # use the internal clock which is now derived from ext clock
         # load seq to both channels -- I think it may be enough to just load one but will do both
-        self.sendcommand('SOUR1:FUNC:USER'+ seqfilename+',"MAIN"\n')
-        self.sendcommand('SOUR2:FUNC:USER'+ seqfilename+',"MAIN"\n')
+        self.sendcommand('SOUR1:FUNC:USER '+ seqfilename+',"MAIN"\n')
+        self.sendcommand('SOUR2:FUNC:USER '+ seqfilename+',"MAIN"\n')
 
         # set up voltages
         # mysocket.sendall('SOUR2:VOLT:AMPL 2000mV\n')
