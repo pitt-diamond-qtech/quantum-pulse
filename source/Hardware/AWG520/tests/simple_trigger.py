@@ -83,7 +83,12 @@ def write_trigger_sequence(dwell_time,numsteps,tres):
             # repeating and wait for the software trigger from the PC
             sfile.write(temp_str.encode())
             # the trig wfm is repeated numsteps
-            linestr= '"trig_1.wfm","trig_2.wfm",' + str(numsteps) +',1,0,0\r\n'
+            # 2020-01-04: after lot of experimenting with Arduino code it appears that interrupt of the arduino is
+            # unable to accept fast triggers, i.e. it does not work if the triggers have 1 ms spacing, but works if
+            # they have 10 ms spacing. So we have decided not to mess with it, and instead simply to use the old
+            # arduino code where all timing comes from the arduino itself but require that it takes one trigger from
+            # the  AWG to start a scan
+            linestr= '"trig_1.wfm","trig_2.wfm",' + str(1) +',1,0,0\r\n'
             sfile.write(linestr.encode())
             sfile.write(b'JUMP_MODE SOFTWARE\r\n') # tells awg to wait for a software trigger
     except (IOError,ValueError) as error:
