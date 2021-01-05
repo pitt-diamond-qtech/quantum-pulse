@@ -24,15 +24,15 @@ import ADwin #ADwin python module
 import pyvisa as visa #Virt. Instr. Soft. Arch. to control the Arduino
 
 # time constants
-_ns = 1e-9 # ns
-_us = 1e-6 # micro-sec
-_ms = 1e-3 # ms
+_ns = 1.0e-9 # ns
+_us = 1.0e-6 # micro-sec
+_ms = 1.0e-3 # ms
 _ARDUINO_PORT = 'COM7'
 
-d_time = 5.0 * _ms # change as needed, but max is 1048512*100 ns ~ 100 ms
+d_time = 2.5 * _ms # change as needed, but max is 1048512*100 ns ~ 100 ms
 nsteps = 1 # we will send out this many triggers to arduino for one scan
 sampclk = 100 # we will use 100 ns time resolution on the AWG, the assumption is that the dwell time is quite long.
-navgs = 100 # we will repeat the measurement this many times
+navgs = 10 # we will repeat the measurement this many times
 avg=0
 
 sourcedir = get_project_root()
@@ -122,7 +122,7 @@ def upload_trigger_seq(seqdir):
         for filename in os.listdir(seqdir):
             awg.sendfile(filename, seqdir / filename)
         transfer_time = time.process_time() - t
-        time.sleep(1)
+        time.sleep(0.1)
         sys.stdout.write('time elapsed for all files to be transferred is:{0:.3f}'.format(transfer_time))
         awg.cleanup()
     except RuntimeError as error:
@@ -135,14 +135,15 @@ def getdata(numavgs):
     # this does not allow for NV tracking during the exec of the scan, we can build that in using a similar function as
     # in source/Hardware/Threads > getData function
     try:
+        #initialize_arduino_adwin()
         awg = AWG520()
         awg.setup(enable_iq=True,seqfilename="odmr_trigger.seq")
         time.sleep(0.2)
         awg.run()  # places AWG into enhanced run mode
         time.sleep(0.2)  # delay needed to exec the previous 2 commands
         for ascan in list(range(numavgs)):
-            awg.jump(1)
-            time.sleep(0.005)
+            #awg.jump(1)
+            #time.sleep(0.005)
             awg.trigger() # first trigger the arm sequence
             time.sleep(0.2) # needed for trigger to execute
             awg.jump(2) # jump to the 2nd line i.e. the actual trigger to arduino
@@ -151,38 +152,37 @@ def getdata(numavgs):
             time.sleep(0.2) # delay for trigger to exec
             print('this is {0:d} avg out of {1:d} averages'.format(ascan,numavgs))
             # here is where you would put code for reading the adwin data
+            #read_adwin(nor=nsteps,navg=numavgs,)
         awg.cleanup()
     except RuntimeError as error:
         # replace these with logger writes, but for now just send any errors to stderr
         sys.stderr.write(sys.exc_info())
         sys.stderr.write(error.message+'\n')
 
-def read_adwin(nor=nsteps,navgs=navgs,dwell=d_time):
+def read_adwin(nor=nsteps,dwell=d_time):
     adw.Set_Par(1, nor)
+    adw.Start_Process(1) #Start Counter 1 of the ADWin
 
-    while avg < navgs:
-        adw.Start_Process(1) #Start Counter 1 of the ADWin
+    # String sent to the Arduino (This string is controlled by the arduino sketch External_Trigger)
+    arduino.write('2870000000#2880000000#' + str(nor) + '#' + str(dwell) + '#')
 
-        # String sent to the Arduino (This string is controlled by the arduino sketch External_Trigger)
-        arduino.write('2870000000#2880000000#' + str(nor) + '#' + str(dwell) + '#')
+    t1 = time.perf_counter() #Elapsed time up to this point
 
-        t1 = time.perf_counter() #Elapsed time up to this point
+    while adw.Process_Status(1) == 1: #While the ADwin is already running, delay the process
+        time.sleep(0.001)
 
-        while adw.Process_Status(1) == 1: #While the ADwin is already running, delay the process
-            time.sleep(0.001)
+    dataList = adw.GetData_Long(1, 1, nor) # Get the data collected from the ADwin Counter 1
 
-        dataList = adw.GetData_Long(1, 1, nor) # Get the data collected from the ADwin Counter 1
+    print((len(dataList), ' points done.'))
 
-        print((len(dataList), ' points done.'))
+    t2 = time.perf_counter() #Elapsed time up to this point
 
-        t2 = time.perf_counter() #Elapsed time up to this point
+    print(("It takes: ", t2 - t1, 'for ', nor, " steps"))
+    print(list(dataList))
 
-        print(("It takes: ", t2 - t1, 'for ', nor, " steps"))
-        print(list(dataList))
-
-        avg += 1
-        print("Average ", avg, " is done")
-        #time.sleep(1)
+    avg += 1
+    print("Average ", avg, " is done")
+    #time.sleep(1)
     #close ADwin and Arduino
     adw.Clear_Process(1)
     arduino.close()
@@ -191,7 +191,7 @@ def read_adwin(nor=nsteps,navgs=navgs,dwell=d_time):
 if __name__ == '__main__':
     write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
     upload_trigger_seq(seqdir=dirPath)
-    getdata(1)
+    getdata(50)
 
 
 

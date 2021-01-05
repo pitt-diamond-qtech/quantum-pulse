@@ -189,11 +189,15 @@ class AWG520(object):
 
         #self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
         self.set_ref_clock_internal() # use the ref to be the internal clock when Rb clock is broken
+        time.sleep(0.1)
         self.set_enhanced_run_mode() # put AWG into enhanced run mode when the run command is received
+        time.sleep(0.1)
         #self.set_clock_internal() # use the internal clock which is now derived from ext clock
         # load seq to both channels -- I think it may be enough to just load one but will do both
-        self.sendcommand('SOUR1:FUNC:USER '+ seqfilename+',"MAIN"\n')
-        self.sendcommand('SOUR2:FUNC:USER '+ seqfilename+',"MAIN"\n')
+        self.sendcommand('SOUR1:FUNC:USER '+ '"' + str(seqfilename) + '"' +',"MAIN"\n')
+        time.sleep(0.1)
+        self.sendcommand('SOUR2:FUNC:USER '+ '"' + str(seqfilename) + '"' +',"MAIN"\n')
+        time.sleep(0.1)
 
         # set up voltages
         # mysocket.sendall('SOUR2:VOLT:AMPL 2000mV\n')
@@ -227,7 +231,7 @@ class AWG520(object):
             self.sendcommand('OUTP2:STAT ON\n')
         else:
             self.sendcommand('OUTP1:STAT ON\n')
-
+        time.sleep(0.1)
 
     def run(self):
         self.sendcommand('AWGC:RUN\n')  # runs a sequence in enhanced mode
