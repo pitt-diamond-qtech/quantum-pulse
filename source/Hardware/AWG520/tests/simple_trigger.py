@@ -139,6 +139,7 @@ def getdata(numavgs):
         awg = AWG520()
         awg.setup(enable_iq=True,seqfilename="odmr_trigger.seq")
         time.sleep(0.2)
+        awg.sendcommand('SOUR2:MARK2:VOLT:HIGH 0.0\n')
         awg.run()  # places AWG into enhanced run mode
         time.sleep(0.2)  # delay needed to exec the previous 2 commands
         for ascan in list(range(numavgs)):
