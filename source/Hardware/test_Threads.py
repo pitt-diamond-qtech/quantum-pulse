@@ -14,7 +14,7 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
-from Pulseshaping.Hardware.Threads import UploadThread, ScanThread, KeepThread
+from source.Hardware.Threads import UploadThread, ScanThread, KeepThread
 
 
 # def func(x):

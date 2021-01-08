@@ -14,25 +14,48 @@
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from Hardware.Threads import UploadThread,ScanThread,KeepThread
+from source.Hardware.Threads import UploadThread,ScanThread,KeepThread
+from source.common.utils import get_project_root,create_logger,log_with
 #from SeqEditor.Wrapper import GUI_Wrapper as SeqEditorWrapper
 from PyQt5 import QtCore, QtWidgets, QtGui,uic
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.animation import FuncAnimation
 from pathlib import Path
-import sys,numpy,copy,datetime,os
+import sys,numpy,datetime,os
 import logging
 # if I import the Ui_Pulseshaper class from the python file then I will have to inherit from it in the main appGUI
 # class
 # from appgui load Ui_Pulseshaper
 # instead I use the uic module to directly load GUI, then I dont have to inherit from it and can assign a ui variable
 # inside the appGUI class. Either method is fine.
-thisdir = Path('.')
+thisdir = get_project_root()
 qtdesignerfile = thisdir /'appgui.ui' # this is the .ui file created in QtCreator
+
+# start the logger
+logger = create_logger('qpulseapp')
+
+#     logger = logging.getLogger('qpulseapp')
+#     logger.setLevel(logging.DEBUG)
+#     # create a file handler that logs even debug messages
+#     fh = logging.FileHandler((logfilepath / 'qpulse-app.log').resolve())
+#     fh.setLevel(logging.DEBUG)
+#     # create a console handler with a higher log level
+#     ch = logging.StreamHandler()
+#     ch.setLevel(logging.ERROR)
+#     # create formatter and add it to the handlers
+#     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#     fh.setFormatter(formatter)
+#     ch.setFormatter(formatter)
+#     # add the handlers to the logger
+#     logger.addHandler(fh)
+#     logger.addHandler(ch)
+#     # start the window
+#     logger.info('Starting the main app..')
 
 Ui_Pulseshaper,junk = uic.loadUiType(qtdesignerfile)
 
+@log_with(logger)
 class appGUI(QtWidgets.QMainWindow):
     ''' this is the main class for the GUI. It has several important variables:
      1. mw : dictionary where each key value has an array contains all the mw parameters such as 'enable device',
@@ -683,26 +706,9 @@ class appGUI(QtWidgets.QMainWindow):
     # end scanning functions
     
 if __name__ == '__main__':
-    # start the logger
-    logger = logging.getLogger('pulseshaperapp')
-    logger.setLevel(logging.DEBUG)
-    # create a file handler that logs even debug messages
-    fh = logging.FileHandler('./logs/pulsehaperapp.log')
-    fh.setLevel(logging.DEBUG)
-    # create a console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
-    # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-    # add the handlers to the logger
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-    # start the window
-    logger.info('Starting the main app..')
+
     app = QtWidgets.QApplication(sys.argv)
-    window = appGUI(nohardware=False)
+    window = appGUI(nohardware=True)
     #myClass.load_defaults()
     window.show()
     #finish logger

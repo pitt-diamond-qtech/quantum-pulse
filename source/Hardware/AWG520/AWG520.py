@@ -24,6 +24,9 @@ import logging
 # from Pulse import Gaussian,Sech,Square,Marker
 from .Sequence import Sequence, SequenceList
 import time
+from source.common.utils import log_with, create_logger,get_project_root
+
+
 
 _DAC_BITS = 10
 _IP_ADDRESS = '172.17.39.2' # comment out for testing
@@ -44,35 +47,34 @@ _SEQ_MEMORY_LIMIT = 8000
 _IQTYPE = np.dtype('<f4') # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
 
-
-dirpath = Path('.') /'sequencefiles'
-logfilepath = Path('.')/'logs'
-saveawgfilepath = Path('.')/ 'awg_tmpdir'
+sourcedir = get_project_root()
+saveawgfilepath = sourcedir /'Hardware/AWG520/sequencefiles/'
+# ensure that the awg files can be saved
+if not saveawgfilepath.exists():
+    os.mkdir(saveawgfilepath)
+    print('Creating directory for AWG files at:'.format(saveawgfilepath.resolve()))
 
 
 # create the logger
-privatelogger = logging.getLogger('awg520private')
-privatelogger.setLevel(logging.DEBUG)
-# create a file handler that logs even debug messages
-if not logfilepath.exists():
-    os.mkdir(logfilepath)
-    print('Creating directory for AWG logging at:'.format(logfilepath.resolve()))
-fh = logging.FileHandler((logfilepath / 'awg520private.log').resolve())
-fh.setLevel(logging.DEBUG)
-# create a console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.ERROR)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-privatelogger.addHandler(fh)
-privatelogger.addHandler(ch)
-if not saveawgfilepath.exists():
-    os.mkdir(saveawgfilepath)
-    privatelogger.info('Creating directory for saving retrieved AWG files at:{}'.format(saveawgfilepath.resolve()))
+privatelogger = create_logger('awg520private')
+# privatelogger = logging.getLogger('awg520private')
+# privatelogger.setLevel(logging.DEBUG)
+# fh = logging.FileHandler((logfilepath / 'qpulse-app.log').resolve())
+# fh.setLevel(logging.DEBUG)
+# # create a console handler with a higher log level
+# ch = logging.StreamHandler()
+# ch.setLevel(logging.ERROR)
+# # create formatter and add it to the handlers
+# formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# fh.setFormatter(formatter)
+# ch.setFormatter(formatter)
+# # add the handlers to the logger
+# privatelogger.addHandler(fh)
+# privatelogger.addHandler(ch)
 
+
+
+@log_with(privatelogger)
 class AWG520(object):
     '''This is the class def for the AWG520. The IP Address and Port default to the ones setup on the AWG.
     Example of how to call and setup the AWG:
@@ -92,6 +94,8 @@ class AWG520(object):
         # USR:4.0\n'
         if self.login_ftp():
            self.awgfiles = self.list_awg_files()
+        else:
+            raise(IOError("Unable to login via FTP to the device"))
 
     def sendcommand(self,command):
         query='?' in command
@@ -136,9 +140,9 @@ class AWG520(object):
 
     def sendfile(self,fileRemote,fileLocal):
         try:
-            self.myftp = FTP('')
-            self.myftp.connect(self.addr[0], port=_FTP_PORT)  # TODO: will need to check FTP port on AWG
-            self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
+            # self.myftp = FTP('')
+            # self.myftp.connect(self.addr[0], port=_FTP_PORT)  # TODO: will need to check FTP port on AWG
+            # self.myftp.login('usr', 'pw')  # user name and password, these can be anything; no real login
             strIt = 'STOR ' + str(fileRemote)
             self.logger.info('Sending file {} to {}'.format(fileLocal, fileRemote))
             t = time.process_time()
@@ -178,17 +182,22 @@ class AWG520(object):
     def jump(self, line):
         self.sendcommand('AWGC:EVEN:SOFT ' + str(line) + '\n')
 
-    def setup(self,enable_iq=False):
+    def setup(self,enable_iq=False,seqfilename="scan.seq"):
         '''Sets up the AWG into enhanced run mode. Param to be passed is whether IQ modulator is connected to both
         channels. '''
         self.logger.info('Setting up AWG...')
 
-        self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        #self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        self.set_ref_clock_internal() # use the ref to be the internal clock when Rb clock is broken
+        time.sleep(0.1)
         self.set_enhanced_run_mode() # put AWG into enhanced run mode when the run command is received
-        self.set_clock_internal() # use the internal clock which is now derived from ext clock
+        time.sleep(0.1)
+        #self.set_clock_internal() # use the internal clock which is now derived from ext clock
         # load seq to both channels -- I think it may be enough to just load one but will do both
-        self.sendcommand('SOUR1:FUNC:USER "scan.seq","MAIN"\n')
-        self.sendcommand('SOUR2:FUNC:USER "scan.seq","MAIN"\n')
+        self.sendcommand('SOUR1:FUNC:USER '+ '"' + str(seqfilename) + '"' +',"MAIN"\n')
+        time.sleep(0.1)
+        self.sendcommand('SOUR2:FUNC:USER '+ '"' + str(seqfilename) + '"' +',"MAIN"\n')
+        time.sleep(0.1)
 
         # set up voltages
         # mysocket.sendall('SOUR2:VOLT:AMPL 2000mV\n')
@@ -222,7 +231,7 @@ class AWG520(object):
             self.sendcommand('OUTP2:STAT ON\n')
         else:
             self.sendcommand('OUTP1:STAT ON\n')
-
+        time.sleep(0.1)
 
     def run(self):
         self.sendcommand('AWGC:RUN\n')  # runs a sequence in enhanced mode
@@ -232,7 +241,7 @@ class AWG520(object):
 
     def set_enhanced_run_mode(self):
         # setup the AWG in enhanced run mode
-        self.sendcommand('AWGC:RMOD:ENH')
+        self.sendcommand('AWGC:RMOD ENH\n')
 
 
     #TODO: these 3 funcs needs to be altered if our connections change
@@ -391,7 +400,7 @@ here <chX_filename> is the wfm file name for the specified channel x (which can 
          """
 
 class AWGFile(object):
-    def __init__(self,sequence = None,sequencelist = None,ftype='WFM',timeres=1,dirpath=dirpath):
+    def __init__(self,sequence = None,sequencelist = None,ftype='WFM',timeres=1,dirpath=saveawgfilepath):
         """This class will create and write files of sequences and sequencelists to the default sequencfiles
         directory specified. Args are:
         1. sequence: an object of Sequence type. If you don't specify any, a default sequence is used.
@@ -404,8 +413,9 @@ class AWGFile(object):
         # you want the files stored elsewhere.
         for filename in os.listdir(self.dirpath):
             if (filename.endswith('.wfm') or filename.endswith('.seq')):
-                os.unlink(filename)
-                #print(filename) # used this to test that it works correctly
+                #print(filename)  # used this to test that it works correctly
+                os.unlink(self.dirpath / filename)
+
        # now initalize the other variables
         self.logger = logging.getLogger('awg520private.awg520_file')
         self.wfmheader = b'MAGIC 1000 \r\n'
@@ -526,7 +536,7 @@ class AWGFile(object):
         # wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
         # first create an empty waveform in channel 1 and 2 but turn on the green laser
         # so that measurements can start after a trigger is received.
-        arm_sequence = Sequence(['Green','0',str(wfmlen)],timeres=self.timeres)
+        arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
         arm_sequence.create_sequence()
         self.write_waveform('0', 1, arm_sequence.wavedata[0,:], arm_sequence.c1markerdata)
         self.write_waveform('0', 2, arm_sequence.wavedata[1,:], arm_sequence.c2markerdata)
