@@ -210,6 +210,3 @@ if __name__ == '__main__':
     write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
     upload_trigger_seq(seqdir=dirPath)
     getdata(10)
-
-
-
