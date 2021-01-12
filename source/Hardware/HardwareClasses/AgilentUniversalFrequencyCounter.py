@@ -9,19 +9,19 @@ class AgilentUniversalFrequencyCounter(HardwareSuperClass.HardwareDevice):
     def __init__(self):
         pass
 
-    def startUp(self):
+    def startup(self):
         print("starting up from child")
 
     def verify(self):
         print("child verified that instrument is running")
 
-    def sendData(self):
+    def senddata(self):
         print("starting up from child")
 
-    def getData(self):
+    def getdata(self):
         print("starting up from child")
 
-    def shutDown(self):
+    def shutdown(self):
         print("starting up from child")
 
 

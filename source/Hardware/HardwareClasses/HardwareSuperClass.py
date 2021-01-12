@@ -23,9 +23,8 @@ class HardwareDevice(object):
     """
     __metaclass__ = ABCMeta
 
-
     @abstractmethod
-    def startUp(self):
+    def startup(self):
         """
             This is an abstractmethod and MUST be implemented by the Child-Class otherwise a
             "TypeError: Can't instantiate abstract class" error will be thrown
@@ -53,7 +52,7 @@ class HardwareDevice(object):
         pass
 
     @abstractmethod
-    def sendData(self):
+    def senddata(self):
         """
             This is an abstractmethod and MUST be implemented by the Child-Class otherwise a
             "TypeError: Can't instantiate abstract class" error will be thrown
@@ -66,7 +65,7 @@ class HardwareDevice(object):
         pass
 
     @abstractmethod
-    def getData(self):
+    def getdata(self):
         """
             This is an abstractmethod and MUST be implemented by the Child-Class otherwise a
             "TypeError: Can't instantiate abstract class" error will be thrown
@@ -77,7 +76,7 @@ class HardwareDevice(object):
         pass
 
     @abstractmethod
-    def shutDown(self):
+    def shutdown(self):
         """
             This is an abstractmethod and MUST be implemented by the Child-Class otherwise a
             "TypeError: Can't instantiate abstract class" error will be thrown
