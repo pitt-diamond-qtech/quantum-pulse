@@ -397,7 +397,7 @@ class appGUI(QtWidgets.QMainWindow):
         elif selector == 2: # number scan
             regexp = QtCore.QRegExp("[0-9]{,3}") # can at most have 3 digits
         elif selector == 4: # MW frequency
-            regexp = QtCore.QRegExp("[1-9]{1,4}\\.[0-9]{1,3}") # frequency in MHz, don't allow frequencies below 1
+            regexp = QtCore.QRegExp("[0-9]{1,4}\\.[0-9]{1,3}") # frequency in MHz, don't allow frequencies below 1
         elif selector == 5: # sideband frequency
             regexp = QtCore.QRegExp("[0-9]{,3}\\.[0-9]{1,3}") # we don't allow for scans larger than 100 MHz
         elif selector == 6: # pulsewidth
