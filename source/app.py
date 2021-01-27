@@ -36,7 +36,7 @@ qtdesignerfile = thisdir /'appgui_V2.ui' # this is the .ui file created in QtCre
 logger = create_logger('qpulseapp')
 
 
-Ui_Pulseshaper,junk = uic.loadUiType(qtdesignerfile)
+Ui_quantumpulse,junk = uic.loadUiType(qtdesignerfile)
 
 @log_with(logger)
 class appGUI(QtWidgets.QMainWindow):
