@@ -30,8 +30,11 @@ import ADwin,os
 
 from pathlib import Path
 
-hwdir  = Path('.')
-dirPath = hwdir / 'AWG520/sequencefiles/'
+# hwdir  = Path('.')
+# dirPath = hwdir / 'AWG520/sequencefiles/'
+sourcedir = get_project_root()
+#print(sourcedir)
+dirPath = sourcedir / 'Hardware/AWG520/sequencefiles/' # remove the tests part of the string later
 
 modlogger = create_logger('threadlogger')
 # modlogger.setLevel(logging.DEBUG)
@@ -125,7 +128,7 @@ class UploadThread(QtCore.QThread):
                 #  transfer all files to AWG
                 t = time.process_time()
                 for filename in os.listdir(dirPath):
-                    self.awgcomm.sendfile(filename, filename)
+                    self.awgcomm.sendfile(filename, dirPath / filename)
                 transfer_time = time.process_time() - t
                 time.sleep(1)
                 self.logger.info('time elapsed for all files to be transferred is:{0:.3f}'.format(transfer_time))
