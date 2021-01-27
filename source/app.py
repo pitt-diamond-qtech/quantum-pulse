@@ -147,7 +147,7 @@ class appGUI(QtWidgets.QMainWindow):
 
         self.ui.lineEditSamples.editingFinished.connect(self.updateSamples)
         self.ui.lineEditCountTime.editingFinished.connect(self.updateCountTime)
-        self.ui.lineEditResetTimeTime.editingFinished.connect(self.updateResetTime)
+        self.ui.lineEditResetTime.editingFinished.connect(self.updateResetTime)
 
         # PTS controls
         self.ui.checkBoxUsePTS.stateChanged.connect(self.enablePTS)
@@ -396,11 +396,11 @@ class appGUI(QtWidgets.QMainWindow):
             regexp = QtCore.QRegExp("\d{1,6}") # match any sets of digits [0-9] upto 6 allowed i.e. ms long times
         elif selector == 2: # number scan
             regexp = QtCore.QRegExp("[0-9]{,3}") # can at most have 3 digits
-        elif selector == 4: # MW frequency
+        elif selector == 3: # MW frequency
             regexp = QtCore.QRegExp("[0-9]{1,4}\\.[0-9]{1,3}") # frequency in MHz, don't allow frequencies below 1
-        elif selector == 5: # sideband frequency
+        elif selector == 4: # sideband frequency
             regexp = QtCore.QRegExp("[0-9]{,3}\\.[0-9]{1,3}") # we don't allow for scans larger than 100 MHz
-        elif selector == 6: # pulsewidth
+        elif selector == 5: # pulsewidth
             regexp = QtCore.QRegExp("[0-9]{,3}")  # we don't allow for pulsewidths larger than 1000 ns for now
         else:
             regexp = QtCore.QRegExp("[0-9]*")
