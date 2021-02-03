@@ -118,8 +118,8 @@ class UploadThread(QtCore.QThread):
         self.sequences = SequenceList(sequence=self.seq,delay=delay,pulseparams = self.pulseparams,scanparams = self.scan,
                                       timeres=self.timeRes)
         # write the files to the AWG520/sequencefiles directory
-        self.awgfile = AWGFile(sequencelist  = self.sequences,ftype='SEQ',timeres = self.timeRes)
-        self.awgfile.write_sequence(repeat = samples)
+        self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
+        self.awgfile.write_sequence(self.sequences,repeat = samples)
         # now upload the files
         try:
             if self.awgparamgs['device'] == 'awg520':
