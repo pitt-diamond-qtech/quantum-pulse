@@ -469,7 +469,7 @@ class AWGFile(object):
             return (None,None,None)
 
 
-    def write_waveform(self, sequence:Sequence=None, wavename, channelnum):
+    def write_waveform(self, sequence:Sequence=None, wavename='0', channelnum=1):
         '''This function writes a new waveform file. the args are:
             sequence: an object of type sequence
             wavename: str describing the type of wfm, usually just a number
@@ -478,20 +478,22 @@ class AWGFile(object):
 
         try:
             if not sequence:
-                raise ValueError("Invalid sequence or no sequence object given")
                 self.logger.error("Invalid sequence or no sequence object given")
+                raise ValueError("Invalid sequence or no sequence object given")
             else:
                 sequence.create_sequence()
-                wavedata = sequence.wavedata
                 if channelnum == 1:
                     markerdata = sequence.c1markerdata
+                    wavedata = sequence.wavedata[0]
                 elif channelnum == 2:
                     markerdata = sequence.c2markerdata
+                    wavedata = sequence.wavedata[1]
                 else:
                     raise ValueError("channel number can only be 1 or 2")
-
-                wfmfilename =  str(wavename)+'_'+str(channelnum)+str('.wfm')
-                with open(self.dirpath/wfmfilename,'wb') as wfile:
+                fname = str(wavename)+'_'+str(channelnum)+str('.wfm')
+                wfmfilename =  Path(self.dirpath / fname)
+                print(str(wfmfilename))
+                with open(wfmfilename,'wb') as wfile:
                     wfile.write(self.wfmheader)
                     nbytes, rsize, record = self.binarymaker(wavedata, markerdata)
                     # next line converts nbytes to a str, and then finds number of digits in str and writes it to file as a str
@@ -521,7 +523,7 @@ class AWGFile(object):
             if not sequences:
                 self.logger.error("Invalid sequence or no sequence object given")
                 raise ValueError("Invalid sequencelist  or no sequencelist object given")
-           else:
+            else:
                 sequences.create_sequence_list()
                 slist = self.sequences.sequencelist # list of sequences
                 wfmlen = len(slist[0].c1markerdata) # get the length of the waveform in the first sequence
