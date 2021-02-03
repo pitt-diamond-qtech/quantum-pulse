@@ -471,7 +471,7 @@ class AWGFile(object):
 
     def write_waveform(self, sequence:Sequence=None, wavename='0', channelnum=1):
         '''This function writes a new waveform file. the args are:
-            sequence: an object of type sequence
+            sequence: an object of type sequence which has already been created with the data
             wavename: str describing the type of wfm, usually just a number
             channelnum: which channel to use for I/Q and the marker
         '''
@@ -481,7 +481,7 @@ class AWGFile(object):
                 self.logger.error("Invalid sequence or no sequence object given")
                 raise ValueError("Invalid sequence or no sequence object given")
             else:
-                sequence.create_sequence()
+                #sequence.create_sequence() # removed this since we assume data has already been created in sequence obj
                 if channelnum == 1:
                     markerdata = sequence.c1markerdata
                     wavedata = sequence.wavedata[0]
@@ -492,7 +492,7 @@ class AWGFile(object):
                     raise ValueError("channel number can only be 1 or 2")
                 fname = str(wavename)+'_'+str(channelnum)+str('.wfm')
                 wfmfilename =  Path(self.dirpath / fname)
-                print(str(wfmfilename))
+                #print(str(wfmfilename))
                 with open(wfmfilename,'wb') as wfile:
                     wfile.write(self.wfmheader)
                     nbytes, rsize, record = self.binarymaker(wavedata, markerdata)
@@ -525,13 +525,14 @@ class AWGFile(object):
                 raise ValueError("Invalid sequencelist  or no sequencelist object given")
             else:
                 sequences.create_sequence_list()
-                slist = self.sequences.sequencelist # list of sequences
+                slist = sequences.sequencelist # list of sequences
                 wfmlen = len(slist[0].c1markerdata) # get the length of the waveform in the first sequence
                 scanlen = len(slist)
 
                 # first create an empty waveform in channel 1 and 2 but turn on the green laser
                 # so that measurements can start after a trigger is received.
                 arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
+                arm_sequence.create_sequence()
                 self.write_waveform(arm_sequence,'0', 1)
                 self.write_waveform(arm_sequence,'0', 2)
                 # create scan.seq file
