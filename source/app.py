@@ -17,6 +17,8 @@
 from source.Hardware.Threads import UploadThread,ScanThread,KeepThread
 from source.common.utils import get_project_root,create_logger,log_with
 #from SeqEditor.Wrapper import GUI_Wrapper as SeqEditorWrapper
+from source.Hardware.AWG520.Sequence import SequenceList
+from source.Hardware.AWG520.AWG520 import AWGFile
 from PyQt5 import QtCore, QtWidgets, QtGui,uic
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -87,6 +89,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.parameters = [50000, 300, 2000, 10, 10, 820,
                            10]  # should make into dictionary with keys 'sample', 'count time',
         # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
+        self.timeRes = 1 # default value for AWG time resolution
 
 
         self.init_seq_text_box()
@@ -237,6 +240,7 @@ class appGUI(QtWidgets.QMainWindow):
             self.awgparams['enable IQ'] = False
 
     def timeResChanged(self):
+        self.timeRes = int(self.ui.comboBoxTimeRes.currentText())
         self.uThread.timeRes = int(self.ui.comboBoxTimeRes.currentText())
         self.awgparams['time resolution']= int(self.ui.comboBoxTimeRes.currentText())
 
@@ -269,11 +273,11 @@ class appGUI(QtWidgets.QMainWindow):
         '''This function creates all the threads needed to carry out I/O with hardware. '''
         self.uThread = UploadThread()
         self.uThread.done.connect(self.uploadDone) # when the done signal is emitted we handle it using uploadDone
-        self.sThread = ScanThread()
-        self.sThread.data.connect(self.dataBack) # when data signal is emitted we handle using dataBack
-        self.sThread.tracking.connect(self.trackingBack) # when tracking signal is emitted we handle using trackingback
-        self.kThread = KeepThread()
-        self.kThread.status.connect(self.keepStatus) # when status signal is emitted we handle using keepstatus
+        # self.sThread = ScanThread()
+        # self.sThread.data.connect(self.dataBack) # when data signal is emitted we handle using dataBack
+        # self.sThread.tracking.connect(self.trackingBack) # when tracking signal is emitted we handle using trackingback
+        # self.kThread = KeepThread()
+        # self.kThread.status.connect(self.keepStatus) # when status signal is emitted we handle using keepstatus
 
     def save_defaults(self):
         ''' Saves the parameters to the defaults.txt file '''
@@ -486,14 +490,40 @@ class appGUI(QtWidgets.QMainWindow):
     # begin upload functions
 
     def upload(self):
+
         self.ui.pushButtonUpload.setEnabled(False)
         self.ui.pushButtonStart.setEnabled(False)
+        #------------------------------------------------------------
+        # 2021-02-07 : Gurudev modified this code so that we create and write the wfms and SEQ files directly from
+        # the main app. Upload thread is now called only to upload files to the AWG. If we want to go back to having
+        # Uploadthread do those things, we will need to uncomment lines that mark this block
+
         # we are now ready to upload the sequence file to awg
-        self.uThread.seq = self.seq
-        self.uThread.scan = self.scan
-        self.uThread.parameters = self.parameters
-        self.uThread.awgparams = self.awgparams
-        self.uThread.pulseparams = self.pulseparams
+        # self.uThread.seq = self.seq
+        # self.uThread.scan = self.scan
+        # self.uThread.parameters = self.parameters
+        # self.uThread.awgparams = self.awgparams
+        # self.uThread.pulseparams = self.pulseparams
+        #--------------------------------------------------------------
+        # and now comment out the lines below this block
+        # create files
+        samples = self.parameters[0]
+        delay = self.parameters[-2:]
+
+        enable_scan_pts = self.mw['PTS'][2]
+        if enable_scan_pts:
+            # we can scan frequency either using PTS or using the SB freq
+            # self.scan['type'] = 'frequency'
+            self.scan['type'] = 'no scan'  # this tells the SeqList class to simply put one sequence as the PTS will
+            # scan the frequency
+        # now create teh sequences
+        self.sequences = SequenceList(sequence=self.seq, delay=delay, pulseparams=self.pulseparams,
+                                      scanparams=self.scan,
+                                      timeres=self.timeRes)
+        # write the files to the AWG520/sequencefiles directory
+        self.awgfile = AWGFile(ftype='SEQ', timeres=self.timeRes)
+        self.awgfile.write_sequence(self.sequences, repeat=samples)
+        # ending here -----------------------------------------------------------
         # start the upload
         self.uThread.start()
 
@@ -711,7 +741,7 @@ class appGUI(QtWidgets.QMainWindow):
 if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
-    window = appGUI(nohardware=True)
+    window = appGUI(nohardware=False)
     #myClass.load_defaults()
     window.show()
     #finish logger

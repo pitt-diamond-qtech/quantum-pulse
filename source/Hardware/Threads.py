@@ -34,7 +34,7 @@ from pathlib import Path
 # dirPath = hwdir / 'AWG520/sequencefiles/'
 sourcedir = get_project_root()
 #print(sourcedir)
-dirPath = sourcedir / 'Hardware/AWG520/sequencefiles/' # remove the tests part of the string later
+dirPath = Path(sourcedir / 'Hardware/AWG520/sequencefiles/') # remove the tests part of the string later
 
 modlogger = create_logger('threadlogger')
 # modlogger.setLevel(logging.DEBUG)
@@ -71,75 +71,84 @@ class UploadThread(QtCore.QThread):
     """
     # this method only has one PyQt signal done which is emitted once the upload is finished
     done=QtCore.pyqtSignal()
-    def __init__(self,parent=None,seq = None,scan = None,params = None,awgparams = None,pulseparams = None,
-                 mwparams = None, timeRes = 1):
+    def __init__(self,parent=None, dirPath=dirPath, seq = None,scan = None,params = None,awgparams = None,pulseparams
+    = None,mwparams = None, timeRes = 1):
         #super().__init__(self)
         QtCore.QThread.__init__(self,parent)
-        self.timeRes = timeRes
+       # self.timeRes = timeRes
         self.logger = logging.getLogger('threadlogger.uploadThread')
-        if scan == None:
-            self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
-        else:
-            self.scan = scan
-        if seq == None:
-            self.seq = [['Green','0','1000'],['Measure','10','400']] # minimal measurement sequence
-        else:
-            self.seq = seq
-        if mwparams == None:
-            self.mw = {'PTS': [True, '2.870', False, '2.840', '0.001', '100', '2.940'], \
-                       'SRS': [False, '2.870', False, '2.840','0.001', '100', '2.940']}
-        else:
-            self.mw = mwparams
-        if awgparams == None:
-            self.awgparams = {'awg device': 'awg520', 'time resolution': 1, \
-                            'pulseshape': 'Square', 'enable IQ': False, 'iterate pulses': False, 'num pulses': 1}
-        if pulseparams == None:
-            self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
-                                'phase': 0.0, 'skew phase': 0.0}
-        if params == None:
-            self.parameters = [50000, 300, 1000, 10, 50, 820, 10]
+        self.dirPath = dirPath
+        # 2020-07-21: due to random crashes with QT when upload button is pressed , we are now writing the files in
+        # the main app, and only using this thread to upload the files to the AWG.
+        # -------------------------- uncomment this block if you want to go back ----------------------------
+        # if scan == None:
+        #     self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
+        # else:
+        #     self.scan = scan
+        # if seq == None:
+        #     self.seq = [['Green','0','1000'],['Measure','10','400']] # minimal measurement sequence
+        # else:
+        #     self.seq = seq
+        # if mwparams == None:
+        #     self.mw = {'PTS': [True, '2.870', False, '2.840', '0.001', '100', '2.940'], \
+        #                'SRS': [False, '2.870', False, '2.840','0.001', '100', '2.940']}
+        # else:
+        #     self.mw = mwparams
+        # if awgparams == None:
+        #     self.awgparams = {'awg device': 'awg520', 'time resolution': 1, \
+        #                     'pulseshape': 'Square', 'enable IQ': False, 'iterate pulses': False, 'num pulses': 1}
+        # if pulseparams == None:
+        #     self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
+        #                         'phase': 0.0, 'skew phase': 0.0}
+        # if params == None:
+        #     self.parameters = [50000, 300, 1000, 10, 50, 820, 10]
                                 # should make into dictionary with keys 'sample', 'count time',
                                 # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
 
     def run(self):
-        # create files
-        samples = self.parameters[0]
-        delay = self.parameters[-2:]
-
-        enable_scan_pts = self.mw['PTS'][2]
-        do_enable_iq = self.awgparams['enable IQ']
-        npulses = self.pulseparams['num pulses']
-        if enable_scan_pts:
-            # we can scan frequency either using PTS or using the SB freq
-            #self.scan['type'] = 'frequency'
-            self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
-            # scan the frequency
-        # now create teh sequences
-        self.sequences = SequenceList(sequence=self.seq,delay=delay,pulseparams = self.pulseparams,scanparams = self.scan,
-                                      timeres=self.timeRes)
-        # write the files to the AWG520/sequencefiles directory
-        self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
-        self.awgfile.write_sequence(self.sequences,repeat = samples)
+        # ----------------- lines below commented out on 2021-02-07 to avoid writing to disk
+        # # create files
+        # samples = self.parameters[0]
+        # delay = self.parameters[-2:]
+        #
+        # enable_scan_pts = self.mw['PTS'][2]
+        # do_enable_iq = self.awgparams['enable IQ']
+        # npulses = self.pulseparams['num pulses']
+        # if enable_scan_pts:
+        #     # we can scan frequency either using PTS or using the SB freq
+        #     #self.scan['type'] = 'frequency'
+        #     self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
+        #     # scan the frequency
+        # # now create teh sequences
+        # self.sequences = SequenceList(sequence=self.seq,delay=delay,pulseparams = self.pulseparams,scanparams = self.scan,
+        #                               timeres=self.timeRes)
+        # # write the files to the AWG520/sequencefiles directory
+        # self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
+        # self.awgfile.write_sequence(self.sequences,repeat = samples)
+        # -----------------------------------------------------------------------------------------------
         # now upload the files
-        try:
-            if self.awgparamgs['device'] == 'awg520':
-                self.awgcomm = AWG520()
-                #self.awgcomm.setup(do_enable_iq) # pass the enable IQ flag otherwise the AWG will only use one channel
-                #  transfer all files to AWG
-                t = time.process_time()
-                for filename in os.listdir(dirPath):
-                    self.awgcomm.sendfile(filename, dirPath / filename)
-                transfer_time = time.process_time() - t
-                time.sleep(1)
-                self.logger.info('time elapsed for all files to be transferred is:{0:.3f}'.format(transfer_time))
-                self.awgcomm.cleanup()
-                self.done.emit()
-            else:
-                raise ValueError('AWG520 is the only AWG supported')
-        except ValueError as err:
-            self.logger.error('Value Error {0}'.format(err))
-        except RuntimeError as err:
-            self.logger.error('Run time error {0}'.format(err))
+        self.done.emit()
+        # uncomment these lines when you are ready to connect to the AWG --------------------------------------------
+        # try:
+        #     if self.awgparams['device'] == 'awg520':
+        #         # self.awgcomm = AWG520()
+        #         #  transfer all files to AWG
+        #         # t = time.process_time()
+        #         # for filename in os.listdir(self.dirPath):
+        #         #     self.awgcomm.sendfile(filename, self.dirPath / filename)
+        #         # transfer_time = time.process_time() - t
+        #         # time.sleep(1)
+        #         # self.logger.info('time elapsed for all files to be transferred is:{0:.3f} seconds'.format(
+        #         #     transfer_time))
+        #         # self.awgcomm.cleanup()
+        #         self.done.emit()
+        #     else:
+        #         raise ValueError('AWG520 is the only AWG supported')
+        # except ValueError as err:
+        #     self.logger.error('Value Error {0}'.format(err))
+        # except RuntimeError as err:
+        #     self.logger.error('Run time error {0}'.format(err))
+        #--------------------------------------------------------------------------------------------------------
 
 
 
