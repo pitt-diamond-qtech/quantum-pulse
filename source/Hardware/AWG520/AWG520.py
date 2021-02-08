@@ -398,7 +398,7 @@ here <chX_filename> is the wfm file name for the specified channel x (which can 
         <jump-timing> = JUMP_TIMING (SYNC | ASYNC) \r\n 
         <strobe> = STROBE <num> \r \n where <num> = 0 is off for using strobe from event in connector on rear, 1 is on.
          """
-
+@log_with(privatelogger)
 class AWGFile(object):
     def __init__(self,ftype='WFM',timeres=1,dirpath=saveawgfilepath):
         """This class will create and write files of sequences and sequencelists to the default sequencfiles

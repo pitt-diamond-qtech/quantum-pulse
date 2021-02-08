@@ -273,8 +273,8 @@ class appGUI(QtWidgets.QMainWindow):
         '''This function creates all the threads needed to carry out I/O with hardware. '''
         self.uThread = UploadThread()
         self.uThread.done.connect(self.uploadDone) # when the done signal is emitted we handle it using uploadDone
-        # self.sThread = ScanThread()
-        # self.sThread.data.connect(self.dataBack) # when data signal is emitted we handle using dataBack
+        self.sThread = ScanThread()
+        self.sThread.data.connect(self.dataBack) # when data signal is emitted we handle using dataBack
         # self.sThread.tracking.connect(self.trackingBack) # when tracking signal is emitted we handle using trackingback
         # self.kThread = KeepThread()
         # self.kThread.status.connect(self.keepStatus) # when status signal is emitted we handle using keepstatus
@@ -327,9 +327,9 @@ class appGUI(QtWidgets.QMainWindow):
 
         self.ui.lineEditThreshold.setText(str(self.parameters[4]))
         self.ui.lineEditAvgNum.setText(str(self.parameters[3]))
-        self.ui.lineEditScanStart.setText(str(self.scan[0]))
-        self.ui.lineEditScanStep.setText(str(self.scan[1]))
-        self.ui.lineEditScanNum.setText(str(self.scan[2]))
+        self.ui.lineEditScanStart.setText(str(self.scan['start']))
+        self.ui.lineEditScanStep.setText(str(self.scan['stepsize']))
+        self.ui.lineEditScanNum.setText(str(self.scan['steps']))
         self.updateScanStop()
 
         # microwave parameters: [use this or not, frequency (GHz), scan freq or not, start, step]
@@ -499,30 +499,32 @@ class appGUI(QtWidgets.QMainWindow):
         # Uploadthread do those things, we will need to uncomment lines that mark this block
 
         # we are now ready to upload the sequence file to awg
-        # self.uThread.seq = self.seq
-        # self.uThread.scan = self.scan
-        # self.uThread.parameters = self.parameters
-        # self.uThread.awgparams = self.awgparams
-        # self.uThread.pulseparams = self.pulseparams
+        self.uThread.seq = self.seq
+        self.uThread.scan = self.scan
+        self.uThread.parameters = self.parameters
+        self.uThread.awgparams = self.awgparams
+        self.uThread.pulseparams = self.pulseparams
+        self.uThread.mw=self.mw
+        self.uThread.timeRes=self.timeRes
         #--------------------------------------------------------------
         # and now comment out the lines below this block
-        # create files
-        samples = self.parameters[0]
-        delay = self.parameters[-2:]
-
-        enable_scan_pts = self.mw['PTS'][2]
-        if enable_scan_pts:
-            # we can scan frequency either using PTS or using the SB freq
-            # self.scan['type'] = 'frequency'
-            self.scan['type'] = 'no scan'  # this tells the SeqList class to simply put one sequence as the PTS will
-            # scan the frequency
-        # now create teh sequences
-        self.sequences = SequenceList(sequence=self.seq, delay=delay, pulseparams=self.pulseparams,
-                                      scanparams=self.scan,
-                                      timeres=self.timeRes)
-        # write the files to the AWG520/sequencefiles directory
-        self.awgfile = AWGFile(ftype='SEQ', timeres=self.timeRes)
-        self.awgfile.write_sequence(self.sequences, repeat=samples)
+        # # create files
+        # samples = self.parameters[0]
+        # delay = self.parameters[-2:]
+        #
+        # enable_scan_pts = self.mw['PTS'][2]
+        # if enable_scan_pts:
+        #     # we can scan frequency either using PTS or using the SB freq
+        #     # self.scan['type'] = 'frequency'
+        #     self.scan['type'] = 'no scan'  # this tells the SeqList class to simply put one sequence as the PTS will
+        #     # scan the frequency
+        # # now create teh sequences
+        # self.sequences = SequenceList(sequence=self.seq, delay=delay, pulseparams=self.pulseparams,
+        #                               scanparams=self.scan,
+        #                               timeres=self.timeRes)
+        # # write the files to the AWG520/sequencefiles directory
+        # self.awgfile = AWGFile(ftype='SEQ', timeres=self.timeRes)
+        # self.awgfile.write_sequence(self.sequences, repeat=samples)
         # ending here -----------------------------------------------------------
         # start the upload
         self.uThread.start()
@@ -606,17 +608,10 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.pushButtonStart.setEnabled(False)
         self.ui.pushButtonUpload.setEnabled(False)
         self.ui.checkBoxAutoSave.setEnabled(False)
-
-        self.tab_data = numpy.zeros((self.parameters[3], self.scan[2], 2), dtype=int)
-        self.raw_data = self.tab_data.reshape(1, self.parameters[3] * self.scan[2], 2)[0]
-        self.raw_data.fill(-1)
-        self.dataCount = 0
-        self.avgCount = 0
-
         numavgs = self.parameters[3]
         start = self.scan['start']
         step = self.scan['stepsize']
-        numsteps = self.scan['steps']
+        numsteps = int(self.scan['steps'])
         use_pts = self.mw['PTS'][0]
         enable_scan_pts = self.mw['PTS'][2]
         current_freq = self.mw['PTS'][1]
@@ -624,7 +619,14 @@ class appGUI(QtWidgets.QMainWindow):
         step_freq = self.mw['PTS'][4]
         num_freq_steps = self.mw['PTS'][5]
         stop_freq = self.mw['PTS'][6]
-        self.x_arr = list(range(1, self.scan[2] + 1))
+        self.tab_data = numpy.zeros((numavgs,numsteps, 2), dtype=int)
+        self.raw_data = self.tab_data.reshape(1, numavgs * numsteps, 2)[0]
+        self.raw_data.fill(-1)
+        self.dataCount = 0
+        self.avgCount = 0
+
+
+        self.x_arr = list(range(1, numsteps + 1))
         if use_pts and enable_scan_pts:  # if scanning PTS freq
             self.x_arr = numpy.arange(start_freq, start_freq + step_freq * num_freq_steps,
                                       step_freq) #[:self.scan[2]] this was from old code, not sure why
@@ -639,6 +641,9 @@ class appGUI(QtWidgets.QMainWindow):
         self.sThread.start()
 
     def getDataDir(self):
+
+        numsteps = int(self.scan['steps'])
+        numavgs = self.parameters[3]
         dir = Path('.')
         dir = 'D:\\AllData\\PulsedESR\\' + str(datetime.date.today())
         if not os.path.isdir(dir):
@@ -655,11 +660,11 @@ class appGUI(QtWidgets.QMainWindow):
         self.raw_data[self.dataCount] = [sig, ref]
         self.dataCount += 1
 
-        if self.dataCount % self.scan[2] == 0:
+        if self.dataCount % numsteps == 0:
             self.avgCount += 1
             if self.ui.checkBoxAutoSave.checkState():
                 f = open(self.dir, 'a')
-                for i in range(self.scan[2]):
+                for i in range(numsteps):
                     f.write(str(self.tab_data[self.avgCount - 1][i][0]) + '\t' + str(
                         self.tab_data[self.avgCount - 1][i][1]) + '\n')
                 f.close()
@@ -699,7 +704,7 @@ class appGUI(QtWidgets.QMainWindow):
 
         if self.dir != '':
             f = open(self.dir, 'a')
-            for i in range(self.avgCount * self.scan[2]):
+            for i in range(self.avgCount * numsteps):
                 f.write(str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\n')
             f.close()
 

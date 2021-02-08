@@ -17,7 +17,7 @@ _ARD_COM_PORT = 'COM13'
 _LOWFREQ_LIMIT = 1000000
 _HIGHFREQ_LIMIT = 3200000000
 _DEFAULT_POWER = 3.0
-import visa
+import pyvisa as visa
 import sys
 import math
 

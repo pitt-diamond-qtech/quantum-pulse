@@ -18,13 +18,14 @@
 
 from PyQt5 import QtCore
 from source.Hardware.AWG520 import AWG520
+from source.Hardware.AWG520.AWG520 import AWGFile
 from source.Hardware.AWG520.Sequence import Sequence,SequenceList
 from source.Hardware.PTS3200.PTS import PTS
 from source.Hardware.MCL.NanoDrive import MCL_NanoDrive
 from source.common.utils import log_with, create_logger,get_project_root
 import time,sys,multiprocessing
 import logging
-
+_PTS_PORT = 'COM3'   #---2021-02-09: new PTS com port
 
 import ADwin,os
 
@@ -107,47 +108,47 @@ class UploadThread(QtCore.QThread):
 
     def run(self):
         # ----------------- lines below commented out on 2021-02-07 to avoid writing to disk
-        # # create files
-        # samples = self.parameters[0]
-        # delay = self.parameters[-2:]
-        #
-        # enable_scan_pts = self.mw['PTS'][2]
-        # do_enable_iq = self.awgparams['enable IQ']
-        # npulses = self.pulseparams['num pulses']
-        # if enable_scan_pts:
-        #     # we can scan frequency either using PTS or using the SB freq
-        #     #self.scan['type'] = 'frequency'
-        #     self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
-        #     # scan the frequency
-        # # now create teh sequences
-        # self.sequences = SequenceList(sequence=self.seq,delay=delay,pulseparams = self.pulseparams,scanparams = self.scan,
-        #                               timeres=self.timeRes)
-        # # write the files to the AWG520/sequencefiles directory
-        # self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
-        # self.awgfile.write_sequence(self.sequences,repeat = samples)
+        # create files
+        samples = self.parameters[0]
+        delay = self.parameters[-2:]
+
+        enable_scan_pts = self.mw['PTS'][2]
+        do_enable_iq = self.awgparams['enable IQ']
+        npulses = self.pulseparams['num pulses']
+        if enable_scan_pts:
+            # we can scan frequency either using PTS or using the SB freq
+            #self.scan['type'] = 'frequency'
+            self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
+            # scan the frequency
+        # now create teh sequences
+        self.sequences = SequenceList(sequence=self.seq, delay=delay,pulseparams = self.pulseparams,scanparams = self.scan, timeres=self.timeRes)
+        # write the files to the AWG520/sequencefiles directory
+        self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
+        self.awgfile.write_sequence(self.sequences,repeat = samples)
         # -----------------------------------------------------------------------------------------------
         # now upload the files
-        self.done.emit()
+        # self.done.emit()
         # uncomment these lines when you are ready to connect to the AWG --------------------------------------------
-        # try:
-        #     if self.awgparams['device'] == 'awg520':
-        #         # self.awgcomm = AWG520()
-        #         #  transfer all files to AWG
-        #         # t = time.process_time()
-        #         # for filename in os.listdir(self.dirPath):
-        #         #     self.awgcomm.sendfile(filename, self.dirPath / filename)
-        #         # transfer_time = time.process_time() - t
-        #         # time.sleep(1)
-        #         # self.logger.info('time elapsed for all files to be transferred is:{0:.3f} seconds'.format(
-        #         #     transfer_time))
-        #         # self.awgcomm.cleanup()
-        #         self.done.emit()
-        #     else:
-        #         raise ValueError('AWG520 is the only AWG supported')
-        # except ValueError as err:
-        #     self.logger.error('Value Error {0}'.format(err))
-        # except RuntimeError as err:
-        #     self.logger.error('Run time error {0}'.format(err))
+        try:
+            if self.awgparams['awg device'] == 'awg520':
+                print("Upload OK!")
+                self.awgcomm = AWG520()
+                # transfer all files to AWG
+                t = time.process_time()
+                for filename in os.listdir(self.dirPath):
+                    self.awgcomm.sendfile(filename, self.dirPath / filename)
+                transfer_time = time.process_time() - t
+                time.sleep(1)
+                self.logger.info('time elapsed for all files to be transferred is:{0:.3f} seconds'.format(
+                    transfer_time))
+                self.awgcomm.cleanup()
+                self.done.emit()
+            else:
+                raise ValueError('AWG520 is the only AWG supported')
+        except ValueError as err:
+            self.logger.error('Value Error {0}'.format(err))
+        except RuntimeError as err:
+            self.logger.error('Run time error {0}'.format(err))
         #--------------------------------------------------------------------------------------------------------
 
 
@@ -200,26 +201,28 @@ class ScanThread(QtCore.QThread):
             # should make into dictionary with keys 'sample', 'count time',
             # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
 
+
     def run(self):
         self.scanning=True
         #self.proc_running=True
 
         self.p_conn,c_conn=multiprocessing.Pipe() # create parent and child connectors
         # give the process the child connector and all the params
-        self.proc = ScanProcess(conn = c_conn,params= self.parameters,mwparams=self.mw,scan=self.scan,
-                                awgparams=self.awgparams,maxcounts=self.maxcounts,timeRes=self.timeRes)
-        #self.proc.get_conn(c_conn)
+        #self.proc = ScanProcess(conn = c_conn,parameters= self.parameters,mwparams=self.mw,scan=self.scan,
+                                # awgparams=self.awgparams,maxcounts=self.maxcounts,timeRes=self.timeRes)
+        self.proc = ScanProcess()
+        self.proc.get_conn(c_conn)
         # pass the parameters to the process
-        # self.proc.parameters=self.parameters
+        self.proc.parameters=self.parameters
         # # pass the mw info
-        # self.proc.mw=self.mw
+        self.proc.mw=self.mw
         # # pass the scan info
-        # self.proc.scan=self.scan
+        self.proc.scan=self.scan
         # # pass the awg info
-        # self.proc.awg = self.awg
+        self.proc.awgparams = self.awgparams
         # # keep track of the maxcounts
         # self.maxcounts = maxcounts
-        # self.proc.maxcounts=self.maxcounts
+        self.proc.maxcounts=self.maxcounts
         # start the scan process
         self.proc.start()
         # TODO: verify whether proc.join() is needed here
@@ -250,40 +253,54 @@ class ScanThread(QtCore.QThread):
 class Abort(Exception):
     pass
 
-@log_with(modlogger)
+
 class ScanProcess(multiprocessing.Process):
     """This is where teh scanning actually happens. It inherits nearly all the same params as the ScanThread, except for
     one more parameter: conn which is the child connector of the Pipe used to communicate to ScanThread."""
-    def __init__(self,parent=None, conn = None,scan = None,params = None,awgparams = None,pulseparams = None,mwparams =
-    None, timeRes = 1,maxcounts=100):
+    # def __init__(self,parent=None, conn = None,scan = None,parameters = None,awgparams = None,pulseparams = None,
+    #              mwparams =None, timeRes = 1,maxcounts=100):
+    #     super().__init__(parent)
+    #     self.timeRes = timeRes
+    #     self.maxcounts = maxcounts
+    #     self.logger = logging.getLogger('threadlogger.scanThread.scanproc')
+    #     if scan == None:
+    #         self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
+    #     else:
+    #         self.scan = scan
+    #     if mwparams == None:
+    #         self.mw = {'PTS': [True, '2.870', False, '2.840', '0.001', '100', '2.940'], \
+    #                    'SRS': [False, '2.870', False, '2.840', '0.001', '100', '2.940']}
+    #     else:
+    #         self.mw = mwparams
+    #     if awgparams == None:
+    #         self.awgparams = {'awg device': 'awg520', 'time resolution': 1, \
+    #                           'pulseshape': 'Square', 'enable IQ': False}
+    #     else:
+    #         self.awgparams = awgparams
+    #     if pulseparams == None:
+    #         self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
+    #                             'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
+    #     else:
+    #         self.pulseparams = pulseparams
+    #     if parameters == None:
+    #         self.parameters = [50000, 300, 1000, 10, 50, 820, 10]
+    #     else:
+    #         self.parameters = parameters
+    #
+    #         # should make into dictionary with keys 'sample', 'count time',
+    #         # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
+    #     self.conn = conn
+    #     self.scanning = False
+    #     self.initialize()
+    def __init__(self,parent=None):
         super().__init__(parent)
-        self.timeRes = timeRes
-        self.maxcounts = maxcounts
-        self.logger = logging.getLogger('threadlogger.scanThread.scanproc')
-        if scan == None:
-            self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
-        else:
-            self.scan = scan
-        if mwparams == None:
-            self.mw = {'PTS': [True, '2.870', False, '2.840', '0.001', '100', '2.940'], \
-                       'SRS': [False, '2.870', False, '2.840', '0.001', '100', '2.940']}
-        else:
-            self.mw = mwparams
-        if awgparams == None:
-            self.awgparams = {'awg device': 'awg520', 'time resolution': 1, \
-                              'pulseshape': 'Square', 'enable IQ': False}
-        if pulseparams == None:
-            self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
-                                'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
-        if params == None:
-            self.parameters = [50000, 300, 1000, 10, 50, 820, 10]
-            # should make into dictionary with keys 'sample', 'count time',
-            # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
+        self.logger = logging.getLogger('threadlogger.scanproc')
+
+    def get_conn(self, conn):
         self.conn = conn
         self.scanning = False
-        self.initialize()
 
-
+    #@log_with(modlogger)
     def initialize(self):
         # for some reason the initialization was not previously carried out in an __Init__ , at first i didnt't want to change this at the moment
         # since it was working with the hardware. But will give it a try
@@ -292,16 +309,16 @@ class ScanProcess(multiprocessing.Process):
         samples = self.parameters[0]
         threshold = self.parameters[4]
         numavgs = self.parameters[3]
-        start = self.scan['start']
-        step = self.scan['stepsize']
-        numsteps = self.scan['steps']
+        start = float(self.scan['start'])
+        step = float(self.scan['stepsize'])
+        numsteps = int(self.scan['steps'])
         use_pts = self.mw['PTS'][0]
         enable_scan_pts = self.mw['PTS'][2]
-        current_freq = self.mw['PTS'][1]
-        start_freq = self.mw['PTS'][3]
-        step_freq = self.mw['PTS'][4]
-        num_freq_steps = self.mw['PTS'][5]
-        stop_freq = self.mw['PTS'][6]
+        current_freq = float(self.mw['PTS'][1])
+        start_freq = float(self.mw['PTS'][3])
+        step_freq = float(self.mw['PTS'][4])
+        num_freq_steps = float(self.mw['PTS'][5])
+        stop_freq = float(self.mw['PTS'][6])
         do_enable_iq = self.awgparams['enable IQ']
         self.adw = ADwin.ADwin()
         try:
@@ -335,7 +352,7 @@ class ScanProcess(multiprocessing.Process):
 
         # initialize the PTS and output the current frequency
         if use_pts:
-            self.pts = PTS()
+            self.pts = PTS(_PTS_PORT)
             self.pts.write(int(current_freq * _MHZ))
         else:
             self.logger.error('No microwave synthesizer selected')
@@ -344,27 +361,31 @@ class ScanProcess(multiprocessing.Process):
         self.awgcomm.run()  # places the AWG into enhanced run mode.
         time.sleep(0.2)
 
-
+    #@log_with(modlogger)
     def run(self):
         self.scanning=True
-        #self.initialize() # why is initialize called in run? it would seem best to initialize hardware first
+        self.initialize() # why is initialize called in run? it would seem best to initialize hardware first
+        count_time = self.parameters[1]
+        reset_time = self.parameters[2]
+        samples = self.parameters[0]
+        threshold = self.parameters[4]
         numavgs = self.parameters[3]
-        start = self.scan['start']
-        step = self.scan['stepsize']
-        numsteps = self.scan['steps']
+        start = float(self.scan['start'])
+        step = float(self.scan['stepsize'])
+        numsteps = int(self.scan['steps'])
         use_pts = self.mw['PTS'][0]
         enable_scan_pts = self.mw['PTS'][2]
-        current_freq = self.mw['PTS'][1]
-        start_freq = self.mw['PTS'][3]
-        step_freq = self.mw['PTS'][4]
-        num_freq_steps = self.mw['PTS'][5]
-        stop_freq = self.mw['PTS'][6]
+        current_freq = float(self.mw['PTS'][1])
+        start_freq = float(self.mw['PTS'][3])
+        step_freq = float(self.mw['PTS'][4])
+        num_freq_steps = float(self.mw['PTS'][5])
+        stop_freq = float(self.mw['PTS'][6])
         do_enable_iq = self.awgparams['enable IQ']
         # TODO: this is still a bit ugly but because I moved the number of pulses to be scanned into pulseparams
         # TODO: I need to check if the iterate pulses is on.
         # TODO: maybe simples if in the main GUI i simply replace the scan line edits and do strict type checking in the app
         # TODO: above todo is now nearly implemented but keeping it here jic i forgot something.
-        npulses = self.pulseparams['numpulses']
+        # npulses = self.pulseparams['numpulses']
         if enable_scan_pts:
             # we can scan frequency either using PTS or using the SB freq, but if we are scanning a wide range using
             # the PTS we must simply output the sequence specified by user on the AWG.
@@ -416,9 +437,8 @@ class ScanProcess(multiprocessing.Process):
             self.conn.send('Abort!')
             
         self.cleanup()
-        
 
-    
+    #@log_with(modlogger)
     def getData(self,x,*args):
         '''This is the main function that gets the data from teh Adwin.
         to understand the code, it helps to know that the AWGFile class that was used to upload the sequences first
