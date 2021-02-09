@@ -398,15 +398,14 @@ here <chX_filename> is the wfm file name for the specified channel x (which can 
         <jump-timing> = JUMP_TIMING (SYNC | ASYNC) \r\n 
         <strobe> = STROBE <num> \r \n where <num> = 0 is off for using strobe from event in connector on rear, 1 is on.
          """
-
+@log_with(privatelogger)
 class AWGFile(object):
-    def __init__(self,sequence = None,sequencelist = None,ftype='WFM',timeres=1,dirpath=saveawgfilepath):
+    def __init__(self,ftype='WFM',timeres=1,dirpath=saveawgfilepath):
         """This class will create and write files of sequences and sequencelists to the default sequencfiles
         directory specified. Args are:
-        1. sequence: an object of Sequence type. If you don't specify any, a default sequence is used.
-        2. sequencelist: an object of Sequencelist type. If you don't specify any, a default seqlist is used
-        3. ftype: can be either WFM or SEQ indicating which one you want to write
-        4. timeres: clock rate in ns.
+        1. ftype: can be either WFM or SEQ indicating which one you want to write
+        2. timeres: clock rate in ns.
+        3. dirpath: directory to write the files
          """
         # first we clear out the directory
         self.dirpath = dirpath  # will normally write to sequencefiles directory, change this after initialization if
@@ -420,32 +419,8 @@ class AWGFile(object):
         self.logger = logging.getLogger('awg520private.awg520_file')
         self.wfmheader = b'MAGIC 1000 \r\n'
         self.seqheader = b'MAGIC 3002 \r\n'
-        # default params if no sequence object is given
-        newpulseparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
-                     'skew phase': 0.0, 'num pulses': 1}
-        delay = [820,10]
-        seq = [['S2', '1000', '1400'], ['Wave', '1000', '1400', 'Sech'], ['Green', '1400', '3400']]
+        self.ftype = ftype
         self.timeres = timeres
-
-        if ftype == 'WFM':
-            self.sequencelist = None
-            if sequence == None:
-                self.sequence = Sequence(seq, pulseparams=newpulseparams, timeres=1)
-            else:
-                self.sequence = sequence
-            self.sequence.create_sequence()
-        elif ftype == 'SEQ':
-            self.sequence = None
-            if sequencelist == None:
-                newscanparams = {'type': 'amplitude', 'start': 0, 'stepsize': 10, 'steps': 1}
-                self.sequences = SequenceList(sequence=seq,delay=delay,scanparams = newscanparams,
-                    pulseparams=newpulseparams,timeres=1)
-            else:
-                self.sequences = sequencelist
-            self.sequences.create_sequence_list()
-        else:
-            self.logger.error('AWG File type has to be either WFM or SEQ')
-            raise ValueError('AWG File type has to be either WFM or SEQ')
 
         self.logger.info("Initializing AWG File instance of type:{0}".format(ftype))
 
@@ -472,6 +447,7 @@ class AWGFile(object):
             wfmlen = len(iqdata)
             if wfmlen >= _WFM_MEMORY_LIMIT:
                 raise ValueError('Waveform memory limit exceeded')
+                #TODO: perhaps i should implement rewrite the data using a smaller clock rate
             elif wfmlen == len(marker):
                 # analog I/Q data converted to 4 byte float, marker to 1 byte , both little-endian
                 record = struct.pack('<fb', iqdata[0], marker[0])
@@ -493,23 +469,38 @@ class AWGFile(object):
             return (None,None,None)
 
 
-    def write_waveform(self, wavename, channelnum, wavedata,markerdata):
+    def write_waveform(self, sequence:Sequence=None, wavename='0', channelnum=1):
         '''This function writes a new waveform file. the args are:
+            sequence: an object of type sequence which has already been created with the data
             wavename: str describing the type of wfm, usually just a number
             channelnum: which channel to use for I/Q and the marker
-            wavedata: the I/Q data, a single array of floats
-            markerdata: the marker data, a single array of ints
         '''
+
         try:
-            wfmfilename =  str(wavename)+'_'+str(channelnum)+str('.wfm')
-            with open(self.dirpath/wfmfilename,'wb') as wfile:
-                wfile.write(self.wfmheader)
-                nbytes, rsize, record = self.binarymaker(wavedata, markerdata)
-                # next line converts nbytes to a str, and then finds number of digits in str and writes it to file as a str
-                nbytestr = '#' + str(len(str(nbytes))) + str(nbytes)
-                wfile.write(nbytestr.encode())
-                wfile.write(record)
-                wfile.write(self.maketrailer())
+            if not sequence:
+                self.logger.error("Invalid sequence or no sequence object given")
+                raise ValueError("Invalid sequence or no sequence object given")
+            else:
+                #sequence.create_sequence() # removed this since we assume data has already been created in sequence obj
+                if channelnum == 1:
+                    markerdata = sequence.c1markerdata
+                    wavedata = sequence.wavedata[0]
+                elif channelnum == 2:
+                    markerdata = sequence.c2markerdata
+                    wavedata = sequence.wavedata[1]
+                else:
+                    raise ValueError("channel number can only be 1 or 2")
+                fname = str(wavename)+'_'+str(channelnum)+str('.wfm')
+                wfmfilename =  Path(self.dirpath / fname)
+                #print(str(wfmfilename))
+                with open(wfmfilename,'wb') as wfile:
+                    wfile.write(self.wfmheader)
+                    nbytes, rsize, record = self.binarymaker(wavedata, markerdata)
+                    # next line converts nbytes to a str, and then finds number of digits in str and writes it to file as a str
+                    nbytestr = '#' + str(len(str(nbytes))) + str(nbytes)
+                    wfile.write(nbytestr.encode())
+                    wfile.write(record)
+                    wfile.write(self.maketrailer())
         except (IOError,ValueError) as error:
             # sys.stderr.write(sys.exc_info())
             # sys.stderr.write(error.message+'\n')
@@ -517,9 +508,10 @@ class AWGFile(object):
             self.logger.error("Error occurred in either file I/O or data provided:{0}".format(error))
             raise
 
-    def write_sequence(self, seqfilename = 'scan.seq', repeat=50000):
+    def write_sequence(self, sequences:SequenceList=None,seqfilename = 'scan.seq', repeat=50000):
         '''This function takes in a list of sequences generated by the class SequenceList
         The args are:
+        sequencelist: list of sequences generated by the object of type SequenceList
         seqfilename: str with seq file name to be written
         repeat: number of repetitions of each waveform
         timeres: clock rate
@@ -527,45 +519,54 @@ class AWGFile(object):
         It first creates an arm_sequence which is the laser being on and then writes the rest of the sequences that
         are in the sequences object to files.
         '''
-
-        slist = self.sequences.sequencelist # list of sequences
-        wfmlen = len(slist[0].c1markerdata) # get the length of the waveform in the first sequence
-        scanlen = len(slist)
-        # c1m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
-        # c2m1 = np.zeros(wfmlen,dtype=_MARKTYPE)
-        # wave = np.zeros((2,wfmlen),dtype = _IQTYPE)
-        # first create an empty waveform in channel 1 and 2 but turn on the green laser
-        # so that measurements can start after a trigger is received.
-        arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
-        arm_sequence.create_sequence()
-        self.write_waveform('0', 1, arm_sequence.wavedata[0,:], arm_sequence.c1markerdata)
-        self.write_waveform('0', 2, arm_sequence.wavedata[1,:], arm_sequence.c2markerdata)
-        # create scan.seq file
         try:
-            with open(self.dirpath / seqfilename, 'wb') as sfile:
-                sfile.write(self.seqheader)
-                temp_str = 'LINES ' + str(scanlen + 1) + '\r\n'
-                sfile.write(temp_str.encode()) # have to convert to binary format
-                temp_str = '"0_1.wfm","0_2.wfm",0,1,0,0\r\n' # the arm sequence will be loaded and will wait for trigger
-                sfile.write(temp_str.encode())
-                for i in list(range(scanlen)):
-                    # now we take each sequence in the slist arry and write it to a wfm file with the name given by
-                    # "i+1_1.wfm and i+1_2.wfm
-                    self.write_waveform('' + str(i + 1), 1, slist[i].wavedata[0, :], slist[i].c1markerdata)
-                    self.write_waveform('' + str(i + 1), 2, slist[i].wavedata[1, :], \
-                        slist[i].c2markerdata)
-                    # the scan.seq file is now updated to execute those 2 wfms for repeat number of times and wait
-                    # for a trigger to move to the next point.
-                    linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(repeat) \
-                              + ',1,0,0\r\n'
-                    sfile.write(linestr.encode())
-                sfile.write(b'JUMP_MODE SOFTWARE\r\n') # tells the AWG that jump trigger is controlled by the computer.
-        except (IOError, ValueError) as error:
-            # sys.stderr.write(sys.exc_info())
-            # sys.stderr.write(error.message+'\n')
+            if not sequences:
+                self.logger.error("Invalid sequence or no sequence object given")
+                raise ValueError("Invalid sequencelist  or no sequencelist object given")
+            else:
+                sequences.create_sequence_list()
+                slist = sequences.sequencelist # list of sequences
+                wfmlen = len(slist[0].c1markerdata) # get the length of the waveform in the first sequence
+                scanlen = len(slist)
+
+                # first create an empty waveform in channel 1 and 2 but turn on the green laser
+                # so that measurements can start after a trigger is received.
+                arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
+                arm_sequence.create_sequence()
+                self.write_waveform(arm_sequence,'0', 1)
+                self.write_waveform(arm_sequence,'0', 2)
+                # create scan.seq file
+                try:
+                    fname  = Path(self.dirpath / seqfilename)
+                    with open(fname, 'wb') as sfile:
+                        sfile.write(self.seqheader)
+                        temp_str = 'LINES ' + str(scanlen + 1) + '\r\n'
+                        sfile.write(temp_str.encode()) # have to convert to binary format
+                        temp_str = '"0_1.wfm","0_2.wfm",0,1,0,0\r\n' # the arm sequence will be loaded and will wait for trigger
+                        sfile.write(temp_str.encode())
+                        for i in list(range(scanlen)):
+                            # now we take each sequence in the slist arry and write it to a wfm file with the name given by
+                            # "i+1_1.wfm and i+1_2.wfm
+                            self.write_waveform(slist[i],'' + str(i + 1), 1)
+                            self.write_waveform(slist[i],'' + str(i + 1), 2)
+                            # the scan.seq file is now updated to execute those 2 wfms for repeat number of times and wait
+                            # for a trigger to move to the next point.
+                            linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(repeat) \
+                                      + ',1,0,0\r\n'
+                            sfile.write(linestr.encode())
+                        sfile.write(b'JUMP_MODE SOFTWARE\r\n') # tells the AWG that jump trigger is controlled by the computer.
+                except (IOError, ValueError) as error:
+                    # sys.stderr.write(sys.exc_info())
+                    # sys.stderr.write(error.message+'\n')
+                    self.logger.error(sys.exc_info())
+                    self.logger.error("Error occurred in either file I/O or data conversion:{0}".format(error))
+                    raise
+        except (ValueError) as error:
             self.logger.error(sys.exc_info())
-            self.logger.error("Error occurred in either file I/O or data conversion:{0}".format(error))
             raise
+
+
+
 
     def setwaveform(self, wavenum, wavedata,markerdata):
         pass

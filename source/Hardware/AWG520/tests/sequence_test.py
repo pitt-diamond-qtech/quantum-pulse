@@ -73,5 +73,5 @@ def test_seq_list():
 
 if __name__ == '__main__':
     #test_sequence()
-    #test_seq_list()
-    make_long_seq()
+    test_seq_list()
+    #make_long_seq()
