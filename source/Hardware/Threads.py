@@ -124,7 +124,7 @@ class UploadThread(QtCore.QThread):
         self.sequences = SequenceList(sequence=self.seq, delay=delay,pulseparams = self.pulseparams,scanparams = self.scan, timeres=self.timeRes)
         # write the files to the AWG520/sequencefiles directory
         self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
-        self.awgfile.write_sequence(self.sequences,repeat = samples)
+        self.awgfile.write_sequence(sequences=self.sequences,seqfilename="scan.seq",repeat= samples)
         # -----------------------------------------------------------------------------------------------
         # now upload the files
         # self.done.emit()
@@ -357,7 +357,9 @@ class ScanProcess(multiprocessing.Process):
         else:
             self.logger.error('No microwave synthesizer selected')
         self.awgcomm = AWG520()
-        self.awgcomm.setup(do_enable_iq)  # removed the setup of AWG in Upload thread, so do it now.
+        self.awgcomm.setup(enable_iq=True, seqfilename="scan.seq")  #removed the setup of AWG in Upload thread,
+        # so do it now.
+        time.sleep(0.2)
         self.awgcomm.run()  # places the AWG into enhanced run mode.
         time.sleep(0.2)
 
@@ -398,7 +400,7 @@ class ScanProcess(multiprocessing.Process):
         try:
             for avg in list(range(numavgs)): # we will keep scanning for this many averages
                 self.awgcomm.trigger() # trigger the awg for the arm sequence which turns on the laser.
-                time.sleep(0.1) # Not sure why but shorter wait time causes problem.
+                time.sleep(0.2) # Not sure why but shorter wait time causes problem.
                 for x in list(range(num_scan_points)):
                     self.logger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(
                         avg,numavgs,x,num_scan_points))

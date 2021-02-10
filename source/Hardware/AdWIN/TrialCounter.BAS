@@ -1,14 +1,15 @@
 '<ADbasic Header, Headerversion 001.001>
-' Process_Number                 = 2
+' Process_Number                 = 1
 ' Initial_Processdelay           = 300000000
 ' Eventsource                    = External
 ' Control_long_Delays_for_Stop   = No
 ' Priority                       = High
 ' Version                        = 1
-' ADbasic_Version                = 5.0.8
+' ADbasic_Version                = 6.3.0
 ' Optimize                       = Yes
 ' Optimize_Level                 = 1
-' Info_Last_Save                 = DUTTLAB8  Duttlab8\Kai
+' Stacksize                      = 1000
+' Info_Last_Save                 = DUTTLAB8  Duttlab8\Duttlab
 '<Header End>
 ' TrialCounter.bas
 

@@ -108,7 +108,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.maxcounts = 0
 
     def init_seq_text_box(self):
-        f = open('./SeqDesigns/simple.txt')
+        f = open('./SeqDesigns/rabi.txt')
         list_of_strings = f.readlines()
         # start_text = 'S2,1000,1300\nGreen,2300,5300\nMeasure,2300,2400'
         dummy_seq = ''
@@ -585,8 +585,8 @@ class appGUI(QtWidgets.QMainWindow):
         for (idx, line) in list(enumerate(b_all_lines)):
             wfm = line.split(',')
             self.seq.append(wfm)
-            b_all_lines[idx:idx] = [wfm]
-        self.seq = self.seq[:-1]
+            #b_all_lines[idx:idx] = [wfm]
+        #self.seq = self.seq[:-1]
         print('text box converted to',self.seq)
 
         # new_stext = ''

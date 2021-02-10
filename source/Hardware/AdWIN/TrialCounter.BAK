@@ -13,8 +13,6 @@
 ' TrialCounter.bas
 
 #Include ADwinGoldII.inc
-DIM Data_1[1000] as LONG
-DIM index as LONG
 
 
 init:
@@ -22,12 +20,11 @@ init:
   Cnt_Clear(1)           ' Clear counter 1
   Cnt_Mode(1,8)          ' Counter input external
   Cnt_Enable(1)         ' enable counter 1
-  index = 0
 
 
 
 event:
-  Data_1[index] = Cnt_Read(1)
+  par_1 = Cnt_Read(1)
   Cnt_Clear(1)
 
 

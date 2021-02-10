@@ -533,8 +533,8 @@ class AWGFile(object):
                 # so that measurements can start after a trigger is received.
                 arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
                 arm_sequence.create_sequence()
-                self.write_waveform(arm_sequence,'0', 1)
-                self.write_waveform(arm_sequence,'0', 2)
+                self.write_waveform(arm_sequence,'arm', 1)
+                self.write_waveform(arm_sequence,'arm', 2)
                 # create scan.seq file
                 try:
                     fname  = Path(self.dirpath / seqfilename)
@@ -542,17 +542,18 @@ class AWGFile(object):
                         sfile.write(self.seqheader)
                         temp_str = 'LINES ' + str(scanlen + 1) + '\r\n'
                         sfile.write(temp_str.encode()) # have to convert to binary format
-                        temp_str = '"0_1.wfm","0_2.wfm",0,1,0,0\r\n' # the arm sequence will be loaded and will wait for trigger
+                        temp_str = '"arm_1.wfm","arm_2.wfm",0,1,0,0\r\n' # the arm sequence will be loaded and will
+                        # wait
+                        # for trigger
                         sfile.write(temp_str.encode())
                         for i in list(range(scanlen)):
                             # now we take each sequence in the slist arry and write it to a wfm file with the name given by
                             # "i+1_1.wfm and i+1_2.wfm
-                            self.write_waveform(slist[i],'' + str(i + 1), 1)
-                            self.write_waveform(slist[i],'' + str(i + 1), 2)
+                            self.write_waveform(slist[i],''+str(i + 1), 1)
+                            self.write_waveform(slist[i],''+str(i + 1), 2)
                             # the scan.seq file is now updated to execute those 2 wfms for repeat number of times and wait
                             # for a trigger to move to the next point.
-                            linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(repeat) \
-                                      + ',1,0,0\r\n'
+                            linestr = '"'+str(i + 1)+'_1.wfm"'+','+'"'+str(i + 1)+'_2.wfm"'+','+str(repeat)+',1,0,0\r\n'
                             sfile.write(linestr.encode())
                         sfile.write(b'JUMP_MODE SOFTWARE\r\n') # tells the AWG that jump trigger is controlled by the computer.
                 except (IOError, ValueError) as error:
