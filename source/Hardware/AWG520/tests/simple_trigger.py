@@ -37,7 +37,7 @@ avg=0
 
 sourcedir = get_project_root()
 #print(sourcedir)
-dirPath = sourcedir / 'Hardware/AWG520/tests/sequencefiles/' # remove the tests part of the string later
+dirPath = Path(sourcedir / 'Hardware/AWG520/tests/sequencefiles/') # remove the tests part of the string later
 #print(dirPath)
 
 def write_trigger_sequence(dwell_time,numsteps,tres):
@@ -96,64 +96,73 @@ def write_trigger_sequence(dwell_time,numsteps,tres):
         sys.stderr.write(sys.exc_info())
         sys.stderr.write(error.message+'\n')
 
-def write_list_sequence(dwell_time,numsteps,tres):
+def write_list_sequence(tres=1):
     # the strings needed to make the sequence
-    tstartstr = str(int(100/tres))
-    tstopstr = str(int(0.5 * dwell_time / (tres * _ns)))
-    greenstopstr = str(int(dwell_time / (tres * _ns)))
-    seqfilename = dirPath/'odmr_trigger.seq' # filename for sequences
-    # create a sequence where measure is on for 1/2 dwell time, and then turns off, but green remains on throughout
-    # the adwin will measure till it receives the next positive edge and then latch
-    seq = [['Measure', tstartstr, tstopstr], ['Green', tstartstr, greenstopstr]]
-    # params = {'type':'number','start': 1, 'stepsize': 1, 'steps': steps-1}
-    s = Sequence(seq, timeres=tres)
-    s.create_sequence()
+    seq = [['S2','1000','1010+t'],['Green','1050+t','4050+t'],['Measure','1080+t','1180+t']]
+    delay = [820,10]
+    pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,'phase': 0.0, 'skew phase': 0.0}
+    scan = dict([('type', 'time'), ('start', '10'), ('stepsize', '10'), ('steps', '9')])
+    seqlist = SequenceList(sequence=seq, delay=delay, pulseparams=pulseparams, scanparams=scan,timeres=tres)
     # this part here is not necessary in the actual program, I am just using it to check that the above sequence will do
     # what I want it to do
     # tt = np.linspace(0, s.maxend, len(s.c1markerdata))
     # plt.plot(tt, s.wavedata[0, :], 'r-', tt, s.wavedata[1, :], 'b-', tt, s.c1markerdata, 'g--', tt, s.c2markerdata,
     #          'y-')
     # plt.show()
-    # this is the section where I actually write the waveform to a file,  to repeat it for numsteps,
-    # and then wait to receive a software trigger from the Pc before doing it again
-    awgfile = AWGFile(s,timeres=tres,dirpath=dirPath)
-
-    awgfile.write_waveform(s,'trig',1)
-    awgfile.write_waveform(s,'trig',2)
-    wfmlen = len(s.c2markerdata)
-
-    # first create an empty waveform in channel 1 and 2 but turn on the green laser
-    # so that measurements can start after a trigger is received.
-    arm_sequence = Sequence([['Green', '0', str(wfmlen)]], timeres=tres)
-    arm_sequence.create_sequence()
-    awgfile.write_waveform(arm_sequence,'arm', 1)
-    awgfile.write_waveform(arm_sequence,'arm', 2)
-
-    # now we create a sequence file that will be loaded to the AWG
+    # this is the section where I actually write the waveform to a file,
+    awgfile = AWGFile(ftype='SEQ',timeres=tres,dirpath=dirPath)
+    # awgfile.write_sequence(sequences=seqlist,seqfilename="scan.seq", repeat=10000)
+    # instead of using the awgfile write_sequence function above, will do it explicitly here to test
     try:
-        with open(seqfilename,'wb') as sfile:
-            sfile.write(awgfile.seqheader)
-            temp_str = 'LINES ' + str(2) + '\r\n' # there are only 2 lines in this file
-            sfile.write(temp_str.encode()) # have to convert to binary format
-            temp_str = '"arm_1.wfm","arm_2.wfm",0,1,0,0\r\n' # the arm sequence will be loaded and will keep
-            # repeating and wait for the software trigger from the PC
-            sfile.write(temp_str.encode())
-            # the trig wfm is repeated numsteps
-            # 2020-01-04: after lot of experimenting with Arduino code it appears that interrupt of the arduino is
-            # unable to accept fast triggers, i.e. it does not work if the triggers have 1 ms spacing, but works if
-            # they have 10 ms spacing. So we have decided not to mess with it, and instead simply to use the old
-            # arduino code where all timing comes from the arduino itself but require that it takes one trigger from
-            # the  AWG to start a scan
-            linestr= '"trig_1.wfm","trig_2.wfm",' + str(1) +',1,0,0\r\n'
-            sfile.write(linestr.encode())
-            sfile.write(b'JUMP_MODE SOFTWARE\r\n') # tells awg to wait for a software trigger
-    except (IOError,ValueError) as error:
-        # replace these with logger writes, but for now just send any errors to stderr
+        if not seqlist:
+            self.logger.error("Invalid sequence or no sequence object given")
+            raise ValueError("Invalid sequencelist  or no sequencelist object given")
+        else:
+            seqlist.create_sequence_list()
+            slist = seqlist.sequencelist  # list of sequences
+            wfmlen = len(slist[0].c1markerdata)  # get the length of the waveform in the first sequence
+            scanlen = len(slist)
+
+            # first create an empty waveform in channel 1 and 2 but turn on the green laser
+            # so that measurements can start after a trigger is received.
+            arm_sequence = Sequence([['Green', '0', str(wfmlen)]], timeres=self.timeres)
+            arm_sequence.create_sequence()
+            awgfile.write_waveform(arm_sequence, 'arm', 1)
+            awgfile.write_waveform(arm_sequence, 'arm', 2)
+            # create scan.seq file
+            try:
+                fname = Path(dirPath/ 'scan.seq')
+                with open(fname, 'wb') as sfile:
+                    sfile.write(awgfile.seqheader)
+                    temp_str = 'LINES ' + str(scanlen + 1) + '\r\n'
+                    sfile.write(temp_str.encode())  # have to convert to binary format
+                    temp_str = '"arm_1.wfm","arm_2.wfm",0,1,0,0\r\n'  # the arm sequence will be loaded and will wait
+                    # for trigger
+                    sfile.write(temp_str.encode())
+                    for i in list(range(scanlen)):
+                        # now we take each sequence in the slist arry and write it to a wfm file with the name given by
+                        # "i+1_1.wfm and i+1_2.wfm
+                        awgfile.write_waveform(slist[i], '' + str(i + 1), 1)
+                        awgfile.write_waveform(slist[i], '' + str(i + 1), 2)
+                        # the scan.seq file is now updated to execute those 2 wfms for repeat number of times and wait
+                        # for a trigger to move to the next point.
+                        linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(
+                            repeat) + ',1,0,0\r\n'
+                        sfile.write(linestr.encode())
+                    sfile.write(
+                        b'JUMP_MODE SOFTWARE\r\n')  # tells the AWG that jump trigger is controlled by the computer.
+            except (IOError, ValueError) as error:
+                # sys.stderr.write(sys.exc_info())
+                # sys.stderr.write(error.message+'\n')
+                sys.stderr.write(sys.exc_info())
+                sys.stderr.write("Error occurred in either file I/O or data conversion:{0}".format(error))
+                raise
+    except:
         sys.stderr.write(sys.exc_info())
-        sys.stderr.write(error.message+'\n')
+        raise
 
 
-def upload_trigger_seq(seqdir):
+def upload_sequence(seqdir):
     # here comes the section where I actually communicate to the AWG and upload the files
     try:
         awg = AWG520()
@@ -264,6 +273,8 @@ def read_adwin(awg, adw, rm, arduino, nor,dwell):
     # rm.close()
 
 if __name__ == '__main__':
-    write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
-    upload_trigger_seq(seqdir=dirPath)
+    #write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
+    write_list_sequence(tres=1)
+    upload_sequence(seqdir=dirPath)
+
     # getdata(10)
