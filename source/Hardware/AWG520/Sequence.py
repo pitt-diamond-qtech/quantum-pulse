@@ -36,7 +36,7 @@ _WAVE = 'Wave'  # channel 1 and 2, analog I/Q data
 _BLANK = 'Blank' # new keyword which turns off all channels, to be implemented
 _FULL = 'Full' # new keyword which turns on all channels high, to be implemented
 # dictionary of connections from marker channels to devices,
-_CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 2}
+_CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 
 _DAC_UPPER = 1024.0  # DAC has only 1024 levels
 _DAC_MID = 512
