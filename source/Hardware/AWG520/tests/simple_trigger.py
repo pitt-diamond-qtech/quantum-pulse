@@ -97,11 +97,13 @@ def write_trigger_sequence(dwell_time,numsteps,tres):
         sys.stderr.write(error.message+'\n')
 
 def write_list_sequence(tres=1):
+    repeat=15
     # the strings needed to make the sequence
     seq = [['S2','1000','1010+t'],['Green','1050+t','4050+t'],['Measure','1080+t','1180+t']]
     delay = [820,10]
-    pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,'phase': 0.0, 'skew phase': 0.0}
-    scan = dict([('type', 'time'), ('start', '10'), ('stepsize', '10'), ('steps', '9')])
+    pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,'phase': 0.0,
+                   'skew phase': 0.0, 'num pulses': 1}
+    scan = dict([('type', 'time'), ('start', 10), ('stepsize', 10), ('steps', 9)])
     seqlist = SequenceList(sequence=seq, delay=delay, pulseparams=pulseparams, scanparams=scan,timeres=tres)
     # this part here is not necessary in the actual program, I am just using it to check that the above sequence will do
     # what I want it to do
@@ -125,7 +127,7 @@ def write_list_sequence(tres=1):
 
             # first create an empty waveform in channel 1 and 2 but turn on the green laser
             # so that measurements can start after a trigger is received.
-            arm_sequence = Sequence([['Green', '0', str(wfmlen)]], timeres=self.timeres)
+            arm_sequence = Sequence([['Green', '0', str(wfmlen)]], timeres=tres)
             arm_sequence.create_sequence()
             awgfile.write_waveform(arm_sequence, 'arm', 1)
             awgfile.write_waveform(arm_sequence, 'arm', 2)
@@ -146,8 +148,7 @@ def write_list_sequence(tres=1):
                         awgfile.write_waveform(slist[i], '' + str(i + 1), 2)
                         # the scan.seq file is now updated to execute those 2 wfms for repeat number of times and wait
                         # for a trigger to move to the next point.
-                        linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(
-                            repeat) + ',1,0,0\r\n'
+                        linestr = '"' + str(i + 1) + '_1.wfm"' + ',' + '"' + str(i + 1) + '_2.wfm"' + ',' + str(repeat) + ',1,0,0\r\n'
                         sfile.write(linestr.encode())
                     sfile.write(
                         b'JUMP_MODE SOFTWARE\r\n')  # tells the AWG that jump trigger is controlled by the computer.
@@ -181,24 +182,24 @@ def upload_sequence(seqdir):
 
 def getdata(numavgs):
 
-    #initialize arduino
-    rm = visa.ResourceManager()
-    arduino = rm.open_resource(_ARDUINO_PORT)
-    print((arduino.read()))
+    # #initialize arduino
+    # rm = visa.ResourceManager()
+    # arduino = rm.open_resource(_ARDUINO_PORT)
+    # print((arduino.read()))
 
-    #initialize adwin
-    adw = ADwin.ADwin()
-    adw.Boot(adw.ADwindir + 'ADwin11.btl')
-    count_proc = 'D:\PyCharmProjects\qcomp-qapps\ESRWorking\ESRWorkingProgram\CW_ESR\Hardware\AdWIN\Trigger_Count_test_1.TB1'
-    adw.Load_Process(count_proc)
-    print("Adwin was successfully initialized")
+    # #initialize adwin
+    # adw = ADwin.ADwin()
+    # adw.Boot(adw.ADwindir + 'ADwin11.btl')
+    # count_proc = 'D:\PyCharmProjects\qcomp-qapps\ESRWorking\ESRWorkingProgram\CW_ESR\Hardware\AdWIN\Trigger_Count_test_1.TB1'
+    # adw.Load_Process(count_proc)
+    # print("Adwin was successfully initialized")
 
     # here is the section where I setup the AWG into enhanced run mode and execute the sequence and get data from ADWIn
     # this does not allow for NV tracking during the exec of the scan, we can build that in using a similar function as
     # in source/Hardware/Threads > getData function
     try:
         awg = AWG520()
-        awg.setup(enable_iq=True,seqfilename="odmr_trigger.seq")
+        awg.setup(enable_iq=True,seqfilename="scan.seq")
         time.sleep(0.2)
         #awg.sendcommand('SOUR2:MARK2:VOLT:HIGH 0.0\n')
         awg.run()  # places AWG into enhanced run mode
@@ -221,9 +222,9 @@ def getdata(numavgs):
             # here is where you would put code for reading the adwin data
 
         awg.cleanup()
-        adw.Clear_Process(1)
-        arduino.close()
-        rm.close()
+        # adw.Clear_Process(1)
+        # arduino.close()
+        # rm.close()
     except RuntimeError as error:
         # replace these with logger writes, but for now just send any errors to stderr
         sys.stderr.write(sys.exc_info())
@@ -276,5 +277,4 @@ if __name__ == '__main__':
     #write_trigger_sequence(dwell_time=d_time,numsteps=nsteps,tres=sampclk)
     write_list_sequence(tres=1)
     upload_sequence(seqdir=dirPath)
-
-    # getdata(10)
+    getdata(1)

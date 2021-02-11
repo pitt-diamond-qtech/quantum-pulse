@@ -518,8 +518,7 @@ class SequenceList(object):
         # else:
         #     self.scanlist = np.arange(self.scanparams['start'], self.scanparams['start'] + self.scanparams[
         #         'stepsize'] * self.scanparams['steps'], self.scanparams['stepsize'])
-        self.scanlist = np.arange(self.scanparams['start'], self.scanparams['start'] + self.scanparams[
-            'stepsize'] * self.scanparams['steps'], self.scanparams['stepsize'])
+        self.scanlist = np.arange(self.scanparams['start'], self.scanparams['start'] + self.scanparams['stepsize'] * self.scanparams['steps'], self.scanparams['stepsize'])
         self.delay = delay
         self.pulseparams = pulseparams
         self.connectiondict = connectiondict
