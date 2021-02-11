@@ -450,7 +450,7 @@ class AWGFile(object):
                 iqdata = np.append(iqdata,0.0)
                 marker = np.append(marker,int(0))
                 wfmlen+=1
-            print('wfm length is {0:d} and marker len is {1:d}'.format(len(iqdata),len(marker)))
+            #print('wfm length is {0:d} and marker len is {1:d}'.format(len(iqdata),len(marker)))
             if wfmlen >= _WFM_MEMORY_LIMIT:
                 raise ValueError('Waveform memory limit exceeded')
                 #TODO: perhaps i should implement rewrite the data using a smaller clock rate

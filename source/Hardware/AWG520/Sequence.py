@@ -288,8 +288,8 @@ def find_data_length(seq, dt=0, timeres=1):
         if stop > maxend:
             maxend = stop
     maxend = maxend // timeres
-    while maxend % 4 != 0:
-        maxend += 1
+    # while maxend % 4 != 0:
+    #     maxend += 1
     # print (duration_list,start_list,stop_list)
     return maxend
 

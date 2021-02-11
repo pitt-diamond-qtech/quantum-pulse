@@ -654,6 +654,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.dir_log = self.dir[:-4] + '.log'
 
     def dataBack(self, sig, ref):
+        numsteps = int(self.scan['steps'])
         self.ui.lineEditSig.setText(str(sig))
         self.ui.lineEditRef.setText(str(ref))
 

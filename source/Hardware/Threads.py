@@ -204,7 +204,7 @@ class ScanThread(QtCore.QThread):
 
     def run(self):
         self.scanning=True
-        #self.proc_running=True
+        self.proc_running=True
 
         self.p_conn,c_conn=multiprocessing.Pipe() # create parent and child connectors
         # give the process the child connector and all the params
@@ -231,23 +231,23 @@ class ScanThread(QtCore.QThread):
         while self.scanning:
             if self.p_conn.poll(1): # check if there is data
                 reply=self.p_conn.recv() # get the data
-                self.logger.info('reply is ',reply)
+                self.logger.info('reply is {} '.format(reply))
                 # 3/6/20 - I noticed this next line sends the proc_running parameter which is never really altered
                 # by the main thread, whereas the param scanning is altered depending on the reply from the process,
                 # therefore I believe this line was a mistake and the new line I have added should be correct
-                #self.p_conn.send((threshold,self.proc_running))
+                # self.p_conn.send((threshold,self.proc_running))
                 # send the scan process the threshold and whether to keep running
                 self.p_conn.send((threshold,self.scanning))
                 if reply=='Abort!':
                     self.scanning = False
-                    self.logger.debug('reply is',reply)
+                    self.logger.debug('reply is {}'.format(reply))
                     break
                 elif type(reply) is int: # if the reply is tracking counts, send that signal to main app
                     self.tracking.emit(reply)
-                    self.logger.debug('reply emitted from tracking is {:d}'.format(reply))
+                    self.logger.debug('reply emitted from tracking is {}'.format(reply))
                 elif len(reply)==2:
                     self.data.emit(reply[0],reply[1]) # if the reply is a tuple with signal and ref,send that signal to main app
-                    self.logger.debug('signal and ref emitted is {:d}'.format(reply))
+                    self.logger.debug('signal and ref emitted is {0:d} and {1:d}'.format(reply[0],reply[1]))
 
 
 class Abort(Exception):

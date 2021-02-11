@@ -75,7 +75,7 @@ class MCL_NanoDrive():
         '''
         self.DLL.MCL_GetCalibration.restype = c_double
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3),'AUX':lambda:c_uint(4)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid Axis Input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid Axis Input!\n'))
         if axisnum():
             rawvalue=self.DLL.MCL_GetCalibration(axisnum(),c_int(handle))
             value=self.UEHdic.get(rawvalue,lambda:rawvalue)()
@@ -131,8 +131,8 @@ class MCL_NanoDrive():
         '''
         self.DLL.MCL_SingleReadN.restype = c_double
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3),'AUX':lambda:c_uint(4)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
-        if axisnum() and self.GetProductInfo(handle).get(string.upper(axis)):
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        if axisnum() and self.GetProductInfo(handle).get(axis.upper()):
             rawvalue=self.DLL.MCL_SingleReadN(axisnum(),c_int(handle))
             value=self.UEHdic.get(rawvalue,lambda:rawvalue)()
             return value
@@ -145,7 +145,7 @@ class MCL_NanoDrive():
         Return value: None
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3),'AUX':lambda:c_uint(4)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         self.UEHdic.get(self.DLL.MCL_SingleWriteN(c_double(position),axisnum(),handle))()
         
     def MonitorN(self,position,axis,handle):
@@ -158,8 +158,8 @@ class MCL_NanoDrive():
         '''
         self.DLL.MCL_MonitorN.restype = c_double
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3),'AUX':lambda:c_uint(4)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
-        if axisnum() and self.GetProductInfo(handle).get(string.upper(axis)):
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        if axisnum() and self.GetProductInfo(handle).get(axis.upper()):
             rawvalue=self.DLL.MCL_MonitorN(c_double(position),axisnum(),c_int(handle))
             value=self.UEHdic.get(rawvalue,lambda:rawvalue)()
             return value
@@ -173,7 +173,7 @@ class MCL_NanoDrive():
         Return value: a list of length DataPoints filled with position sensor data.
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if not axisnum():
             return None
         ArrayType = c_double * DataPoints
@@ -190,7 +190,7 @@ class MCL_NanoDrive():
         Return value: None
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if not axisnum():
             return None
         self.UEHdic.get(self.DLL.MCL_Setup_ReadWaveFormN(axisnum(),c_uint(DataPoints),c_double(rateMode),c_int(handle)))()
@@ -203,7 +203,7 @@ class MCL_NanoDrive():
         Return value: a list of length DataPoints filled with position sensor data.
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if not axisnum():
             return None
         ArrayType = c_double * DataPoints
@@ -221,7 +221,7 @@ class MCL_NanoDrive():
         Return value: None
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if not axisnum():
             return None
         if DataPoints!=len(waveformInput):
@@ -241,7 +241,7 @@ class MCL_NanoDrive():
         Return value: None
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if not axisnum():
             return None
         if DataPoints!=len(waveformInput):
@@ -258,7 +258,7 @@ class MCL_NanoDrive():
         Return value: None
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if not axisnum():
             return None
         self.UEHdic.get(self.DLL.MCL_Trigger_LoadWaveFormN(axisnum(),c_int(handle)))()
@@ -271,7 +271,7 @@ class MCL_NanoDrive():
         Return value: a list of length DataPoints filled with position sensor data.
         '''
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3)}
-        axisnum = dic.get(string.upper(axis),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
+        axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if not axisnum():
             return None
         ArrayType = c_double * DataPoints
