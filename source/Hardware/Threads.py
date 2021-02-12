@@ -399,9 +399,9 @@ class ScanProcess(multiprocessing.Process):
             for avg in list(range(numavgs)): # we will keep scanning for this many averages
                 self.awgcomm.trigger() # trigger the awg for the arm sequence which turns on the laser.
                 time.sleep(0.2) # Not sure why but shorter wait time causes problem.
-                for x in list(range(num_scan_points)):
+                for x in list(range(numsteps)):
                     self.logger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(
-                        avg,numavgs,x,num_scan_points))
+                        avg,numavgs,x,numsteps))
                     if not self.scanning:
                         raise Abort()
                     if use_pts and scan_carrier_freq: # this part implements frequency scanning
