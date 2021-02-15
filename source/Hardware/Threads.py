@@ -204,8 +204,6 @@ class ScanThread(QtCore.QThread):
 
 
     def run(self):
-        import pydevd
-        pydevd.settrace(suspend=False, trace_only_current_thread=True)
         self.scanning=True
         self.proc_running=True
 
