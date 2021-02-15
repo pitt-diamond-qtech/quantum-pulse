@@ -73,8 +73,7 @@ class UploadThread(QtCore.QThread):
     """
     # this method only has one PyQt signal done which is emitted once the upload is finished
     done=QtCore.pyqtSignal()
-    def __init__(self,parent=None, dirPath=dirPath, seq = None,scan = None,params = None,awgparams = None,pulseparams
-    = None,mwparams = None, timeRes = 1):
+    def __init__(self,parent=None, dirPath=dirPath):
         #super().__init__(self)
         QtCore.QThread.__init__(self,parent)
        # self.timeRes = timeRes
@@ -113,10 +112,11 @@ class UploadThread(QtCore.QThread):
         samples = self.parameters[0]
         delay = self.parameters[-2:]
 
-        enable_scan_pts = self.mw['PTS'][2]
-        do_enable_iq = self.awgparams['enable IQ']
-        npulses = self.pulseparams['num pulses']
-        if enable_scan_pts:
+        # enable_scan_pts = self.mw['PTS'][2]
+        scan_carrier_freq = (self.scan['type'] == 'frequency')
+        # do_enable_iq = self.awgparams['enable IQ']
+        # npulses = self.pulseparams['num pulses']
+        if scan_carrier_freq:
             # we can scan frequency either using PTS or using the SB freq
             #self.scan['type'] = 'frequency'
             self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
@@ -132,7 +132,7 @@ class UploadThread(QtCore.QThread):
         # uncomment these lines when you are ready to connect to the AWG --------------------------------------------
         try:
             if self.awgparams['awg device'] == 'awg520':
-                print("Upload OK!")
+                # print("Upload OK!")
                 self.awgcomm = AWG520()
                 # transfer all files to AWG
                 t = time.process_time()
@@ -204,6 +204,8 @@ class ScanThread(QtCore.QThread):
 
 
     def run(self):
+        import pydevd
+        pydevd.settrace(suspend=False, trace_only_current_thread=True)
         self.scanning=True
         self.proc_running=True
 
@@ -368,47 +370,43 @@ class ScanProcess(multiprocessing.Process):
     def run(self):
         self.scanning=True
         self.initialize() # why is initialize called in run? it would seem best to initialize hardware first
-        count_time = self.parameters[1]
-        reset_time = self.parameters[2]
-        samples = self.parameters[0]
-        threshold = self.parameters[4]
+
         numavgs = self.parameters[3]
         start = float(self.scan['start'])
         step = float(self.scan['stepsize'])
         numsteps = int(self.scan['steps'])
         use_pts = self.mw['PTS'][0]
-        enable_scan_pts = self.mw['PTS'][2]
+        scan_carrier_freq = (self.scan['type'] == 'frequency')
         current_freq = float(self.mw['PTS'][1])
-        start_freq = float(self.mw['PTS'][3])
-        step_freq = float(self.mw['PTS'][4])
-        num_freq_steps = float(self.mw['PTS'][5])
-        stop_freq = float(self.mw['PTS'][6])
-        do_enable_iq = self.awgparams['enable IQ']
+        # start_freq = float(self.mw['PTS'][3])
+        # step_freq = float(self.mw['PTS'][4])
+        # num_freq_steps = float(self.mw['PTS'][5])
+        # stop_freq = float(self.mw['PTS'][6])
+        # do_enable_iq = self.awgparams['enable IQ']
         # TODO: this is still a bit ugly but because I moved the number of pulses to be scanned into pulseparams
         # TODO: I need to check if the iterate pulses is on.
         # TODO: maybe simples if in the main GUI i simply replace the scan line edits and do strict type checking in the app
         # TODO: above todo is now nearly implemented but keeping it here jic i forgot something.
         # npulses = self.pulseparams['numpulses']
-        if enable_scan_pts:
-            # we can scan frequency either using PTS or using the SB freq, but if we are scanning a wide range using
-            # the PTS we must simply output the sequence specified by user on the AWG.
-            # self.scan['type'] = 'frequency'
-            self.scan['type'] = 'no scan'
-            num_scan_points = num_freq_steps
-        else:
-            num_scan_points = numsteps
+        # if self.scan['type'] == 'frequency':
+        #     # we can scan frequency either using PTS or using the SB freq, but if we are scanning a wide range using
+        #     # the PTS we must simply output the sequence specified by user on the AWG.
+        #     # self.scan['type'] = 'frequency'
+        #     num_scan_points = num_freq_steps
+        # else:
+        #     num_scan_points = numsteps
 
         try:
             for avg in list(range(numavgs)): # we will keep scanning for this many averages
                 self.awgcomm.trigger() # trigger the awg for the arm sequence which turns on the laser.
                 time.sleep(0.2) # Not sure why but shorter wait time causes problem.
-                for x in list(range(num_scan_points)):
+                for x in list(range(numsteps)):
                     self.logger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(
-                        avg,numavgs,x,num_scan_points))
+                        avg,numavgs,x,numsteps))
                     if not self.scanning:
                         raise Abort()
-                    if use_pts and enable_scan_pts: # this part implements frequency scanning
-                        freq=int((start_freq+ step_freq * x)* _MHZ)
+                    if use_pts and scan_carrier_freq: # this part implements frequency scanning
+                        freq=int((start+ step * x)* _MHZ)
                         temp=1
                         # try to communicate with PTS and make sure it has put out the right frequency
                         while not (self.pts.write(freq)):
