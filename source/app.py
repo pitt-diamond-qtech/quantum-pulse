@@ -276,8 +276,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.sThread = ScanThread()
         self.sThread.data.connect(self.dataBack) # when data signal is emitted we handle using dataBack
         # self.sThread.tracking.connect(self.trackingBack) # when tracking signal is emitted we handle using trackingback
-        # self.kThread = KeepThread()
-        # self.kThread.status.connect(self.keepStatus) # when status signal is emitted we handle using keepstatus
+        self.kThread = KeepThread()
+        self.kThread.status.connect(self.keepStatus) # when status signal is emitted we handle using keepstatus
 
     def save_defaults(self):
         ''' Saves the parameters to the defaults.txt file '''

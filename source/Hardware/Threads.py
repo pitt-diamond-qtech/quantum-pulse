@@ -29,6 +29,7 @@ _PTS_PORT = 'COM3'   #---2021-02-09: new PTS com port
 
 import ADwin,os
 
+
 from pathlib import Path
 
 # hwdir  = Path('.')
@@ -424,11 +425,15 @@ class ScanProcess(multiprocessing.Process):
                     while ref< threshold:
                         if not self.scanning:
                             raise Abort()
-                        self.finetrack()
-                        sig,ref=self.getData(x,'jump') # we have to execute the sequence again.
-                        if sig==0:
-                            self.logger.warning('sig is 0 ,executing again')
-                            sig,ref=self.getData(x,'jump')
+                        if ref < 0: # this condition arises if the adwin did not update correctly
+                            self.logger.debug('the ref is less than 0, probably adwin did not update')
+                            raise Abort()
+                        else:
+                            self.finetrack()
+                            sig,ref=self.getData(x,'jump') # we have to execute the sequence again.
+                            if sig==0:
+                                self.logger.warning('sig is 0 ,executing again')
+                                sig,ref=self.getData(x,'jump')
                         
                     self.conn.send([sig,ref])
                     self.logger.info('signal {0:d} and reference {1:d} sent from ScanProc to ScanThread'.format(sig,
@@ -461,8 +466,9 @@ class ScanProcess(multiprocessing.Process):
             2. args : only one arg 'jump' is supported at this time
         '''
         modlogger.info('entering getData with arguments data point {0:d}, and {1:}'.format(x,args))
-        flag=self.adw.Get_Par(10)
-        self.logger.info('Adwin Par_10 is {0:d}'.format(flag))
+        # flag=self.adw.Get_Par(10)
+        flag=int(x)
+        self.logger.info('The flag is {0:d}'.format(flag))
         
         if x==0 or args!=(): # if this is the first point we need to jump over the arm_sequence to the 2nd line of
             # scan.seq. If not first point, we still need to add 2 again to get to the right line number
@@ -470,21 +476,43 @@ class ScanProcess(multiprocessing.Process):
             time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
 
         self.awgcomm.trigger() # now we output the line number in the scan.seq file
-        
+        time.sleep(0.2)
         if args!=():
             time.sleep(0.1)
             self.awgcomm.trigger() # if the arg is 'jump' we have to trigger again for some reason.
-            
+
         # wait until data updates
         while flag==self.adw.Get_Par(10):
             time.sleep(0.1)
-            self.logger.info(f'Adwin Par_20 is {self.adw.Get_Par(20):d}')
-            
+            self.logger.info(f'Adwin Par_10 is {self.adw.Get_Par(10):d}')
+
         sig=self.adw.Get_Par(1)
         ref=self.adw.Get_Par(2)
-
         return sig,ref
-    
+
+        #
+        # #wait until data updates
+        # flag_counter = 0
+        # while True:
+        #     adw_updated = self.adw.Get_Par(10)
+        #     if flag == adw_updated:
+        #         self.logger.info(f'Adwin Par_10 is {adw_updated:d}')
+        #         break
+        #     else:
+        #         flag_counter +=1
+        #         time.sleep(0.1)
+        #         if flag_counter >= 100:
+        #             self.logger.error("Adwin did not update correctly")
+        #             break
+        # if flag_counter < 100:
+        #     sig=self.adw.Get_Par(1)
+        #     ref=self.adw.Get_Par(2)
+        #     return sig,ref
+        # else:
+        #     return -1,-1
+
+
+
     def track(self):
         self.axis='z'
         position = self.nd.SingleReadN(self.axis, self.handle)
@@ -562,7 +590,7 @@ class ScanProcess(multiprocessing.Process):
         #self.amp.switch(False)
         self.pts.cleanup()
         
-@log_with(modlogger)
+#@log_with(modlogger)
 class KeepThread(QtCore.QThread):
     """This thread should be run automatically after the scan thread is done, so as to keep the NV in focus even when the user
     is not scanning. It works on a very similar basis as the scan thread. It has one signal:
@@ -575,11 +603,13 @@ class KeepThread(QtCore.QThread):
         self.running=False
         self.logger = logging.getLogger('threadlogger.KeepThread')
 
+
     def run(self):
         self.running=True
         # create the keep process in a separate process and pass it a child connector
-        self.p_conn,c_conn=multiprocessing.Pipe()
-        self.proc = KeepProcess(conn=c_conn)
+        self.p_conn,self.c_conn=multiprocessing.Pipe()
+        self.proc = KeepProcess()
+        self.proc.get_conn(self.c_conn)
         self.proc.start() # start the keep process
         while self.running:
             self.logger.info('keep process still running')
@@ -599,17 +629,31 @@ class KeepThread(QtCore.QThread):
         self.status.emit('Ready!') # we finished the keep process and can now go back to main program
         
 class KeepProcess(multiprocessing.Process):
-    def __init__(self,parent,conn):
+
+    def __init__(self,parent=None):
         super().__init__(parent)
-        self.conn = conn
-        self.running = False
-        self.logger = logging.getLogger('threadlogger.KeepThread.keepproc')
-        self.initialize()
+        self.logger = logging.getLogger('threadlogger.keepproc')
+
         self.accuracy = 0.025 # accuracy for moves of nanostage is 25 nm
         self.count_threshold_percent = 0.7
+        self.running = False
+
+    def get_conn(self, conn):
+        self.conn = conn
+
+
+    # def __init__(self,parent=None,conn=None):
+    #     super().__init__(parent)
+    #     self.conn = conn
+    #     self.running = False
+    #     self.logger = logging.getLogger('threadlogger.KeepThread.keepproc')
+    #     self.initialize()
+    #     self.accuracy = 0.025 # accuracy for moves of nanostage is 25 nm
+    #     self.count_threshold_percent = 0.7
 
     def run(self):
         self.logger.info('keep process starts')
+        self.initialize()
         self.running=True
         time.sleep(5) # wait 5 seconds before counting again
         
@@ -635,15 +679,26 @@ class KeepProcess(multiprocessing.Process):
         self.adw=ADwin.ADwin()
         self.awgcomm = AWG520()
 
+        # try:
+        #     self.adw.Boot(self.adw.ADwindir + 'ADwin11.btl')
+        #     count_proc = os.path.join(os.path.dirname(__file__),'ADWIN\\TrialCounter.TB1') # TrialCounter is configured as process 1
+        #     self.adw.Load_Process(count_proc)
+        # except ADwin.ADwinError as e:
+        #     sys.stderr.write(e.errorText)
+        #     self.conn.send('Abort!')
+        #     self.running=False
+
         try:
+            # boot the adwin with the bootloader
             self.adw.Boot(self.adw.ADwindir + 'ADwin11.btl')
+            # Measurement protocol is configured as process 2, external triggered
             count_proc = os.path.join(os.path.dirname(__file__),'ADWIN\\TrialCounter.TB1') # TrialCounter is configured as process 1
             self.adw.Load_Process(count_proc)
+
         except ADwin.ADwinError as e:
             sys.stderr.write(e.errorText)
             self.conn.send('Abort!')
-            self.running=False
-            
+            self.scanning = False
             
     def track(self):
         self.logger.info('entered track function')
