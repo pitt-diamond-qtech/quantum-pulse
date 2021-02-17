@@ -641,7 +641,6 @@ class appGUI(QtWidgets.QMainWindow):
         self.sThread.start()
 
     def getDataDir(self):
-
         numsteps = int(self.scan['steps'])
         numavgs = self.parameters[3]
         dir = Path('.')
@@ -701,7 +700,18 @@ class appGUI(QtWidgets.QMainWindow):
         self.standby()
 
     def saveData(self):
-        self.getDataDir()
+        #self.getDataDir()
+        date_today = str(datetime.date.today())
+        time_now = (datetime.datetime.now()).strftime("%H-%M-%S")
+        numsteps = int(self.scan['steps'])
+        numavgs = self.parameters[3]
+
+        dir = 'D:\\AllData\\PulsedESR\\' + date_today
+        if not os.path.isdir(dir):
+            os.makedirs(dir)
+
+        self.dir = dir + '\\' + time_now + '.txt'
+        self.dir_log = dir + '\\' + time_now + '.log'
 
         if self.dir != '':
             f = open(self.dir, 'a')

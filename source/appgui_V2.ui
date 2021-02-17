@@ -396,10 +396,13 @@ p, li { white-space: pre-wrap; }
        </rect>
       </property>
       <property name="text">
-       <string>Frequency (GHz)</string>
+       <string>Frequency (MHz)</string>
       </property>
      </widget>
      <widget class="QCheckBox" name="checkBoxUsePTS">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
       <property name="geometry">
        <rect>
         <x>20</x>
@@ -412,7 +415,7 @@ p, li { white-space: pre-wrap; }
        <string>Use this</string>
       </property>
       <property name="checked">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
      </widget>
     </widget>
