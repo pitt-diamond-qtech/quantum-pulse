@@ -355,6 +355,7 @@ class ScanProcess(multiprocessing.Process):
         if use_pts:
             self.pts = PTS(_PTS_PORT)
             self.pts.write(int(current_freq * _MHZ))
+            self.logger.info('The PTS freq is now {0:d}'.format(int(current_freq * _MHZ)))
         else:
             self.logger.error('No microwave synthesizer selected')
         self.awgcomm = AWG520()
@@ -463,6 +464,7 @@ class ScanProcess(multiprocessing.Process):
         '''
         modlogger.info('entering getData with arguments data point {0:d}, and {1:}'.format(x,args))
         # flag=self.adw.Get_Par(10)
+        samples = self.parameters[0]
         flag=int(x)
         self.logger.info('The flag is {0:d}'.format(flag))
         
@@ -481,9 +483,15 @@ class ScanProcess(multiprocessing.Process):
         while flag==self.adw.Get_Par(10):
             time.sleep(0.1)
             self.logger.info(f'Adwin Par_10 is {self.adw.Get_Par(10):d}')
+            self.logger.info(f'Adwin Par_20 is {self.adw.Get_Par(20):d}')
+
 
         sig=self.adw.Get_Par(1)
         ref=self.adw.Get_Par(2)
+        # dat1 = self.adw.GetData_Long(1,1,samples)
+        # dat2 = self.adw.GetData_Long(2,1,samples)
+        # dat3 = self.adw.GetData_Long(3,1,samples)
+
         return sig,ref
 
         #

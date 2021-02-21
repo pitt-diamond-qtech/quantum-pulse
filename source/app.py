@@ -81,6 +81,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.scan = dict([('type','amplitude'),('start','0'),('stepsize','50'),('steps','20')])
         self.mw = {'PTS':[True, '2.870', False, '2.840','0.001','100','2.940'],'SRS':[False, '2.870', False, '2.840',
                                                                                       '0.001','100','2.940']}
+        #self.mw = {'PTS':[True, '2870.0', False, '2840.0','1','100','2940.0'],'SRS':[False, '2870.0', False,
+        # '2840.0','1','100','2940.0']}
         self.awgparams= {'awg device': 'awg520', 'time resolution': 1, \
                    'pulseshape': 'Square', 'enable IQ': False}
         self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
@@ -568,10 +570,10 @@ class appGUI(QtWidgets.QMainWindow):
     # end keep NV functions
     # update sequence from metadata textbox
     def updateSequenceText(self):
-        #self.getReady()
         seqtext = self.ui.metadatatextEdit.toPlainText()
         print('the sequence text which will be converted is',seqtext)
         self.convert_text_to_seq(seqtext)
+        self.getReady() # turn off the keep process
         #print("the new seq text is",new_stext)
         #self.ui.metadatatextEdit.clear()
         #self.ui.metadatatextEdit.setText(new_stext)

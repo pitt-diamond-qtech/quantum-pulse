@@ -19,6 +19,7 @@
 DIM s,r,i AS LONG
 DIM count_time, reset_time as LONG
 
+
 init:
   Cnt_Enable(0)
   Cnt_Mode(1,8)          ' Counter 1 set to increasing
@@ -46,7 +47,7 @@ event:
   r=r+Cnt_Read(1)        ' accumulate sig+ref
   Cnt_Clear(1)           ' Clear counter 1
   Inc(i)
-  Par_20=i
+
   IF (i>=Par_5) THEN
     Par_1=s
     Par_2=r-s

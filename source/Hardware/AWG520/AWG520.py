@@ -212,25 +212,40 @@ class AWG520(object):
         # mysocket.sendall('SOUR2:MARK2:VOLT:LOW 0\n')
         # mysocket.sendall('SOUR2:MARK2:VOLT:HIGH 2.0\n')
         self.sendcommand('SOUR1:VOLT:AMPL 2000mV\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR1:VOLT:OFFS 1000mV\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR2:VOLT:AMPL 2000mV\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR2:VOLT:OFFS 1000mV\n')
+        time.sleep(0.1)
         '''edited on 8/6/2019 for use w/ IQ modulator: max Vpp = 1.0'''
         self.sendcommand('SOUR1:MARK1:VOLT:LOW 0\n')
-        self.sendcommand('SOUR1:MARK1:VOLT:HIGH 1.9\n')
+        time.sleep(0.1)
+        self.sendcommand('SOUR1:MARK1:VOLT:HIGH 2.0\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR1:MARK2:VOLT:LOW 0\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR1:MARK2:VOLT:HIGH 2.0\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR2:MARK1:VOLT:LOW 0\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR2:MARK1:VOLT:HIGH 2.0\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR2:MARK2:VOLT:LOW 0\n')
+        time.sleep(0.1)
         self.sendcommand('SOUR2:MARK2:VOLT:HIGH 2.0\n')
+        time.sleep(0.1)
 
         # turn on channels
         if enable_iq:
             self.sendcommand('OUTP1:STAT ON\n')
+            time.sleep(0.1)
             self.sendcommand('OUTP2:STAT ON\n')
+            time.sleep(0.1)
         else:
             self.sendcommand('OUTP1:STAT ON\n')
+            time.sleep(0.1)
         time.sleep(0.1)
 
     def run(self):
