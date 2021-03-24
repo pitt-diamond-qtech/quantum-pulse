@@ -32,7 +32,7 @@ def make_seq_list():
     wfmdir = Path('../../..') / 'arbpulseshape'
     # print(str(wfmdir.resolve()))
     # notice the sequence below scans time by setting all times after the pulse that is being scanned are also moved
-    seq = [['Green', '1600+t', '2500+t'],['Wave', '1000+t', '1500+t', 'Sech'],['Measure','1500+t','1800+t']]
+    seq = [['Green', '1600', '2500'],['Wave', '1000+t', '1500+t', 'Sech'],['Measure','1500+t','1800+t']]
     # seq = [['Green', '0', '1000']]
     newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase': 0.0, 'num pulses': 1}

@@ -9,8 +9,8 @@ version 1.0.0
 from ctypes import *
 import os
 import sys
-import string
-import time
+#import string
+#import time
 
 class MCL_NanoDrive():
     '''
@@ -21,7 +21,13 @@ class MCL_NanoDrive():
         Loading the dll.
         The madlib.dll file should be in the same folder as this nanodrive.py file. 
         '''
-        self.DLL = windll.LoadLibrary(os.path.join(os.path.dirname(__file__),'madlib.dll'))
+        # added on Nov. 4, 2019 by Gurudev
+        try:
+            self.DLL = windll.LoadLibrary(os.path.join(os.path.dirname(__file__),'madlib.dll'))
+        except (OSError, WindowsError) as error:
+            print("Unable to load Mad city Labs DLL")
+            raise
+
         '''
         And set up a universal error handler (UEH).
         Now it's only giving the error details.
@@ -40,7 +46,7 @@ class MCL_NanoDrive():
         err8=lambda:sys.stderr.write("INVALID_HANDLE: The handle is not valid or at least not valid in this instance of DLL.\n")
         self.UEHdic = {0:success, -1:err1, -2:err2, -3:err3, -4:err4, -5:err5, -6:err6, -7:err7, -8:err8}
         
-                
+
     def InitHandles(self):
         '''
         Requested control of all nano stages.
@@ -57,7 +63,7 @@ class MCL_NanoDrive():
         if dic["H"]==0:
             sys.stderr.write("WARNING: Nano Drive for HS3 is not connected.\n")
         return dic
-        
+
     def DeviceAttached(self,handle):
         '''
         Report whether the handle (integer input) controls the Micro Drive
@@ -131,6 +137,7 @@ class MCL_NanoDrive():
         '''
         self.DLL.MCL_SingleReadN.restype = c_double
         dic={'X':lambda:c_uint(1),'Y':lambda:c_uint(2),'Z':lambda:c_uint(3),'AUX':lambda:c_uint(4)}
+        # got errors saying string.upper no longer valid so modified by Gurudev Nov. 22, 2019
         axisnum = dic.get(axis.upper(),lambda:sys.stderr.write('WARNING: Invalid axis input!\n'))
         if axisnum() and self.GetProductInfo(handle).get(axis.upper()):
             rawvalue=self.DLL.MCL_SingleReadN(axisnum(),c_int(handle))
@@ -387,6 +394,12 @@ if __name__ == '__main__':
     #print handleDic
     #print nd.DeviceAttached(handleDic['L'])
     #print nd.GetCalibration('x', handleDic['L'])
+
+    #print nd.MonitorN(0, 'x', handleDic['L'])
+    #time.sleep(0.5)
+    #print nd.MonitorN(11, 'y', handleDic['L'])
+    # I Didn't modify these -- Gurudev nov. 4, 2019
+    #print(nd.MonitorN(20, 'z', handleDic['L']))
     print(nd.MonitorN(50, 'x', handleDic['L']))
     #time.sleep(0.5)
     print(nd.MonitorN(50, 'y', handleDic['L']))
@@ -403,5 +416,5 @@ if __name__ == '__main__':
     
     #nd.SetClock('Aux', 1, handleDic['L'])
 
-
     nd.ReleaseAllHandles()
+

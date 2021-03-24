@@ -205,8 +205,6 @@ if __name__ == '__main__':
     #print md.MicroDriveStop(handle)
     #md.MD1SingleStep(True, handle)
     #md.MD1MoveSteps(4, 20000, handle)
-    # I didn't modify this next line so not sure how it got changed
-    #md.MD1MoveDistance(1,10, handle) # -:approach  +:away
     md.MD1MoveDistance(0.1, -0.3, handle)
     #print md.CurrentStepPosition(handle)
     md.ReleaseAllHandles()

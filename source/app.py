@@ -257,9 +257,9 @@ class appGUI(QtWidgets.QMainWindow):
 
     def updateSBfreq(self):
         self.pulseparams['SB freq'] = float(self.ui.lineEditSBfreq.currentText())
-        
 
-    
+
+
     def updateIQscale(self):
         self.pulseparams['IQ scale factor']= int(self.ui.lineEditIQscale.currentText())
     
@@ -530,10 +530,12 @@ class appGUI(QtWidgets.QMainWindow):
         # ending here -----------------------------------------------------------
         # start the upload
         self.uThread.start()
+        self.ui.statusbar.showMessage("Uploading Files to the AWG...")
 
     def uploadDone(self):
         self.ui.pushButtonUpload.setEnabled(True)
         self.ui.pushButtonStart.setEnabled(True)
+        self.ui.statusbar.showMessage("Upload Done!")
     # end upload functions    
     # begin KeepNV  functions
     def standby(self):
@@ -689,6 +691,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.checkBoxAutoSave.setEnabled(True)
         self.ui.checkBoxAutoSave.setEnabled(True)
         self.dataPlot_renew = True
+        self.updateDataPlot()
 
         if self.ui.checkBoxAutoSave.checkState():
             f = open(self.dir_log, 'w')

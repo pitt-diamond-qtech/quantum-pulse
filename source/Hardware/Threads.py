@@ -37,7 +37,7 @@ from pathlib import Path
 sourcedir = get_project_root()
 #print(sourcedir)
 dirPath = Path(sourcedir / 'Hardware/AWG520/sequencefiles/') # remove the tests part of the string later
-
+awgPath = Path('./pulsed_esr')
 modlogger = create_logger('threadlogger')
 # modlogger.setLevel(logging.DEBUG)
 # # create a file handler that logs even debug messages
@@ -73,12 +73,13 @@ class UploadThread(QtCore.QThread):
     """
     # this method only has one PyQt signal done which is emitted once the upload is finished
     done=QtCore.pyqtSignal()
-    def __init__(self,parent=None, dirPath=dirPath):
+    def __init__(self,parent=None, dirPath=dirPath, awgPath=awgPath):
         #super().__init__(self)
         QtCore.QThread.__init__(self,parent)
        # self.timeRes = timeRes
         self.logger = logging.getLogger('threadlogger.uploadThread')
         self.dirPath = dirPath
+        self.awgPath =awgPath
         # 2020-07-21: due to random crashes with QT when upload button is pressed , we are now writing the files in
         # the main app, and only using this thread to upload the files to the AWG.
         # -------------------------- uncomment this block if you want to go back ----------------------------
@@ -137,7 +138,7 @@ class UploadThread(QtCore.QThread):
                 # transfer all files to AWG
                 t = time.process_time()
                 for filename in os.listdir(self.dirPath):
-                    self.awgcomm.sendfile(filename, self.dirPath / filename)
+                    self.awgcomm.sendfile(self.awgPath / filename, self.dirPath / filename)
                 transfer_time = time.process_time() - t
                 time.sleep(1)
                 self.logger.info('time elapsed for all files to be transferred is:{0:.3f} seconds'.format(
@@ -207,12 +208,12 @@ class ScanThread(QtCore.QThread):
         self.scanning=True
         self.proc_running=True
 
-        self.p_conn,c_conn=multiprocessing.Pipe() # create parent and child connectors
+        self.p_conn,self.c_conn=multiprocessing.Pipe() # create parent and child connectors
         # give the process the child connector and all the params
         #self.proc = ScanProcess(conn = c_conn,parameters= self.parameters,mwparams=self.mw,scan=self.scan,
                                 # awgparams=self.awgparams,maxcounts=self.maxcounts,timeRes=self.timeRes)
         self.proc = ScanProcess()
-        self.proc.get_conn(c_conn)
+        self.proc.get_conn(self.c_conn)
         # pass the parameters to the process
         self.proc.parameters=self.parameters
         # # pass the mw info
@@ -239,6 +240,7 @@ class ScanThread(QtCore.QThread):
                 # self.p_conn.send((threshold,self.proc_running))
                 # send the scan process the threshold and whether to keep running
                 self.p_conn.send((threshold,self.scanning))
+                print("scan thread is sending threshold {0} and scanning status {1}".format(threshold,self.scanning))
                 if reply=='Abort!':
                     self.scanning = False
                     self.logger.debug('reply is {}'.format(reply))
@@ -256,7 +258,7 @@ class Abort(Exception):
 
 
 class ScanProcess(multiprocessing.Process):
-    """This is where teh scanning actually happens. It inherits nearly all the same params as the ScanThread, except for
+    """This is where the scanning actually happens. It inherits nearly all the same params as the ScanThread, except for
     one more parameter: conn which is the child connector of the Pipe used to communicate to ScanThread."""
     # def __init__(self,parent=None, conn = None,scan = None,parameters = None,awgparams = None,pulseparams = None,
     #              mwparams =None, timeRes = 1,maxcounts=100):
@@ -359,7 +361,9 @@ class ScanProcess(multiprocessing.Process):
         else:
             self.logger.error('No microwave synthesizer selected')
         self.awgcomm = AWG520()
-        self.awgcomm.setup(enable_iq=True, seqfilename="scan.seq")  #removed the setup of AWG in Upload thread,
+        #changed the awg savedir path because the root directory of the awg has a memory limit
+        self.awgcomm.setup(enable_iq=True, seqfilename="./pulsed_esr/scan.seq")  #removed the setup of AWG in Upload
+        # thread,
         # so do it now.
         time.sleep(0.2)
         self.awgcomm.run()  # places the AWG into enhanced run mode.
@@ -419,7 +423,7 @@ class ScanProcess(multiprocessing.Process):
                     #print('id and value are',id(self.parameters[4]),self.parameters[4])
                     threshold = self.parameters[4]
                     # track the NV position if the reference counts is too low
-                    while ref< threshold:
+                    while ref < threshold:
                         if not self.scanning:
                             raise Abort()
                         if ref < 0: # this condition arises if the adwin did not update correctly
@@ -528,9 +532,12 @@ class ScanProcess(multiprocessing.Process):
         self.awgcomm.jump(1) # jumping to line 1 which turns the green light on
         time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
         self.awgcomm.trigger()
-
-        self.nd=MCL_NanoDrive()
-        self.handle=self.nd.InitHandles()['L']
+        try:
+            self.nd=MCL_NanoDrive()
+            self.handle=self.nd.InitHandles().get('L')
+        except IOError as err:
+            self.logger.error("Error initializing Nanodrive {0}".format(err))
+            raise
         self.accuracy=0.025
         self.axis='x'
         self.scan_track()
@@ -548,11 +555,12 @@ class ScanProcess(multiprocessing.Process):
         position = self.nd.SingleReadN(self.axis, self.handle)
         i=0
         while abs(position-command)>self.accuracy:
-            #print 'moving to',command,'from',position
             self.logger.info(f'moving to {command} from {position}')
+            print(f'moving to {command} from {position}')
             position=self.nd.MonitorN(command, self.axis, self.handle)
             time.sleep(0.1)
             i+=1
+            print(f'i in go is {i}')
             if i==20:
                 break
 
@@ -561,6 +569,7 @@ class ScanProcess(multiprocessing.Process):
         self.adw.Start_Process(1)
         time.sleep(1.01) # feels like an excessive delay, check by decreasing if it can be made smaller
         counts=self.adw.Get_Par(1)
+        print(f'data collected is {counts}')
         self.adw.Stop_Process(1)
         return counts
     
@@ -707,7 +716,7 @@ class KeepProcess(multiprocessing.Process):
     def track(self):
         self.logger.info('entered track function')
         
-        self.handle=self.nd.InitHandles()['L']
+        self.handle=self.nd.InitHandles().get('L')
         # track each axis one by one
         self.axis='x'
         self.scan_track()
