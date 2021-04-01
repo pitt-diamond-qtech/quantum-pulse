@@ -88,7 +88,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                             'phase': 0.0, 'skew phase': 0.0,'num pulses': 1}
 
-        self.parameters = [50000, 300, 2000, 10, 10, 820,
+        self.parameters = [50000, 300, 2000, 10, 10, 780,
                            10]  # should make into dictionary with keys 'sample', 'count time',
         # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
         self.timeRes = 1 # default value for AWG time resolution
@@ -156,6 +156,7 @@ class appGUI(QtWidgets.QMainWindow):
 
         # PTS controls
         self.ui.checkBoxUsePTS.stateChanged.connect(self.enablePTS)
+        self.ui.checkBoxTrackMW.stateChanged.connect(self.trackMW)
         # setup the line edit only to accept frequencies in allowed PTS range
         self.ui.lineEditPTSFreq.setValidator(QtGui.QDoubleValidator(10.0,3200.0,3))
         self.ui.lineEditPTSFreq.editingFinished.connect(self.updatePTSFreq)
@@ -457,8 +458,19 @@ class appGUI(QtWidgets.QMainWindow):
             self.ui.lineEditPTSFreq.setEnabled(False)
             self.mw['PTS'][0] = False
 
+    def trackMW(self, checkState):
+        if checkState:
+            self.ui.lineEditTrackMWFreq.setEnabled(True)
+
+        else:
+            self.ui.lineEditTrackMWFreq.setEnabled(False)
+
+
     def updatePTSFreq(self):
         self.mw['PTS'][1] = float(self.ui.lineEditPTSFreq.text())
+
+    def updatetrackMWFreq(self):
+        pass
 
     # disabled these functions on 2/7/20 as no longer needed
     # def enablePTSScan(self, checkState):
@@ -535,13 +547,13 @@ class appGUI(QtWidgets.QMainWindow):
     def uploadDone(self):
         self.ui.pushButtonUpload.setEnabled(True)
         self.ui.pushButtonStart.setEnabled(True)
-        self.ui.statusbar.showMessage("Upload Done!")
+        self.ui.statusbar.showMessage("Upload Done!", 3000)
     # end upload functions    
     # begin KeepNV  functions
     def standby(self):
         self.standingby = True
         self.ui.pushButtonStart.setEnabled(False)
-        self.kThread.start()
+        # self.kThread.start()
 
     def getReady(self):
         self.kThread.running = False
@@ -628,7 +640,6 @@ class appGUI(QtWidgets.QMainWindow):
         self.raw_data.fill(-1)
         self.dataCount = 0
         self.avgCount = 0
-
 
         self.x_arr = list(range(1, numsteps + 1))
         if use_pts and enable_scan_pts:  # if scanning PTS freq

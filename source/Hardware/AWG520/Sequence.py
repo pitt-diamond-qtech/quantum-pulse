@@ -415,9 +415,14 @@ class Sequence(object):
             num = num + 1
             cname = pulse[0]
             # get all the start,stop,duration point lists
-            start_list = [self.event_dict[cname][j][0] for j in range(len(self.event_dict[cname]))]
-            stop_list = [self.event_dict[cname][j][1] for j in range(len(self.event_dict[cname]))]
-            dur_list = [self.event_dict[cname][j][2] for j in range(len(self.event_dict[cname]))]
+            # start_list = [self.event_dict[cname][j][0] for j in range(len(self.event_dict[cname]))]
+            # stop_list = [self.event_dict[cname][j][1] for j in range(len(self.event_dict[cname]))]
+            # dur_list = [self.event_dict[cname][j][2] for j in range(len(self.event_dict[cname]))]
+            start=int(pulse[1])
+            stop=int(pulse[2])
+            start_list = [start]
+            stop_list = [stop]
+            dur_list = [stop-start]
             for j in range(len(start_list)):
                 if cname == _WAVE:
                     num = num + j
@@ -479,6 +484,10 @@ class Sequence(object):
                     c2m2 = c2m2 + channel.data
         # the marker data is simply the sum of the 2 markers since 1st bit represents m1 and 2nd bit represents m2
         # for each channel, and that's how we coded the Marker pulse class
+        self.c1m1=c1m1
+        self.c1m2=c1m2
+        self.c2m1=c2m1
+        self.c2m2=c2m2
         self.c1markerdata = c1m1 + c1m2
         self.c2markerdata = c2m1 + c2m2
         # the wavedata will store the data for the I and Q channels in a 2D array

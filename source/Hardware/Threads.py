@@ -153,8 +153,6 @@ class UploadThread(QtCore.QThread):
             self.logger.error('Run time error {0}'.format(err))
         #--------------------------------------------------------------------------------------------------------
 
-
-
 @log_with(modlogger)
 class ScanThread(QtCore.QThread):
     """this is the Scan thread. it has following variables:
@@ -229,8 +227,9 @@ class ScanThread(QtCore.QThread):
         self.proc.start()
         # TODO: verify whether proc.join() is needed here
 
-        threshold = self.parameters[4]
+
         while self.scanning:
+            threshold = self.parameters[4]
             if self.p_conn.poll(1): # check if there is data
                 reply=self.p_conn.recv() # get the data
                 self.logger.info('reply is {} '.format(reply))
@@ -251,11 +250,6 @@ class ScanThread(QtCore.QThread):
                 elif len(reply)==2:
                     self.data.emit(reply[0],reply[1]) # if the reply is a tuple with signal and ref,send that signal to main app
                     self.logger.debug('signal and ref emitted is {0:d} and {1:d}'.format(reply[0],reply[1]))
-
-
-class Abort(Exception):
-    pass
-
 
 class ScanProcess(multiprocessing.Process):
     """This is where the scanning actually happens. It inherits nearly all the same params as the ScanThread, except for
@@ -430,15 +424,23 @@ class ScanProcess(multiprocessing.Process):
                             self.logger.debug('the ref is less than 0, probably adwin did not update')
                             raise Abort()
                         else:
+                            # turning on the microwave for finetrack
+                            self.awgcomm.sendcommand('SOUR1:MARK1:VOLT:LOW 2.0\n')
+                            self.pts.write(int(2700 * _MHZ))
                             self.finetrack()
-                            sig,ref=self.getData(x,'jump') # we have to execute the sequence again.
-                            if sig==0:
+                            self.awgcomm.sendcommand('SOUR1:MARK1:VOLT:LOW 0\n')
+                            time.sleep(0.1)
+                            self.awgcomm.sendcommand('SOUR1:MARK1:VOLT:HIGH 2.0\n')
+                            time.sleep(0.1)
+                            self.pts.write(int(current_freq * _MHZ))
+
+                            sig, ref = self.getData(x,'jump') # we have to execute the sequence again.
+                            if sig == 0:
                                 self.logger.warning('sig is 0 ,executing again')
-                                sig,ref=self.getData(x,'jump')
-                        
+                                sig, ref = self.getData(x,'jump')
+
                     self.conn.send([sig,ref])
-                    self.logger.info('signal {0:d} and reference {1:d} sent from ScanProc to ScanThread'.format(sig,
-                        ref))
+                    self.logger.info('signal {0:d} and reference {1:d} sent from ScanProc to ScanThread'.format(sig,ref))
                     self.conn.poll(None)
                     self.parameters[4],self.scanning = self.conn.recv() # receive the threshold and scanning status
         except Abort:
@@ -492,6 +494,7 @@ class ScanProcess(multiprocessing.Process):
 
         sig=self.adw.Get_Par(1)
         ref=self.adw.Get_Par(2)
+
         # dat1 = self.adw.GetData_Long(1,1,samples)
         # dat2 = self.adw.GetData_Long(2,1,samples)
         # dat3 = self.adw.GetData_Long(3,1,samples)
@@ -519,49 +522,47 @@ class ScanProcess(multiprocessing.Process):
         # else:
         #     return -1,-1
 
-
-
     def track(self):
-        self.axis='z'
+        self.axis = 'z'
         position = self.nd.SingleReadN(self.axis, self.handle)
     
     def finetrack(self):
         modlogger.info('entering tracking from ScanProc')
-        self.adw.Stop_Process(2)
+        self.adw.Stop_Process(2)  # Stop the ADWin measure process
         
-        self.awgcomm.jump(1) # jumping to line 1 which turns the green light on
+        self.awgcomm.jump(1)  # Jumping to line 1 which turns the green light on (arm sequence)
         time.sleep(0.005)  # This delay is necessary. Otherwise neither jump nor trigger would be recognized by awg.
         self.awgcomm.trigger()
         try:
-            self.nd=MCL_NanoDrive()
-            self.handle=self.nd.InitHandles().get('L')
+            self.nd = MCL_NanoDrive()
+            self.handle = self.nd.InitHandles().get('L')
         except IOError as err:
-            self.logger.error("Error initializing Nanodrive {0}".format(err))
+            self.logger.error("Error initializing NanoDrive {0}".format(err))
             raise
-        self.accuracy=0.025
-        self.axis='x'
-        self.scan_track()
-        self.axis='y'
-        self.scan_track()
-        self.axis='z'
-        self.scan_track(ran=0.5) # increase range for z
+        self.accuracy = 0.025
+        self.axis = 'x'
+        self.scan_track()  # Readjust the x axis
+        self.axis = 'y'
+        self.scan_track()  # Readjust the y axis
+        self.axis = 'z'
+        self.scan_track(ran=0.5)  # Increase range for z
         self.nd.ReleaseAllHandles()
         
-        self.adw.Start_Process(2)
+        self.adw.Start_Process(2)  # Restart the ADWin measure process
         time.sleep(0.3)
         
-    def go(self,command):
+    def go(self, command):
         # we need to check if the position has really gone to the command position
         position = self.nd.SingleReadN(self.axis, self.handle)
-        i=0
-        while abs(position-command)>self.accuracy:
+        i = 0
+
+        while abs(position - command) > self.accuracy:
             self.logger.info(f'moving to {command} from {position}')
-            print(f'moving to {command} from {position}')
+            print(f'{self.axis} moving to {command} from {position}')
             position=self.nd.MonitorN(command, self.axis, self.handle)
             time.sleep(0.1)
-            i+=1
-            print(f'i in go is {i}')
-            if i==20:
+            i += 1
+            if i == 20:
                 break
 
     def count(self):
@@ -569,7 +570,7 @@ class ScanProcess(multiprocessing.Process):
         self.adw.Start_Process(1)
         time.sleep(1.01) # feels like an excessive delay, check by decreasing if it can be made smaller
         counts=self.adw.Get_Par(1)
-        print(f'data collected is {counts}')
+        print(f'counts collected from the count method is {counts}')
         self.adw.Stop_Process(1)
         return counts
     
@@ -589,6 +590,7 @@ class ScanProcess(multiprocessing.Process):
             self.go(each_position)
             data=self.count()
             self.conn.send(data)
+            print(f'data collected from the scan_track method is {data}')
             self.conn.poll(None)
             r=self.conn.recv()
             self.parameters[4]=r[0]
@@ -602,7 +604,7 @@ class ScanProcess(multiprocessing.Process):
         self.adw.Stop_Process(2)
         #self.amp.switch(False)
         self.pts.cleanup()
-        
+
 #@log_with(modlogger)
 class KeepThread(QtCore.QThread):
     """This thread should be run automatically after the scan thread is done, so as to keep the NV in focus even when the user
@@ -769,4 +771,6 @@ class KeepProcess(multiprocessing.Process):
         self.nd.ReleaseAllHandles()
         self.awgcomm.cleanup()
 
+class Abort(Exception):
+    pass
 
