@@ -88,7 +88,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                             'phase': 0.0, 'skew phase': 0.0,'num pulses': 1}
 
-        self.parameters = [50000, 300, 2000, 10, 10, 780,
+        self.parameters = [50000, 300, 2000, 10, 10, 740,
                            10]  # should make into dictionary with keys 'sample', 'count time',
         # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
         self.timeRes = 1 # default value for AWG time resolution
@@ -387,7 +387,7 @@ class appGUI(QtWidgets.QMainWindow):
 
     def updateScanType(self):
         selection = self.ui.scantypecomboBox.currentIndex()
-        scantypes = {0:'amplitude',1:'time',2: 'number',3:'MW frequency',4:'SB freq',5:'pulsewidth',-1:'no scan'}
+        scantypes = {0:'amplitude',1:'time',2: 'number',3:'Carrier frequency',4:'SB freq',5:'pulsewidth',-1:'no scan'}
         self.scan['type'] = scantypes.get(selection)
         self.choosescanValidator()
 
@@ -669,6 +669,8 @@ class appGUI(QtWidgets.QMainWindow):
 
     def dataBack(self, sig, ref):
         numsteps = int(self.scan['steps'])
+        avgs = int(self.parameters[3])
+        steps = numsteps*avgs
         self.ui.lineEditSig.setText(str(sig))
         self.ui.lineEditRef.setText(str(ref))
 
@@ -687,6 +689,11 @@ class appGUI(QtWidgets.QMainWindow):
 
         if self.dataCount == len(self.raw_data):
             self.scanDone()
+        scp = (self.dataCount/steps)*100  # scan completion percentage
+        self.ui.statusbar.showMessage("Scan Completion: " + str(round(scp, 2)) + "%")
+        # self.ui.statusbar.showMessage("Currently Scanning... Step: " + str(self.dataCount) + "/" + str(steps) +
+        #                               " Scan: " + str(self.avgCount) + "/" + str(avgs))
+
 
     def trackingBack(self, count):
         pass

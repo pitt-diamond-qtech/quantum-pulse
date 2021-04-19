@@ -183,6 +183,9 @@ p, li { white-space: pre-wrap; }
      </property>
     </widget>
     <widget class="QLineEdit" name="lineEditSig">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="geometry">
       <rect>
        <x>70</x>
@@ -198,6 +201,9 @@ p, li { white-space: pre-wrap; }
      </property>
     </widget>
     <widget class="QLineEdit" name="lineEditRef">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="geometry">
       <rect>
        <x>280</x>

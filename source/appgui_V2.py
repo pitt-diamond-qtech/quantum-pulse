@@ -431,7 +431,6 @@ class Ui_quantumpulse(object):
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionExit)
         self.menubar.addAction(self.menuFile.menuAction())
-
         self.retranslateUi(quantumpulse)
         self.tabWidget.setCurrentIndex(2)
         self.awgSelectcomboBox.setCurrentIndex(0)

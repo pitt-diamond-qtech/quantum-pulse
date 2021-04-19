@@ -573,3 +573,8 @@ class SequenceList(object):
                                  connectiondict=self.connectiondict, timeres=self.timeres)
                     s.create_sequence(dt=0)
                     self.sequencelist.append(s)
+                elif self.scanparams['type'] == 'Carrier frequency':
+                    s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams, \
+                         connectiondict=self.connectiondict, timeres=self.timeres)
+                    s.create_sequence(dt=0)
+                    self.sequencelist.append(s)

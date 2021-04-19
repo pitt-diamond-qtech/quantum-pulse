@@ -114,14 +114,14 @@ class UploadThread(QtCore.QThread):
         delay = self.parameters[-2:]
 
         # enable_scan_pts = self.mw['PTS'][2]
-        scan_carrier_freq = (self.scan['type'] == 'frequency')
+        scan_carrier_freq = (self.scan['type'] == 'Carrier frequency')
         # do_enable_iq = self.awgparams['enable IQ']
         # npulses = self.pulseparams['num pulses']
-        if scan_carrier_freq:
-            # we can scan frequency either using PTS or using the SB freq
-            #self.scan['type'] = 'frequency'
-            self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
-            # scan the frequency
+        # if scan_carrier_freq:
+        #     # we can scan frequency either using PTS or using the SB freq
+        #     #self.scan['type'] = 'frequency'
+        #     self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
+        #     # scan the frequency
         # now create teh sequences
         self.sequences = SequenceList(sequence=self.seq, delay=delay,pulseparams = self.pulseparams,scanparams = self.scan, timeres=self.timeRes)
         # write the files to the AWG520/sequencefiles directory
@@ -373,7 +373,7 @@ class ScanProcess(multiprocessing.Process):
         step = float(self.scan['stepsize'])
         numsteps = int(self.scan['steps'])
         use_pts = self.mw['PTS'][0]
-        scan_carrier_freq = (self.scan['type'] == 'frequency')
+        scan_carrier_freq = (self.scan['type'] == 'Carrier frequency')
         current_freq = float(self.mw['PTS'][1])
         # start_freq = float(self.mw['PTS'][3])
         # step_freq = float(self.mw['PTS'][4])
@@ -399,7 +399,7 @@ class ScanProcess(multiprocessing.Process):
                 time.sleep(0.2) # Not sure why but shorter wait time causes problem.
                 for x in list(range(numsteps)):
                     self.logger.info('The current avg. is No.{:d}/{:d} and the the current point is {:d}/{:d}'.format(
-                        avg,numavgs,x,numsteps))
+                        (avg+1),numavgs,(x+1),numsteps))  # pubudu: added +1 because avg and x starts from 0.
                     if not self.scanning:
                         raise Abort()
                     if use_pts and scan_carrier_freq: # this part implements frequency scanning
@@ -418,6 +418,8 @@ class ScanProcess(multiprocessing.Process):
                     threshold = self.parameters[4]
                     # track the NV position if the reference counts is too low
                     while ref < threshold:
+                        threshold = self.parameters[4]
+                        print("THRESHOLD IS: ", threshold)
                         if not self.scanning:
                             raise Abort()
                         if ref < 0: # this condition arises if the adwin did not update correctly
@@ -469,9 +471,9 @@ class ScanProcess(multiprocessing.Process):
             2. args : only one arg 'jump' is supported at this time
         '''
         modlogger.info('entering getData with arguments data point {0:d}, and {1:}'.format(x,args))
-        # flag=self.adw.Get_Par(10)
+        flag=self.adw.Get_Par(10)
         samples = self.parameters[0]
-        flag=int(x)
+        # flag=int(x)
         self.logger.info('The flag is {0:d}'.format(flag))
         
         if x==0 or args!=(): # if this is the first point we need to jump over the arm_sequence to the 2nd line of
@@ -484,13 +486,11 @@ class ScanProcess(multiprocessing.Process):
         if args!=():
             time.sleep(0.1)
             self.awgcomm.trigger() # if the arg is 'jump' we have to trigger again for some reason.
-
+        self.logger.info(f'Adwin Par_10 just before while is {self.adw.Get_Par(10):d}')
         # wait until data updates
         while flag==self.adw.Get_Par(10):
             time.sleep(0.1)
-            self.logger.info(f'Adwin Par_10 is {self.adw.Get_Par(10):d}')
-            self.logger.info(f'Adwin Par_20 is {self.adw.Get_Par(20):d}')
-
+            self.logger.info(f'Adwin Par_10 within while is {self.adw.Get_Par(10):d}')
 
         sig=self.adw.Get_Par(1)
         ref=self.adw.Get_Par(2)

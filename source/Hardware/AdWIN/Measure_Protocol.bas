@@ -35,6 +35,7 @@ init:
 
 
 event:
+  Inc(i)
   Cnt_Enable(1)          ' enable counter 1
   CPU_Sleep(count_time)          ' count time 300 ns
   Cnt_Enable(0)          ' disable counter 1
@@ -46,7 +47,7 @@ event:
   s=s+Cnt_Read_Latch(1)  ' accumulate sig
   r=r+Cnt_Read(1)        ' accumulate sig+ref
   Cnt_Clear(1)           ' Clear counter 1
-  Inc(i)
+  
 
   IF (i>=Par_5) THEN
     Par_1=s
