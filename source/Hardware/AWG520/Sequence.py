@@ -18,7 +18,7 @@ import logging
 from pathlib import Path
 from typing import List
 
-from .Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave
+from .Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave,Pulse
 from source.common.utils import log_with, create_logger, get_project_root
 import copy
 
@@ -42,12 +42,19 @@ _ADWIN_TRIG = 'Measure'  # ch2, marker 2
 _WAVE = 'Wave'  # channel 1 and 2, analog I/Q data
 _BLANK = 'Blank'  # new keyword which turns off all channels, to be implemented
 _FULL = 'Full'  # new keyword which turns on all channels high, to be implemented
+_MARKER = 'Marker' # new keyword for any marker
+_ANALOG1 = 'Analog1' # new keyword for channel 1
+_ANALOG2 = 'Analog2' # new keyword for channel 2
 # dictionary of connections from marker channels to devices,
 _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 # dictionary of IQ parameters that will be used as default if none is supplied
-_IQ_PARAMS = {'amplitude': 0.0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
+_PULSE_PARAMS = {'amplitude': 0.0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
               'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
+# allowed values of the Waveform types
+_PULSE_TYPES = ['Gauss','Sech','Square', 'Lorentz', 'Load Wfm']
 
+_IQTYPE = np.dtype('<f4') # AWG520 stores analog values as 4 bytes in little-endian format
+_MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
 
 def to_int(iterable):
     return [int(x) for x in iterable]
@@ -55,16 +62,18 @@ def to_int(iterable):
 
 class SequenceEvent:
     """A single sequence event.
-    :param event_type: The type of event, e.g. Green, Wave etc
+    :param event_type: The type of event, e.g. Marker or Wave etc
     :param start: The start time of the event.
     :param stop: The stop time of the event.
     :param start_increment: The multiplier for incrementing the start time.
     :param stop_increment: The multiplier for incrementing the stop time.
     :param sampletime: the sampling time (clock rate) used for this event
     """
-
-    def __init__(self, event_type=_GREEN_AOM, start=1.0*_us, stop=1.1 *_us, start_increment=0, stop_increment=0,
+    _counter = 0 # class variable keeps track of how many sequence events are there
+    def __init__(self, event_type= 'Wave', start=1.0*_us, stop=1.1 *_us, start_increment=0, stop_increment=0,
                  sampletime=1.0 * _ns):
+        SequenceEvent._counter +=1 # increment whenever a new event is created
+        self.eventidx = SequenceEvent._counter # publicly accessible value of the event id
         self.event_type = event_type
         self.start = start
         self.stop = stop
@@ -158,6 +167,204 @@ class SequenceEvent:
         self.start += dt * self.start_increment
         self.stop += dt * self.stop_increment
 
+class WaveEvent(SequenceEvent):
+    """ Provides functionality for events that are analog in nature. Inherits from :class:`sequence event <SequenceEvent>`
+    :param pulse_params: A dictionary containing parameters for the IQ modulator: amplitude, pulseWidth,
+                        SB frequency, IQ scale factor, phase, skewPhase.
+    :param pulse_type: type of pulse desired, eg Gauss, Sech etc
+    :param waveidx: a number that keeps track of the event index
+    """
+    # these 2 class variables keep track of the class type and the number of instances
+    EVENT_KEYWORD = "Wave"
+    _wavecounter = 0
+    def __init__(self, pulse_params=None, pulse_type='Gauss'):
+        super().__init__()
+        WaveEvent._wavecounter += 1 # increment the wave counter
+        self.waveidx = _wavecounter # publicly accessible id for the wave event
+        self.event_type = self.EVENT_KEYWORD
+        if pulse_params==None:
+            self.pulse_params = _PULSE_PARAMS
+
+        self.pulse_type = pulse_type
+        self.waveidx = waveidx
+        self.__extract_pulse_params_from_dict()
+        zerosdata = np.zeros(self.duration, dtype=_IQTYPE)
+        pulse = Pulse(self.waveidx, self.duration, self.__ssb_freq, self.__iqscale,
+                      self.__phase, self.__skew_phase)
+        pulse.iq_generator(zerosdata)
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+    @property
+    def pulse_params(self):
+        return self.__iq_params
+    @pulse_params.setter
+    def pulse_params(self, iqdic):
+        if type(iqdic) == dict:
+            self.__iq_params = iqdic
+        else:
+            ValueError('IQ params must be a dictionary')
+
+    @property
+    def pulse_type(self):
+        return self.__pulse_type
+    @pulse_type.setter
+    def pulse_type(self, var:str):
+        if type(var) == str:
+            if var in _PULSE_TYPES:
+                self.__pulse_type = var
+            else:
+                ValueError(f'Pulse type must be of type {_PULSE_TYPES}')
+        else:
+            ValueError('wave type must be a string')
+
+    def __extract_pulse_params_from_dict(self):
+        """This helper method simply extracts the relevant params from the iq dictionary"""
+        self.__ssb_freq = float(self.pulse_params['SB freq']) * _MHz  # SB freq is in units of Mhz
+        self.__iqscale = float(self.pulse_params['IQ scale factor'])
+        self.__phase = float(self.pulse_params['phase'])
+        self.__deviation = int(self.pulse_params['pulsewidth']) / self.sampletime
+        self.__amp = int(self.pulse_params['amplitude'])  # needs to be a number between 0 and 100
+        self.__skew_phase = float(self.pulse_params['skew phase'])
+        self.__npulses = self.pulse_params['num pulses'] # not needed for a single WaveEvent
+
+    @property
+    def data(self):
+        return self.__data
+    @data.setter
+    def data(self,datarr):
+        self.__data = datarr
+
+
+class GaussPulse(WaveEvent):
+    """Generates a Wave event with a Gaussian shape"""
+    PULSE_KEYWORD = "Gauss"
+    def __init__(self):
+        super().__init__()
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Gaussian(self.waveidx, self.duration, self.__ssb_freq, self.__iqscale, self.__phase,
+                         self.__deviation, self.__amp, self.__skew_phase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+class SechPulse(WaveEvent):
+    """Generates a Wave event with a Sech shape"""
+    PULSE_KEYWORD = "Sech"
+    def __init__(self):
+        super().__init__()
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Sech(self.waveidx, self.duration, self.__ssb_freq, self.__iqscale, self.__phase,
+                     self.__deviation, self.__amp, self.__skew_phase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+class SquarePulse(WaveEvent):
+    """Generates a Wave event with a Square shape"""
+    PULSE_KEYWORD = "Square"
+    def __init__(self):
+        super().__init__()
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Square(self.waveidx, self.duration, self.__ssb_freq, self.__iqscale, self.__phase, self.__amp,
+                           self.__skew_phase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+class LorentzPulse(WaveEvent):
+    """Generates a Wave event with a Lorentzian shape"""
+    PULSE_KEYWORD = "Lorentz"
+    def __init__(self):
+        super().__init__()
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Lorentzian(self.waveidx, self.duration, self.__ssb_freq, self.__iqscale, self.__phase,
+                               self.__deviation, self.__amp, self.__skew_phase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+class ArbitraryPulse(WaveEvent):
+    """Generates a Wave event with any shape given by numerically generated data read from text file"""
+    PULSE_KEYWORD = "Load Wfm"
+    def __init__(self, filename=None):
+        super().__init__()
+        self.pulse_type = self.PULSE_KEYWORD
+        self.__filename = filename
+        pulse = LoadWave(self.__filename, self.waveidx, self.duration, self.__ssb_freq, self.__iqscale,
+                             self.__phase, self.__deviation, self.__amp, self.__skew_phase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+class MarkerEvent(SequenceEvent):
+    """ Provides functionality for events that are digital in nature using marker output of AWG
+    :param markernum: integer that specifies the marker output number (e.g. 1-4 for AWG520)
+    :param connection_dict: dictionary that specifies which markers are connected to which hardware
+        """
+    # these 2 class variables define the event type and track the number of marker events
+    EVENT_KEYWORD = "Marker"
+    _markercounter = 0
+    def __init__(self,connection_dict = _CONN_DICT):
+        super().__init__(event_type=MARKER_KEYWORD)
+        MarkerEvent._markercounter += 1
+        self.markeridx = MarkerEvent._markercounter # public id of the marker event
+        self.connection_dict = connection_dict
+        self.pulse_type = self.EVENT_KEYWORD
+        pulse = Marker(num=self.markeridx,width=self.duration,markernum=0,marker_on=self.start,marker_off=self.stop)
+        pulse.data_generator()
+        self.data = pulse.data
+
+    @property
+    def data(self):
+        return self.__data
+
+    @data.setter
+    def data(self, datarr):
+        self.__data = datarr
+
+class Green(MarkerEvent):
+    """Turns on the green AOM"""
+    PULSE_KEYWORD = "Green"
+    def __init__(self):
+        super().__init__()
+        self.markernum = self.connection_dict[_GREEN_AOM]
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Marker(num=self.markeridx, width=self.duration, markernum=self.markernum, marker_on=self.start,
+                       marker_off=self.stop)
+        pulse.data_generator()
+        self.data = pulse.data
+
+
+class Measure(MarkerEvent):
+    """Turns on the Adwin trigger for measurement"""
+    PULSE_KEYWORD = "Measure"
+    def __init__(self):
+        super().__init__()
+        self.markernum = self.connection_dict[_ADWIN_TRIG]
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Marker(num=self.markeridx, width=self.duration, markernum=self.markernum, marker_on=self.start,
+                       marker_off=self.stop)
+        pulse.data_generator()
+        self.data = pulse.data
+
+class S1(MarkerEvent):
+    """Turns on the MW switch S1"""
+    PULSE_KEYWORD = "S1"
+    def __init__(self):
+        super().__init__()
+        self.markernum = self.connection_dict[_MW_S1]
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Marker(num=self.markeridx, width=self.duration, markernum=self.markernum, marker_on=self.start,
+                       marker_off=self.stop)
+        pulse.data_generator()
+        self.data = pulse.data
+
+class S2(MarkerEvent):
+    """Turns on the MW switch S2"""
+    PULSE_KEYWORD = "S2"
+    def __init__(self):
+        super().__init__()
+        self.markernum = self.connection_dict[_MW_S2]
+        self.pulse_type = self.PULSE_KEYWORD
+        pulse = Marker(num=self.markeridx, width=self.duration, markernum=self.markernum, marker_on=self.start,
+                       marker_off=self.stop)
+        pulse.data_generator()
+        self.data = pulse.data
 
 class Channel:
     """Provides functionality for a sequence of :class:`sequence events <SequenceEvent>`.
@@ -184,7 +391,7 @@ class Channel:
         self.maxend = 0
 
         if iq_params is None:
-            self.iq_params = _IQ_PARAMS
+            self.iq_params = _PULSE_PARAMS
         else:
             self.iq_params = iq_params
 
