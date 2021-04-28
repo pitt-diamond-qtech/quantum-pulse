@@ -168,7 +168,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.set_awgvalidator()
         self.ui.comboBoxTimeRes.currentIndexChanged.connect(self.timeResChanged)
         self.ui.awgSelectcomboBox.currentIndexChanged.connect(self.awgSelect)
-        self.ui.voltageSlider.valueChanged.connect(self.updateAmplitude)
+        self.ui.voltageSlider.valueChanged[int].connect(self.updateAmplitude)
         self.ui.lineEditPulsewidth.editingFinished.connect(self.updatePulsewidth)
         self.ui.pulseshapecomboBox.currentIndexChanged.connect(self.awgPulseshape)
         self.ui.checkBoxIQmod.stateChanged.connect(self.enableIQ)
@@ -249,9 +249,10 @@ class appGUI(QtWidgets.QMainWindow):
 
     # end AWG section
     # begin pulseshape dictionary update functions
-    def updateAmplitude(self):
-        amp = self.ui.voltageSlider.tickPosition()
-        self.pulseparams['amplitude'] = amp
+    def updateAmplitude(self,value):
+        # print(value)
+        #amp = self.ui.voltageSlider.tickPosition()
+        self.pulseparams['amplitude'] = value
         
     def updatePulsewidth(self):
         self.pulseparams['pulsewidth'][2] = int(self.ui.lineEditPulsewidth.text())

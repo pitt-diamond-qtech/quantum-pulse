@@ -54,6 +54,19 @@ class Pulse(object):
                       self.iqscale,dtype = _IQTYPE)
         self.I_data = np.array(data * np.cos(2* np.pi * (tempx * self.ssb_freq + self.phase/360.0)),dtype = _IQTYPE)
 
+    def i_generator(self,data):
+        tempx = np.arange(self.width * 1.0)
+        self.Q_data = np.zeros(len(data))
+        # self.I_data = np.array(data)
+        self.I_data = np.array(data * np.cos(2* np.pi * (tempx * self.ssb_freq + self.phase/360.0)),dtype = _IQTYPE)
+
+    def q_generator(self,data):
+        tempx = np.arange(self.width * 1.0)
+        self.Q_data = np.array(data * np.sin(2 * np.pi *(tempx * self.ssb_freq  + self.phase/360.0 +
+                                                         self.skew_phase/360.0)) * self.iqscale,dtype = _IQTYPE)
+        # self.I_data = np.array(data)
+        self.I_data = np.zeros(len(data))
+
 class Gaussian(Pulse):
     def __init__(self, num, width, ssb_freq, iqscale, phase,deviation, amp, skew_phase=0):
         super().__init__(num, width, ssb_freq, iqscale, phase, skew_phase)
@@ -105,6 +118,26 @@ class Square(Pulse):
     def data_generator(self):
         data = (np.zeros(self.width) + 1.0) * self.height  # making a Square function
         self.iq_generator(data)
+
+class SquareI(Pulse):
+    def __init__(self, num, width, ssb_freq, iqscale, phase, height, skew_phase=0):
+        super().__init__(num, width, ssb_freq, iqscale, phase, skew_phase)
+        self.mean = self.width / 2.0
+        self.height = height * self.vmax / _DAC_UPPER  # height can be a value anywhere from 0 - 1000
+
+    def data_generator(self):
+        data = (np.zeros(self.width) + 1.0) * self.height  # making a Square function
+        self.i_generator(data)
+
+class SquareQ(Pulse):
+    def __init__(self, num, width, ssb_freq, iqscale, phase, height, skew_phase=0):
+        super().__init__(num, width, ssb_freq, iqscale, phase, skew_phase)
+        self.mean = self.width / 2.0
+        self.height = height * self.vmax / _DAC_UPPER  # height can be a value anywhere from 0 - 1000
+
+    def data_generator(self):
+        data = (np.zeros(self.width) + 1.0) * self.height  # making a Square function
+        self.q_generator(data)
 
 
 class Marker(Pulse):

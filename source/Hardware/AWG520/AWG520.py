@@ -187,8 +187,8 @@ class AWG520(object):
         channels. '''
         self.logger.info('Setting up AWG...')
 
-        #self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
-        self.set_ref_clock_internal() # use the ref to be the internal clock when Rb clock is broken
+        self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        # self.set_ref_clock_internal() # use the ref to be the internal clock when Rb clock is broken
         time.sleep(0.1)
         self.set_enhanced_run_mode() # put AWG into enhanced run mode when the run command is received
         time.sleep(0.1)

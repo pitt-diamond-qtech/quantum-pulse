@@ -18,7 +18,7 @@ import logging
 from pathlib import Path
 import os
 
-from .Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave
+from .Pulse import Gaussian, Square, SquareI, SquareQ, Marker, Sech, Lorentzian, LoadWave
 from source.common.utils import log_with, create_logger,get_project_root
 import copy
 
@@ -432,6 +432,10 @@ class Sequence(object):
                         channel = Sech(num, dur_list[j], ssb_freq, iqscale, phase, deviation, amp, skew_phase)
                     elif pulse[3] == 'Square':
                         channel = Square(num, dur_list[j], ssb_freq, iqscale, phase, amp, skew_phase)
+                    elif pulse[3] == 'SquareI':
+                        channel = SquareI(num, dur_list[j], ssb_freq, iqscale, phase, amp, skew_phase)
+                    elif pulse[3] == 'SquareQ':
+                        channel = SquareQ(num, dur_list[j], ssb_freq, iqscale, phase, amp, skew_phase)
                     elif pulse[3] == 'Lorentz':
                         channel = Lorentzian(num, dur_list[j], ssb_freq, iqscale, phase, deviation, amp, skew_phase)
                     elif pulse[3] == 'Load Wfm':
