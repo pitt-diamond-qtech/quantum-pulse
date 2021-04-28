@@ -117,6 +117,10 @@ class Marker(Pulse):
         self.data = np.zeros(self.width * 1, dtype=_MARKTYPE)
 
     def data_generator(self):
+        """
+
+        :rtype: object
+        """
         if self.markernum == 1 or self.markernum == 3:
             # For marker 1 and 3, turning on the 1st bit of the marker byte
             self.data[
