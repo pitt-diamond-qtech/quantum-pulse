@@ -811,23 +811,27 @@ class Sequence:
                     pulsetype = opt_params[0]
                     if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
                         # check if there are any other optional parameters
-                        patt = r'amp\s*\=\s*(\d\.\d)'  # regex which allows amp = 1.0 etc
-                        if opt_params[1] and re.search(patt,str(opt_params[1])):
-                            val = float(re.findall(patt,str(opt_params[1]))[0])
+                        patt = r'(amp\s*\=\s*)?(\d\.?\d*)'  # regex which allows amp = 1.0 etc
+                        m = re.search(patt, str(opt_params[1]))
+                        if opt_params[1] and m:
+                            val = float(m.group(2))
                             amplitude_scale = val if (0<= val <=1.0) else 1.0
-                        patt = r'n\s*=\s*(\d+)' # regex which allows 1 or n = 1
-                        if opt_params[2] and re.search(patt,str(opt_params[2])):
-                            val = int(re.findall(patt,str(opt_params[1]))[0])
+                        patt = r'(n\s*=\s*)?(\d{,4})[\.]?' # regex which allows 1 or n = 1
+                        m = re.search(patt,str(opt_params[2]))
+                        if opt_params[2] and m:
+                            val = int(m.group(2))
                             num_events = val if (val > 1) else 1
                     elif pulsetype == _PULSE_TYPES[3]:  # this is for loading waveforms
                         # check if there are any other optional parameters
-                        patt = r'(amp\s\=\s)?(\d\.*\d*)'  # regex which allows amp = 1.0
-                        if opt_params[1] and re.search(patt, str(opt_params[1])):
-                            val = float(re.findall(patt, str(opt_params[1]))[0])
+                        patt = r'(amp\s*\=\s*)?(\d\.?\d*)'  # regex which allows amp = 1.0 etc
+                        m = re.search(patt, str(opt_params[1]))
+                        if opt_params[1] and m:
+                            val = float(m.group(2))
                             amplitude_scale = val if (0 <= val <= 1.0) else 1.0
-                        patt = r'n\s*=\s*(\d+)'  # regex which allows n = 10 etc
-                        if opt_params[2] and re.search(patt, str(opt_params[2])):
-                            val = int(re.findall(patt, str(opt_params[1]))[0])
+                        patt = r'(n\s*=\s*)?(\d{,4})[\.]?'  # regex which allows 1 or n = 1
+                        m = re.search(patt, str(opt_params[2]))
+                        if opt_params[2] and m:
+                            val = int(m.group(2))
                             num_events = val if (val > 1) else 1
                         if opt_params[3]:
                             fname = opt_params[3]
@@ -836,14 +840,16 @@ class Sequence:
                     else:
                         raise RuntimeError('Must specify type of pulse for Wave channels')
                 except (RuntimeWarning,RuntimeError) as err:
-                        self.logger.info('Runtime warning: {0}'.format(err))
+                        self.logger.info('Runtime warning/error: {0}'.format(err))
                         sys.stderr.write(err.errorText)
         else:  # if channel type is marker, then only one other parameter is allowed, the number of pulses
             if opt_params is None:
                 num_events = 1
             else:
-                if opt_params[0] and re.search(patt, str(opt_params[0])):
-                    val = int(re.findall(patt, str(opt_params[0]))[0])
+                patt = r'(n\s*=\s*)?(\d{,4})[\.]?'  # regex which allows 1 or n = 1
+                m = re.search(patt, str(opt_params[2]))
+                if opt_params[2] and m:
+                    val = int(m.group(2))
                     num_events = val if (val > 1) else 1
         return pulsetype,amplitude_scale,num_events,fname
 
@@ -890,10 +896,8 @@ class Sequence:
         mwdelay = int((self.delay[1] + self.timeres / 2) // self.timeres)
         self.logger.info("MW delay is found to be %d", mwdelay)
 
+        self.create_channels_from_seq(dt)
 
-        # first increment the sequence by dt if needed
-        for seq_event in self.seq:
-            seq_event.increment_time(dt)
 
         # TODO : Start working here
 
