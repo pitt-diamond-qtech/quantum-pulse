@@ -13,6 +13,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+import sys
+
 import numpy as np
 import logging
 from pathlib import Path
@@ -20,7 +22,7 @@ from pathlib import Path
 from decimal import Decimal, getcontext
 from .Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave,Pulse
 from source.common.utils import log_with, create_logger, get_project_root
-import copy
+import copy,re
 
 maindir = get_project_root()
 seqfiledir = maindir / 'Hardware/sequencefiles/'
@@ -72,21 +74,25 @@ class SequenceEvent:
     :param sampletime: the sampling time (clock rate) used for this event
     """
     _counter = 0 # class variable keeps track of how many sequence events are there
-    def __init__(self, event_type= '', start=1.0*_us, stop=1.1 *_us, start_increment=0, stop_increment=0,
+    def __init__(self, event_type= '', start=1.0*_us, stop=1.1 *_us, start_increment=0.0, stop_increment=0.0,
                  sampletime=1.0 * _ns):
         SequenceEvent._counter +=1 # increment whenever a new event is created
         self.eventidx = SequenceEvent._counter # publicly accessible value of the event id
         self.event_type = event_type
         self.start = start
         self.stop = stop
-        self.duration = self.stop - self.start
         self.start_increment = start_increment
         self.stop_increment = stop_increment
+        self.increment_time(dt=0.0)
+        self.duration = self.stop - self.start
         self.sampletime = sampletime
-
+        # these variables store the start, stop, and duration in units of the sampletime, useful for indexing arrays
+        # and writing data to the AWG
         self.__t1_idx = round(Decimal(self.start / self.sampletime))
         self.__t2_idx = round(Decimal(self.stop / self.sampletime))
         self.__dur_idx = round(Decimal(self.duration / self.sampletime))
+        # data for the event
+        self.data = None
 
     @property
     def event_type(self):
@@ -200,12 +206,12 @@ class SequenceEvent:
         self.__dur_idx = round(Decimal(self.duration / self.sampletime))
         return self.__dur_idx
 
-    def increment_time(self, dt=0):
+    def increment_time(self, dt:float =0):
         """Increments the start and stop times by dt.
         :param dt: The time increment.
         """
         #dt = round(Decimal(dt / self.sampletime))
-        dt = Decimal(dt)
+        dt = Decimal(dt) # convert to decimal to allow arithmetic
         self.start += dt * self.start_increment
         self.stop += dt * self.stop_increment
 
@@ -218,20 +224,22 @@ class WaveEvent(SequenceEvent):
     # these 2 class variables keep track of the class type and the number of instances
     EVENT_KEYWORD = "Wave"
     _wavecounter = 0
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, pulse_type='Gauss'):
-        super().__init__()
+    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, pulse_type='Gauss',start_inc=0.0,stop_inc=0.0,
+                 dt=0.0):
+        super().__init__(start=1e-6, stop=1.1e-7,start_increment=start_inc,stop_increment=stop_inc)
         WaveEvent._wavecounter += 1 # increment the wave counter
         self.waveidx = WaveEvent._wavecounter # publicly accessible id for the wave event
         self.event_type = self.EVENT_KEYWORD
-        if pulse_params==None:
+        if pulse_params is None:
             self.pulse_params = _PULSE_PARAMS
         self.start = start
         self.stop = stop
+        self.increment_time(dt)
         self.duration = self.stop - self.start
         self.pulse_type = pulse_type
         self.extract_pulse_params_from_dict() # unpack the dictionary of pulse params
-        zerosdata = np.zeros(round(Decimal(self.duration)), dtype=_IQTYPE) # create an array of zeros of the right size
-        pulse = Pulse(self.waveidx, self.duration, self.ssb_freq, self.iqscale,
+        zerosdata = np.zeros(self.dur_idx, dtype=_IQTYPE) # create an array of zeros of the right size
+        pulse = Pulse(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale,
                       self.phase, self.skewphase)  # create a blank Pulse object
         pulse.iq_generator(zerosdata)
         self.data = np.array((pulse.I_data, pulse.Q_data)) # initialize the data to be zero
@@ -308,8 +316,8 @@ class WaveEvent(SequenceEvent):
 class GaussPulse(WaveEvent):
     """Generates a Wave event with a Gaussian shape"""
     PULSE_KEYWORD = "Gauss"
-    def __init__(self,start=1e-6, stop=1.1e-7,pulse_params=None):
-        super().__init__(start=start, stop=stop,pulse_params=pulse_params)
+    def __init__(self,start=1e-6, stop=1.1e-7,pulse_params=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,pulse_params=pulse_params,start_inc=start_inc,stop_inc=stop_inc,dt=dt)
         self.pulse_type = self.PULSE_KEYWORD
         # if duration < 6 * pulsewidth, set it equal to at least that much
         if self.duration < 6*self.pulsewidth:
@@ -323,8 +331,8 @@ class GaussPulse(WaveEvent):
 class SechPulse(WaveEvent):
     """Generates a Wave event with a Sech shape"""
     PULSE_KEYWORD = "Sech"
-    def __init__(self,start=1e-6, stop=1.1e-7,pulse_params=None):
-        super().__init__(start=start, stop=stop,pulse_params=pulse_params)
+    def __init__(self,start=1e-6, stop=1.1e-7,pulse_params=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,pulse_params=pulse_params,start_inc=start_inc,stop_inc=stop_inc,dt=dt)
         self.pulse_type = self.PULSE_KEYWORD
         if self.duration < 6*self.pulsewidth:
             self.duration = 6*self.pulsewidth
@@ -338,8 +346,8 @@ class SquarePulse(WaveEvent):
     """Generates a Wave event with a Square shape"""
     PULSE_KEYWORD = "Square"
 
-    def __init__(self, start=1e-6, stop=1.1e-7,pulse_params=None):
-        super().__init__(start=start, stop=stop,pulse_params=pulse_params)
+    def __init__(self, start=1e-6, stop=1.1e-7,pulse_params=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,pulse_params=pulse_params,start_inc=start_inc,stop_inc=stop_inc,dt=dt)
         self.pulse_type = self.PULSE_KEYWORD
         if self.duration < 6*self.pulsewidth:
             self.duration = 6*self.pulsewidth
@@ -353,8 +361,8 @@ class LorentzPulse(WaveEvent):
     """Generates a Wave event with a Lorentzian shape"""
     PULSE_KEYWORD = "Lorentz"
 
-    def __init__(self, start=1e-6, stop=1.1e-7,pulse_params=None):
-        super().__init__(start=start, stop=stop,pulse_params=pulse_params)
+    def __init__(self, start=1e-6, stop=1.1e-7,pulse_params=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,pulse_params=pulse_params,start_inc=start_inc,stop_inc=stop_inc,dt=dt)
         self.pulse_type = self.PULSE_KEYWORD
         if self.duration < 6*self.pulsewidth:
             self.duration = 6*self.pulsewidth
@@ -367,10 +375,10 @@ class LorentzPulse(WaveEvent):
 class ArbitraryPulse(WaveEvent):
     """Generates a Wave event with any shape given by numerically generated data read from text file"""
     PULSE_KEYWORD = "Load Wfm"
-    def __init__(self,start=1e-6, stop=1.1e-7,pulse_params=None,filename=''):
-        super().__init__(start=start, stop=stop,pulse_params=pulse_params)
+    def __init__(self,start=1e-6, stop=1.1e-7,pulse_params=None,filename='test4.txt',start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,pulse_params=pulse_params,start_inc=start_inc,stop_inc=stop_inc,dt=dt)
         self.pulse_type = self.PULSE_KEYWORD
-        self.filename = filename
+        self.filename = pulseshapedir / filename
         if self.duration < 6*self.pulsewidth:
             self.duration = 6*self.pulsewidth
             self.stop = self.start + Decimal(self.duration)
@@ -381,21 +389,25 @@ class ArbitraryPulse(WaveEvent):
 
 class MarkerEvent(SequenceEvent):
     """ Provides functionality for events that are digital in nature using marker output of AWG
-    :param markernum: integer that specifies the marker output number (e.g. 1-4 for AWG520)
+    :param start: start time for marker event
+    :param stop: stop time for marker event
     :param connection_dict: dictionary that specifies which markers are connected to which hardware
         """
     # these 2 class variables define the event type and track the number of marker events
     EVENT_KEYWORD = "Marker"
     _markercounter = 0
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None):
-        super().__init__(start=start, stop=stop,event_type=self.EVENT_KEYWORD)
+    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None,start_inc=0.0,stop_inc=0.0,dt=0.0):
+        super().__init__(start=start, stop=stop,event_type=self.EVENT_KEYWORD, start_increment=start_inc,
+                         stop_increment=stop_inc)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         MarkerEvent._markercounter += 1
         self.markeridx = MarkerEvent._markercounter # public id of the marker event
         self.connection_dict = connection_dict
         self.pulse_type = self.EVENT_KEYWORD
+        self.increment_time(dt)
         self.duration = self.stop - self.start
+        self.markernum = 0   # default marker num , also ensures zero output
         pulse = Marker(num=self.markeridx,width=self.dur_idx,markernum=0,marker_on=self.t1_idx,marker_off=self.t2_idx)
         pulse.data_generator()
         self.data = pulse.data
@@ -411,8 +423,9 @@ class MarkerEvent(SequenceEvent):
 class Green(MarkerEvent):
     """Turns on the green AOM"""
     PULSE_KEYWORD = "Green"
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None):
-        super().__init__(start=start, stop=stop,connection_dict=connection_dict)
+    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,connection_dict=connection_dict,start_inc=start_inc,
+                         stop_inc=stop_inc,dt=dt)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -427,8 +440,9 @@ class Green(MarkerEvent):
 class Measure(MarkerEvent):
     """Turns on the Adwin trigger for measurement"""
     PULSE_KEYWORD = "Measure"
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None):
-        super().__init__(start=start, stop=stop,connection_dict=connection_dict)
+    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,connection_dict=connection_dict,start_inc=start_inc,
+                         stop_inc=stop_inc,dt=dt)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -442,8 +456,9 @@ class Measure(MarkerEvent):
 class S1(MarkerEvent):
     """Turns on the MW switch S1"""
     PULSE_KEYWORD = "S1"
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None):
-        super().__init__(start=start, stop=stop,connection_dict=connection_dict)
+    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,connection_dict=connection_dict,start_inc=start_inc,
+                         stop_inc=stop_inc,dt=dt)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -457,8 +472,9 @@ class S1(MarkerEvent):
 class S2(MarkerEvent):
     """Turns on the MW switch S2"""
     PULSE_KEYWORD = "S2"
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None):
-        super().__init__(start=start, stop=stop,connection_dict=connection_dict)
+    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None,start_inc=0,stop_inc=0,dt=0):
+        super().__init__(start=start, stop=stop,connection_dict=connection_dict,start_inc=start_inc,
+                         stop_inc=stop_inc,dt=dt)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -471,14 +487,19 @@ class S2(MarkerEvent):
 
 class Channel:
     """Provides functionality for a sequence of :class:`sequence events <SequenceEvent>`.
+    :param channel_type: type of channel, e.g. Marker or Wave
     :param event_train: A collection of :class:`sequence events <SequenceEvent>`.
     :param delay: Delay in the format [AOM delay, MW delay].
     :param pulse_params: A dictionary containing parameters for the IQ modulator: amplitude, pulseWidth,
                         SB frequency, IQ scale factor, phase, skewPhase.
     :param connection_dict: A dictionary of the connections between AWG channels and switches/IQ modulators.
+    :param event_channel_idx: index of event in channel where event train is added
     """
 
-    def __init__(self, event_train=None, delay=None, pulse_params=None, connection_dict=None):
+    def __init__(self, channel_type=None,event_train=None, delay=None, pulse_params=None, connection_dict=None,
+                 event_channel_idx=0):
+        if channel_type is None:
+            channel_type = _MARKER
         if delay is None:
             delay = [0, 0]
         if pulse_params is None:
@@ -493,11 +514,11 @@ class Channel:
         self.pulse_params = pulse_params
         self.connection_dict = connection_dict
         # set various object variables
-        self.num_of_events = len(self.event_train) # number of events in the channel
-        self.event_channel_index = 0 # index of event in channel
-        self.latest_channel_event = 0 # channel event with latest time
-        self.first_channel_event = 0 # channel event with earliest time
-        self.channel_type = self.event_train[0].event_type # type of channel events
+        self.num_of_events = len(self.event_train)  # number of events in the channel
+        self.event_channel_index = event_channel_idx  # index of event in channel
+        self.latest_channel_event = 0  # channel event with latest time
+        self.first_channel_event = 0  # channel event with earliest time
+        self.channel_type = channel_type  # type of channel events
         #
         if self.num_of_events == 1 or self.num_of_events == 0:
             self.separation = 0.0
@@ -511,66 +532,80 @@ class Channel:
         self.latest_channel_event = np.amax(np.array(self.event_stop_times))
         self.first_channel_event = np.amin(np.array(self.event_start_times))
 
-        # init the arrays
-        self.wavedata = None
-        self.markerdata = None
 
-        # set the maximum length to be zero for now
-        self.maxend = 0
-
-    def add_event(self,time_on=1e-6,time_off=1.1e-6,evt_type='Wave',pulse_type="Gauss"):
+    def add_event(self,time_on=1e-6,time_off=1.1e-6,pulse_type="Green",start_inc=0.0,stop_inc=0.0,dt=0.0,fname=''):
         """This method adds one event of a given type to the channel
         :param time_on: starting time of the event
         :param time_off: ending time of the event
-        :param evt_type: type of event
         :param pulse_type: type of pulse
+        :param start_inc: increment for start time
+        :param stop_inc: increment for stop time
+        :param dt: increment for start and stop times
+        :param fname: filename used for arbitrary pulse shapes
         """
         self.num_of_events += 1
         self.event_channel_index += 1
-        event = SequenceEvent() # no need for this statement, but pycharm complains event may be assigned before ref?
-        if evt_type == "Wave":
+        event = SequenceEvent()  # no need for this statement, but pycharm complains event may be assigned before ref?
+        # TODO: simplify this remaining code using a dictionary or other function reference list and a for loop
+        if self.channel_type == "Wave":
             if pulse_type == _PULSE_TYPES[0]:
-                event = GaussPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params)
+                event = GaussPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
             elif pulse_type == _PULSE_TYPES[1]:
-                event = SechPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params)
+                event = SechPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
             elif pulse_type == _PULSE_TYPES[2]:
-                event = SquarePulse(start=time_on,stop=time_off,pulse_params=self.pulse_params)
+                event = SquarePulse(start=time_on,stop=time_off,pulse_params=self.pulse_params,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
             elif pulse_type == _PULSE_TYPES[3]:
-                event = LorentzPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params)
+                event = LorentzPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
             elif pulse_type == _PULSE_TYPES[4]:
-                event = ArbitraryPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params)
-        elif evt_type == "Marker":
+                event = ArbitraryPulse(start=time_on,stop=time_off,pulse_params=self.pulse_params,start_inc=start_inc,
+                                   stop_inc=stop_inc,filename=fname,dt=dt)
+        elif self.channel_type == "Marker":
             if pulse_type == _GREEN_AOM:
-                event = Green(start=time_on,stop=time_off,connection_dict=self.connection_dict)
+                event = Green(start=time_on,stop=time_off,connection_dict=self.connection_dict,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
             elif pulse_type == _ADWIN_TRIG:
-                event = Measure(start=time_on,stop=time_off,connection_dict=self.connection_dict)
+                event = Measure(start=time_on,stop=time_off,connection_dict=self.connection_dict,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
             elif pulse_type == _MW_S1:
-                event = S1(start=time_on,stop=time_off,connection_dict=self.connection_dict)
+                event = S1(start=time_on,stop=time_off,connection_dict=self.connection_dict,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
             elif pulse_type == _MW_S2:
-                event = S2(start=time_on,stop=time_off,connection_dict=self.connection_dict)
+                event = S2(start=time_on,stop=time_off,connection_dict=self.connection_dict,start_inc=start_inc,
+                                   stop_inc=stop_inc,dt=dt)
         else:
-            event = SequenceEvent(start=time_on,stop=time_off)
+            event = SequenceEvent(start=time_on,stop=time_off,start_increment=start_inc,
+                                   stop_increment=stop_inc)
+            event.increment_time(dt=dt)
         self.event_train.append(event)
 
-    def add_event_train(self, time_on=1e-6, time_off=1.1e-6, separation=0.0, events_in_train=1, evt_type="Wave",
-                        pulse_type='Gauss'):
+    def add_event_train(self, time_on=1e-6, time_off=1.1e-6, separation=0.0, events_in_train=1,pulse_type='Gauss',
+                        start_inc=0.0,stop_inc=0.0,dt=0.0,fname=''):
         """This method adds multiple events to the channel
         :param time_on: starting time of the event
         :param time_off: ending time of the event
         :param separation: optional separation between the events
         :param events_in_train: number of events to add to the train
-        :param evt_type: type of event
         :param pulse_type: type of pulse
+        :param start_inc: start increment multiplier
+        :param stop_inc: stop increment multiplier
+        :param dt: amount to increment
+        :param fname: filename for arbitrary pulses
         """
         # add this pulse to the current pulse channel
-        self.add_event(time_on=time_on,time_off=time_off,evt_type=evt_type,pulse_type=pulse_type)
+        self.add_event(time_on=time_on,time_off=time_off,pulse_type=pulse_type,start_inc=start_inc,stop_inc=stop_inc,
+                       dt=dt,fname=fname) # make sure we add the increment first
         width = self.event_train[0].duration
         sep = Decimal(separation)
         if events_in_train > 1:
             for nn in range(events_in_train-1):
                 t_on = time_on + (nn+1)*(width + sep)
                 t_off = time_off + (nn+1)*(width + sep)
-                self.add_event(time_on=t_on,time_off=t_off,evt_type=evt_type,pulse_type=pulse_type)
+                self.add_event(time_on=t_on,time_off=t_off,pulse_type=pulse_type,fname=fname) # no need to add any more
+                # increments
         self.set_latest_channel_event()
         self.set_first_channel_event()
 
@@ -598,7 +633,7 @@ class Channel:
 
     def set_first_channel_event(self):
         if self.num_of_events > 1:
-            self.first_channel_event = sorted(self.event_train, key=lambda x: x.start)[0].t1_idx
+            self.first_channel_event = sorted(self.event_train, key=lambda x: x.t1_idx)[0].t1_idx
         elif self.num_of_events == 1:
             self.first_channel_event = self.event_train[0].t1_idx
         else:
@@ -619,18 +654,12 @@ class Channel:
     #     self.__first_channel_event = var
 
 class Sequence:
-    def __init__(self, sequence, delay=[0, 0], pulseparams=None, connectiondict=None, timeres=1):
-        """Class that implements a sequence, with args:
-            :param sequence: list specifying sequence in the form [type,start,stop, optionalparams],eg. here is
-            Rabi sequence
-                [['S1', ' 1000', ' 1000+t'],
-                ['Green', '2000+t', '5000+t'],
-                ['Measure', '2000+t', '2100+t']]
-
-                Another sequence for a gaussian pulse would be
-                [['Wave','1000','2000','Gauss'],
-                ['Green', '2000+t', '5000+t'],
-                ['Measure', '2000+t', '2100+t']]
+    def __init__(self, seqtext=None, delay=None, pulseparams=None, connectiondict=None, timeres=1):
+        """Class that implements a collection of :class:`channels <Channel>`
+            :param seqtext: string that specifies sequence in the form 'type,start,stop, optionalparams'\n,
+            eg. here is Rabi sequence 'S1,1000,1000+t\nGreen,2000+t,5000+t\nMeasure,2000+t,2100+t'
+            for a gaussian pulse would use 'Wave,1000,1000+t,Gauss\nGreen,2000+t,5000+t\nMeasure,2000+t,
+            2100+t'
             :param delay: list with [AOM delay, MW delay] , possibly other delays to be added.
             :param pulseparams: a dictionary containing the amplitude, pulsewidth,SB frequency,IQ scale factor,
                         phase, skewphase
@@ -639,27 +668,206 @@ class Sequence:
 
             After creating the instance, call the method create_sequence with an optional increment of time ,
             and then the arrays created will be: wavedata (analag I and Q data), c1markerdata, c2markerdata
-                """
-        # start the class logger
-        self.logger = logging.getLogger('seqlogger.seq_class')
-        self.seq = sequence
-        self.timeres = timeres
+        """
+        if delay is None:
+            delay = [0, 0]
+        self.logger = logging.getLogger('seqlogger.seq_class') # start the class logger
+        if seqtext is None:
+            seqtext = 'S1,1000,1000+t\nGreen,2000+t,5000+t\nMeasure,2000+t,2100+t'
+        self.convert_text_to_seq(seqtext)  # this function creates the self.seq object
+        self.timeres = timeres * _ns # old code was written assuming everything in ns, so fix that
 
-        if pulseparams == None:
+        if pulseparams is None:
             self.pulseparams = _PULSE_PARAMS
         else:
             self.pulseparams = pulseparams
-        if connectiondict == None:
+        if connectiondict is None:
             self.connectiondict = _CONN_DICT
         else:
             self.connectiondict = connectiondict
         self.delay = delay
+        #
+        self.num_of_channels = len(self.seq)
+        self.num_of_wait_events = 0
+        self.channels = []
+        self.seq_channel_indices = []
+        self.wait_events = [] # handling waiting events separately since we simply turn everything off,
+        # latest_sequence_event is the last time that a channel is turned off
+        self.latest_sequence_event = 0
+        self.first_sequence_event = 0
+
         # init the arrays
         self.wavedata = None
         self.c1markerdata = None
         self.c2markerdata = None
-        # set the maximum length to be zero for now
-        self.maxend = 0
+
+    def set_first_sequence_event(self):
+        if self.num_of_channels > 1:
+            temp_channels = []
+            for channel in self.channels:
+                channel.set_first_channel_event()
+                if channel.num_of_events > 0:
+                    temp_channels.append(channel)
+            if len(temp_channels) > 0:
+                self.first_sequence_event = sorted(temp_channels, key=lambda x: x.first_channel_event)[0].first_channel_event
+            else:
+                self.first_sequence_event = 0
+        if self.num_of_wait_events > 0:
+            if float(self.wait_events[0]) < self.first_sequence_event:
+                self.first_sequence_event = float(self.wait_events[0])
+
+    def set_latest_sequence_event(self):
+        self.latest_sequence_event = 0
+        for i in range(self.num_of_channels):
+            if self.channels[i].latest_channel_event > self.latest_sequence_event:
+                self.latest_sequence_event = self.channels[i].latest_channel_event
+        if self.num_of_wait_events > 0:
+            if float(self.wait_events[-1]) > self.latest_sequence_event:
+                self.latest_sequence_event = float(self.wait_events[-1])
+
+    def add_channel(self):
+        self.num_of_channels += 1
+        if self.num_of_channels != 1:
+            channel = Channel(event_channel_idx= self.channels[-1].event_channel_index + 1)
+        else:
+            channel = Channel()
+        self.channels.append(channel)
+        self.seq_channel_indices.append(channel.event_channel_index)
+        self.set_latest_sequence_event()
+        self.set_first_sequence_event()
+
+    def delete_channel(self,index):
+        if self.num_of_channels > 0:
+            self.channels.pop(index)
+            self.num_of_channels -= 1
+            self.seq_channel_indices.pop(index)
+            self.set_latest_sequence_event()
+            self.set_first_sequence_event()
+            return True
+        else:
+            return False
+
+    def find_start_stop_increment_times(self,pulse):
+        """This method finds the start, stop and increment factors"""
+        start, stop, start_increment, stop_increment = (0.0,0.0,0.0,0.0)
+        if '+' in pulse[1]:
+            t1, t2 = pulse[1].split('+')
+            if t2 == 't':
+                start_increment = 1.0
+            else:
+                start_increment = float(t2[:-1])
+        else:
+            start = float(pulse[1])
+        if '+' in pulse[2]:
+            t1, t2 = pulse[2].split('+')
+            stop = float(pulse[2])
+            if t2 == 't':
+                stop_increment = 1.0
+            else:
+                stop_increment = float(t2[:-1])
+        return start, stop, start_increment, stop_increment
+
+
+    def convert_text_to_seq(self,seqtext):
+        """This method parses the sequence definition which is currently just a string, and converts
+        it to a list of list of strings.  Eventually may include more sophisticated parsing techniques, e.g. using a
+        lexer/parser library like PLY, ATL5"""
+        # get a list of all the lines in the text
+        all_lines = seqtext.split('\n')
+        self.seq = []
+        b_all_lines = all_lines[:]  # make a copy
+        # now iterate over the copy, and create a list of a list of strings which specify the sequence
+        for (idx, line) in list(enumerate(b_all_lines)):
+            wfm = line.split(',')
+            self.seq.append(wfm)
+            #b_all_lines[idx:idx] = [wfm]
+        #self.seq = self.seq[:-1]
+        print('text box converted to',self.seq)
+
+    def unpack_optional_params(self,seq_idx=0):
+        '''get the optional params in the list of strings
+        :param seq_idx: index in the list of strings to unpack
+        '''
+        ch_type = self.seq[seq_idx][0] # type of channel
+        opt_params = self.seq[seq_idx][3:] # all the optional parameters
+        # currently we support 4 parameters: pulsetype, num-events, amplitude_scale,fname
+        amplitude_scale = 1.0
+        num_events = 1
+        fname = ''
+        pulsetype = ''
+        if ch_type == _WAVE:  # if the ch_type is Wave, then we need several other params
+            simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
+            # at a minimum this type must be present
+            if len(opt_params) >= 1:
+                try:
+                    pulsetype = opt_params[0]
+                    if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
+                        # check if there are any other optional parameters
+                        patt = r'amp\s*\=\s*(\d\.\d)'  # regex which allows amp = 1.0 etc
+                        if opt_params[1] and re.search(patt,str(opt_params[1])):
+                            val = float(re.findall(patt,str(opt_params[1]))[0])
+                            amplitude_scale = val if (0<= val <=1.0) else 1.0
+                        patt = r'n\s*=\s*(\d+)' # regex which allows 1 or n = 1
+                        if opt_params[2] and re.search(patt,str(opt_params[2])):
+                            val = int(re.findall(patt,str(opt_params[1]))[0])
+                            num_events = val if (val > 1) else 1
+                    elif pulsetype == _PULSE_TYPES[3]:  # this is for loading waveforms
+                        # check if there are any other optional parameters
+                        patt = r'(amp\s\=\s)?(\d\.*\d*)'  # regex which allows amp = 1.0
+                        if opt_params[1] and re.search(patt, str(opt_params[1])):
+                            val = float(re.findall(patt, str(opt_params[1]))[0])
+                            amplitude_scale = val if (0 <= val <= 1.0) else 1.0
+                        patt = r'n\s*=\s*(\d+)'  # regex which allows n = 10 etc
+                        if opt_params[2] and re.search(patt, str(opt_params[2])):
+                            val = int(re.findall(patt, str(opt_params[1]))[0])
+                            num_events = val if (val > 1) else 1
+                        if opt_params[3]:
+                            fname = opt_params[3]
+                        else:
+                            raise RuntimeWarning('Filename must be supplied else will use default')
+                    else:
+                        raise RuntimeError('Must specify type of pulse for Wave channels')
+                except (RuntimeWarning,RuntimeError) as err:
+                        self.logger.info('Runtime warning: {0}'.format(err))
+                        sys.stderr.write(err.errorText)
+        else:  # if channel type is marker, then only one other parameter is allowed, the number of pulses
+            if opt_params is None:
+                num_events = 1
+            else:
+                if opt_params[0] and re.search(patt, str(opt_params[0])):
+                    val = int(re.findall(patt, str(opt_params[0]))[0])
+                    num_events = val if (val > 1) else 1
+        return pulsetype,amplitude_scale,num_events,fname
+
+    def create_channels_from_seq(self,dt=0):
+        """This method parses the sequence definition which is currently just a list of list of strings, and converts
+        it to Channel objects.  Eventually may include more sophisticated parsing techniques, e.g. using a
+        lexer/parser library like PLY, ATL5
+        :param dt: increment for any of the start or stop times"""
+
+        t_start = np.zeros(len(self.seq))
+        t_stop = t_start.copy()
+        start_inc = t_start.copy()
+        stop_inc = t_start.copy()
+        num_event_train = t_start.copy()
+        ch_type = []
+        for i in range(len(self.seq)):
+            # the first 3 in the list are mandatory
+            ch_type.append(self.seq[i][0])
+            t_start[i], tstop[i], start_inc[i], stop_inc[i] = self.find_start_stop_increment_times(pulse=self.seq[i])
+            # then we could have optional parameters
+            ptype,ampfactor,nevents,fname = self.unpack_optional_params(seq_idx=i)
+            # create the channel
+            self.pulseparams['amplitude'] = self.pulseparams['amplitude'] * ampfactor
+            num_event_train[i] = nevents
+            channel = Channel(channel_type=ch_type[i],delay=self.delay,pulse_params=self.pulseparams,
+                              connection_dict=self.connectiondict,event_channel_idx=0)
+            channel.add_event_train(time_on=t_start[i],time_off=t_stop[i],start_inc=start_inc[i],
+                                    stop_inc=stop_inc[i],pulse_type=ptype,events_in_train=nevents,dt=dt)
+            self.channels.append(channel)
+            self.seq_channel_indices.append(channel.event_channel_index)
+            self.set_latest_sequence_event()
+            self.set_first_sequence_event()
 
     def create_sequence(self, dt=0):
         """Creates the data for the sequence.
@@ -691,16 +899,16 @@ class SequenceList(object):
         sequence objects, especially for scans that change the pulsewidth or other aspects of the pulse like
         frequency etc. For now I will stay with this approach and later we can rewrite if needed.
         """
-        if scanparams == None:
+        if scanparams is None:
             self.scanparams = {'type': 'amplitude', 'start': 0, 'stepsize': 10, 'steps': 10}
         else:
             self.scanparams = scanparams
-        if pulseparams == None:
+        if pulseparams is None:
             self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                                 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
         else:
             self.pulseparams = pulseparams
-        if connectiondict == None:
+        if connectiondict is None:
             self.connectiondict = _CONN_DICT
         else:
             self.connectiondict = connectiondict

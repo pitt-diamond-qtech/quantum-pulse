@@ -586,29 +586,30 @@ class appGUI(QtWidgets.QMainWindow):
     def updateSequenceText(self):
         seqtext = self.ui.metadatatextEdit.toPlainText()
         print('the sequence text which will be converted is',seqtext)
-        self.convert_text_to_seq(seqtext)
+        # self.convert_text_to_seq(seqtext)   # trying this -- Gurudev 2021-04-29
+        self.seq = seqtext      # we will simply send the sequence text to the sequence object on backend
         self.getReady() # turn off the keep process
         #print("the new seq text is",new_stext)
         #self.ui.metadatatextEdit.clear()
         #self.ui.metadatatextEdit.setText(new_stext)
-
-    def convert_text_to_seq(self, seqtext):
-        # get a list of all the lines in the textbox
-        all_lines = seqtext.split('\n')
-        self.seq = []
-        b_all_lines = all_lines[:]  # make a copy
-        # now iterate over the copy, and create a list of a list of strings which specify the sequence
-        for (idx, line) in list(enumerate(b_all_lines)):
-            wfm = line.split(',')
-            self.seq.append(wfm)
-            #b_all_lines[idx:idx] = [wfm]
-        #self.seq = self.seq[:-1]
-        print('text box converted to',self.seq)
-
-        # new_stext = ''
-        # for (l,s) in list(enumerate(b_all_lines)):
-        #     new_stext = new_stext + s + '\n'
-        # return new_stext
+    # commented this out on 2021-04-29 -- Gurudev
+    # def convert_text_to_seq(self, seqtext):
+    #     # get a list of all the lines in the textbox
+    #     all_lines = seqtext.split('\n')
+    #     self.seq = []
+    #     b_all_lines = all_lines[:]  # make a copy
+    #     # now iterate over the copy, and create a list of a list of strings which specify the sequence
+    #     for (idx, line) in list(enumerate(b_all_lines)):
+    #         wfm = line.split(',')
+    #         self.seq.append(wfm)
+    #         #b_all_lines[idx:idx] = [wfm]
+    #     #self.seq = self.seq[:-1]
+    #     print('text box converted to',self.seq)
+    #
+    #     # new_stext = ''
+    #     # for (l,s) in list(enumerate(b_all_lines)):
+    #     #     new_stext = new_stext + s + '\n'
+    #     # return new_stext
 
 
 
