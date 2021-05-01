@@ -9,10 +9,10 @@ from source.Hardware.AWG520.Sequence import Sequence,SequenceList
 print('Module name is: ',__name__)
 def make_seq():
     wfmdir = Path('../../..') / 'arbpulseshape'
+    filestr= str((wfmdir/'test4.txt').resolve())
     #print(str(wfmdir.resolve()))
-    seq=[['Green', '0', '800'],['S2','900','1700'],['Wave','900','1400','Sech'],['Wave','1400','1800','Gauss'],
-          ['Wave','1800','2200','Square'],['Wave','2200','2600','Lorentz'],['Wave','2600','3000','Load Wfm', \
-            wfmdir / 'test4.txt']]
+    seq='Green,0,800\nS2,900,1700\nWave,900,1400,Sech\nWave,1400,1800,Gauss\nWave,1800,2200,Square\nWave,2200,2600,' \
+        'Lorentz\nWave,2600,3000,Load Wfm,fname='+filestr
     #seq = [['Green', '0', '1000']]
     #seq = [['Wave', '900', '1400', 'Load Wfm',wfmdir/'test4.txt'],['Green', '1500', '2500']]
     # seq = [['Wave', '900+t', '1400+t', 'Gauss'], ['Green', '1500', '2500'],['S2','500','1500'],['S2','2000','2500'],
@@ -74,6 +74,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    # test_sequence()
-    test_seq_list()
+    test_sequence()
+    # test_seq_list()
     #make_long_seq()
