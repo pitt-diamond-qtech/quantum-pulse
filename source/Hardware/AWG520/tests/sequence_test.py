@@ -11,18 +11,18 @@ def make_seq():
     wfmdir = Path('../../..') / 'arbpulseshape'
     filestr= str((wfmdir/'test4.txt').resolve())
     #print(str(wfmdir.resolve()))
-    seq='Green,0,800\nS2,900,1700\nWave,900,1400,Sech\nWave,1400,1800,Gauss\nWave,1800,2200,Square\nWave,2200,2600,' \
-        'Lorentz\nWave,2600,3000,Load Wfm,fname='+filestr
-    #seq = [['Green', '0', '1000']]
+    #seq='Green,0,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\nWave,1.8e-6,2.2e-6,' \
+    #    'Square\nWave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
+    seq = 'Green,0.0,1e-6'
     #seq = [['Wave', '900', '1400', 'Load Wfm',wfmdir/'test4.txt'],['Green', '1500', '2500']]
     # seq = [['Wave', '900+t', '1400+t', 'Gauss'], ['Green', '1500', '2500'],['S2','500','1500'],['S2','2000','2500'],
     #        ['Green', '3000', '3200'],['Measure','1500','1800']]
     # seq = [['S2', '1000', '1200'],['Green', '1100', '1700'],['S2','1800','2000']]
     newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 1}
-    s = Sequence(seq,pulseparams=newparams,timeres=1)
-    s.create_sequence(dt=10)
-    tt = np.linspace(0,s.maxend,len(s.c1markerdata))
+    s = Sequence(seq,pulseparams=newparams,timeres=1.0)
+    s.create_sequence(dt=0.1e-6)
+    tt = np.linspace(0,s.latest_sequence_event,len(s.c1markerdata))
     # plt.plot(tt,s.c1m1,'r-',tt,s.c1m2,'g-')
     plt.plot(tt,s.wavedata[0,:],'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
     #plt.plot(tt,s.wavedata[1,:])

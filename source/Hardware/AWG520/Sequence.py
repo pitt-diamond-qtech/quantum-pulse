@@ -595,7 +595,7 @@ class Channel:
         self.event_channel_index += 1
         event = SequenceEvent()  # no need for this statement, but pycharm complains event may be assigned before ref?
         # TODO: simplify this remaining code using a dictionary or other function reference list and a for loop
-        if self.ch_type == "Wave":
+        if self.ch_type == _WAVE:
             if pulse_type == _PULSE_TYPES[0]:
                 event = GaussPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
                                    stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
@@ -612,18 +612,17 @@ class Channel:
                 event = ArbitraryPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params,
                                        start_inc=start_inc,
                                        stop_inc=stop_inc, filename=fname, dt=dt, sampletime=self.sampletime)
-        elif self.ch_type == "Marker":
-            if pulse_type == _GREEN_AOM:
-                event = Green(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+        elif pulse_type == _GREEN_AOM:
+            event = Green(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                               stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
-            elif pulse_type == _ADWIN_TRIG:
-                event = Measure(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+        elif pulse_type == _ADWIN_TRIG:
+            event = Measure(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                                 stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
-            elif pulse_type == _MW_S1:
-                event = S1(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+        elif pulse_type == _MW_S1:
+            event = S1(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                            stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
-            elif pulse_type == _MW_S2:
-                event = S2(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+        elif pulse_type == _MW_S2:
+            event = S2(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                            stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
         else:
             event = SequenceEvent(start=time_on, stop=time_off, start_increment=start_inc,
@@ -1050,24 +1049,24 @@ class Sequence:
         waveQ = waveI.copy()
         for (idx, channel) in enumerate(self.channels):
             if channel.ch_type == _WAVE:
-                for (n, evt) in channel.event_train:
+                for (n, evt) in enumerate(channel.event_train):
                     waveI[evt.t1_idx:evt.t2_idx] = evt.I_data
                     waveQ[evt.t1_idx:evt.t2_idx] = evt.Q_data
             elif channel.ch_type == _GREEN_AOM:
-                for (n, evt) in channel.event_train:
+                for (n, evt) in enumerate(channel.event_train):
                     c1m1[evt.t1_idx:evt.t2_idx] = evt.data
                 c1m2 = np.roll(c1m2, -aomdelay)
             elif channel.ch_type == _MW_S2:
-                for (n, evt) in channel.event_train:
+                for (n, evt) in enumerate(channel.event_train):
                     c1m1[evt.t1_idx:evt.t2_idx] = evt.data
                 c1m1 = np.roll(c1m1, -mwdelay)
             elif channel.ch_type == _MW_S1:
-                for (n, evt) in channel.event_train:
+                for (n, evt) in enumerate(channel.event_train):
                     c2m1[evt.t1_idx:evt.t2_idx] = evt.data
                 c2m1 = np.roll(c2m1, -mwdelay)
                 self.logger.warning('Value error: only MW switch connected is S2 using Ch1, M1, this channel will do nothing')
             elif channel.ch_type == _ADWIN_TRIG:
-                for (n, evt) in channel.event_train:
+                for (n, evt) in enumerate(channel.event_train):
                     c2m2[evt.t1_idx:evt.t2_idx] = evt.data
         self.c1markerdata = c1m1 + c1m2
         self.c2markerdata = c2m1 + c2m2
