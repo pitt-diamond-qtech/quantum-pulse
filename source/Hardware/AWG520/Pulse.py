@@ -125,10 +125,12 @@ class Marker(Pulse):
         """
         if self.markernum == 1 or self.markernum == 3:
             # For marker 1 and 3, turning on the 1st bit of the marker byte
-            self.data[self.marker_on:self.marker_off] += 1
+            #self.data[self.marker_on:self.marker_off] += 1
+            self.data += 1
         elif self.markernum == 2 or self.markernum == 4:
             # For marker 2 and 4, turning on the 2nd bit of the marker byte
-            self.data[self.marker_on:self.marker_off] += 2
+            #self.data[self.marker_on:self.marker_off] += 2
+            self.data += 2
 
 class LoadWave(Pulse):
     def __init__(self,filename,num, width, ssb_freq,iqscale,phase,amp,deviation,skew_phase=0):

@@ -887,7 +887,7 @@ class Sequence:
                     if (evt.start > earliest_start_time) and (evt.start < latest_stop_time):
                         evt.start_increment = 1
                         evt.stop_increment = 1
-                        evt.increment(dt=push_time)
+                        evt.increment_time(dt=push_time)
                     evt.start_increment = temp1
                     evt.stop_increment = temp2
                     chan.event_start_times[idx] = evt.start
@@ -931,7 +931,7 @@ class Sequence:
             self.seq.append(wfm)
             # b_all_lines[idx:idx] = [wfm]
         # self.seq = self.seq[:-1]
-        print('text box converted to', self.seq)
+        # print('text box converted to', self.seq)
 
     def unpack_optional_params(self, seq_idx=0):
         '''get the optional params in the list of strings
@@ -947,8 +947,8 @@ class Sequence:
         if ch_type == _WAVE:  # if the ch_type is Wave, then we need several other params
             simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
             # at a minimum this type must be present
-            if len(opt_params) >= 1:
-                try:
+            try:
+                if len(opt_params) >= 1:
                     pulsetype = opt_params[0]
                     if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
                         # check if there are any other optional parameters
@@ -959,22 +959,19 @@ class Sequence:
                                 val = float(m.group(2))  # the match is returned in group 2
                                 amplitude_scale = val if (0 <= val <= 1.0) else 1.0
                         if len(opt_params) >= 3:
-                            patt = r'(n[ump]\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
+                            patt = r'(n[ump]?\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
                             m = re.search(patt, str(opt_params[2]))
                             if m:
                                 val = int(m.group(2))  # the match is returned in group 2
                                 num_events = val if (val > 1) else 1
-                        else:
+                        if len(opt_params) >=4:
                             self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
-                    elif pulsetype == _PULSE_TYPES[3]:  # this is for loading waveforms
+                    elif pulsetype == _PULSE_TYPES[4]:  # this is for loading waveforms
                         # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
                         if len(opt_params) >= 2:
                             patt = r'(f[name]?\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
                             m = re.match(patt, opt_params[1])
                             fname = m.group('file') + '.' + m.group('ext') if m else None
-                        else:
-                            raise RuntimeWarning('Filename must be supplied else will use default')
-                        # check if there are any other optional parameters
                         if len(opt_params) >= 3:
                             patt = r'(a[mp]?\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
                             m = re.search(patt, str(opt_params[2]))
@@ -987,13 +984,17 @@ class Sequence:
                             if m:
                                 val = int(m.group(2))  # the match is returned in group 2
                                 num_events = val if (val > 1) else 1
-                        else:
+                        if len(opt_params) >= 5:
                             self.logger.warning(f"only 4 optional parameters supported for {pulsetype} channels")
+                        if len(opt_params) < 2:  # not enough optional parms were supplied
+                            raise RuntimeWarning('Filename must be supplied else will use default')
                     else:
-                        raise RuntimeError('Must specify type of pulse for Wave channels')
-                except (RuntimeWarning, RuntimeError) as err:
-                    self.logger.error('Runtime warning/error: {0}'.format(err))
-                    sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
+                        raise RuntimeError(f'Supported types are {_PULSE_TYPES} for Wave channels')
+                else:
+                    raise RuntimeError('Must specify type of pulse for Wave channels')
+            except (RuntimeWarning, RuntimeError) as err:
+                self.logger.error('Runtime warning/error: {0}'.format(err))
+                sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
         else:  # if channel type is marker, then only one other parameter is allowed, the number of pulses
             pulsetype = self.seq[seq_idx][0]   # the pulsetype and channel name are identical for marker types
             try:
@@ -1040,7 +1041,8 @@ class Sequence:
             ch = self.channels[i]
             ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
                                stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
-            self.adjust_channel_times(chantype=ch_type[i])   # if we need to adjust all the other channels after this
+        for i in range(len(self.seq)):
+            self.adjust_channel_times(chantype=ch_type[i])   # if we need to adjust all the channels after this
         self.set_first_sequence_event()
         self.set_latest_sequence_event()
 
