@@ -26,7 +26,8 @@ def make_seq():
     s.create_sequence(dt=0.0e-6)
     tt = np.linspace(0,s.latest_sequence_event,len(s.c1markerdata))*1e6
     # plt.plot(tt,s.c1m1,'r-',tt,s.c1m2,'g-')
-    plt.plot(tt,s.wavedata[0,:],'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
+    # plt.plot(tt,s.wavedata[0,:],'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
+    plt.plot(tt,s.wavedata[0,:],'r--',tt,s.wavedata[1,:],'b--')
     #plt.plot(tt,s.wavedata[1,:])
     #print(s.c1markerdata[1700:1750])
     plt.show()

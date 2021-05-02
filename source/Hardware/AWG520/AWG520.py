@@ -187,8 +187,8 @@ class AWG520(object):
         channels. '''
         self.logger.info('Setting up AWG...')
 
-        #self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
-        self.set_ref_clock_internal() # use the ref to be the internal clock when Rb clock is broken
+        self.set_ref_clock_external() # setup the ref to be the Rubidium lab clock
+        # self.set_ref_clock_internal() # use the ref to be the internal clock when Rb clock is broken
         time.sleep(0.1)
         self.set_enhanced_run_mode() # put AWG into enhanced run mode when the run command is received
         time.sleep(0.1)
@@ -211,13 +211,13 @@ class AWG520(object):
         # mysocket.sendall('SOUR2:MARK1:VOLT:HIGH 2.0\n')
         # mysocket.sendall('SOUR2:MARK2:VOLT:LOW 0\n')
         # mysocket.sendall('SOUR2:MARK2:VOLT:HIGH 2.0\n')
-        self.sendcommand('SOUR1:VOLT:AMPL 2000mV\n')
+        self.sendcommand('SOUR1:VOLT:AMPL 1000mV\n')
         time.sleep(0.1)
-        self.sendcommand('SOUR1:VOLT:OFFS 1000mV\n')
+        self.sendcommand('SOUR1:VOLT:OFFS 0mV\n')
         time.sleep(0.1)
-        self.sendcommand('SOUR2:VOLT:AMPL 2000mV\n')
+        self.sendcommand('SOUR2:VOLT:AMPL 1000mV\n')
         time.sleep(0.1)
-        self.sendcommand('SOUR2:VOLT:OFFS 1000mV\n')
+        self.sendcommand('SOUR2:VOLT:OFFS 0mV\n')
         time.sleep(0.1)
         '''edited on 8/6/2019 for use w/ IQ modulator: max Vpp = 1.0'''
         self.sendcommand('SOUR1:MARK1:VOLT:LOW 0\n')

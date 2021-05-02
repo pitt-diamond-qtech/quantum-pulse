@@ -168,7 +168,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.set_awgvalidator()
         self.ui.comboBoxTimeRes.currentIndexChanged.connect(self.timeResChanged)
         self.ui.awgSelectcomboBox.currentIndexChanged.connect(self.awgSelect)
-        self.ui.voltageSlider.valueChanged.connect(self.updateAmplitude)
+        self.ui.voltageSlider.valueChanged[int].connect(self.updateAmplitude)
         self.ui.lineEditPulsewidth.editingFinished.connect(self.updatePulsewidth)
         self.ui.pulseshapecomboBox.currentIndexChanged.connect(self.awgPulseshape)
         self.ui.checkBoxIQmod.stateChanged.connect(self.enableIQ)
@@ -203,7 +203,7 @@ class appGUI(QtWidgets.QMainWindow):
     
     # this section updates all AWG related parameters from the GUI
     def set_awgvalidator(self):
-        self.ui.lineEditSBfreq.setValidator(QtGui.QDoubleValidator(-100.0,100.0,3)) # freq in MHz allowed
+        self.ui.lineEditSBfreq.setValidator(QtGui.QDoubleValidator(-100.0,100.0,6)) # freq in MHz allowed
         self.ui.lineEditPhase.setValidator(QtGui.QDoubleValidator(-179.99,180.0,3)) # phase in degrees allowed
         self.ui.lineEditSkewPhase.setValidator(QtGui.QDoubleValidator(-179.99,180.0,3)) # skew phase in adegrees
         self.ui.lineEditIQscale.setValidator(QtGui.QDoubleValidator(0.0,1.0,3)) # IQ ratio allowed
@@ -249,26 +249,27 @@ class appGUI(QtWidgets.QMainWindow):
 
     # end AWG section
     # begin pulseshape dictionary update functions
-    def updateAmplitude(self):
-        amp = self.ui.voltageSlider.tickPosition()
-        self.pulseparams['amplitude'] = amp
+    def updateAmplitude(self,value):
+        # print(value)
+        #amp = self.ui.voltageSlider.tickPosition()
+        self.pulseparams['amplitude'] = value
         
     def updatePulsewidth(self):
-        self.pulseparams['pulsewidth'][2] = int(self.ui.lineEditPulsewidth.currentText())
+        self.pulseparams['pulsewidth'][2] = int(self.ui.lineEditPulsewidth.text())
 
     def updateSBfreq(self):
-        self.pulseparams['SB freq'] = float(self.ui.lineEditSBfreq.currentText())
+        self.pulseparams['SB freq'] = float(self.ui.lineEditSBfreq.text())
 
 
 
     def updateIQscale(self):
-        self.pulseparams['IQ scale factor']= int(self.ui.lineEditIQscale.currentText())
+        self.pulseparams['IQ scale factor']= int(self.ui.lineEditIQscale.text())
     
     def updatePhase(self):
-        self.pulseparams['phase'] = float(self.ui.lineEditPhase.currentText())
+        self.pulseparams['phase'] = float(self.ui.lineEditPhase.text())
     
     def updateSkewPhase(self):
-        self.pulseparams['skew phase'] = float(self.ui.lineEditSkewPhase.currentText())
+        self.pulseparams['skew phase'] = float(self.ui.lineEditSkewPhase.text())
 
     # end section updating pulse parameters
 

@@ -24,6 +24,7 @@ from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ,Mark
 from source.common.utils import log_with, create_logger, get_project_root
 import copy, re, sys
 
+
 maindir = get_project_root()
 seqfiledir = maindir / 'Hardware/sequencefiles/'
 pulseshapedir = maindir / 'arbpulseshape/'
@@ -1115,6 +1116,7 @@ class Sequence:
         c2m2 = c1m1.copy()
         waveI = np.zeros(maxend, dtype=_IQTYPE)
         waveQ = waveI.copy()
+
         for (idx, channel) in enumerate(self.channels):
             if channel.ch_type == _WAVE:
                 for (n, evt) in enumerate(channel.event_train):
@@ -1136,6 +1138,7 @@ class Sequence:
             elif channel.ch_type == _ADWIN_TRIG:
                 for (n, evt) in enumerate(channel.event_train):
                     c2m2[evt.t1_idx:evt.t2_idx] = evt.data
+
 
         self.c1markerdata = c1m1 + c1m2
         self.c2markerdata = c2m1 + c2m2

@@ -55,16 +55,16 @@ class Pulse(object):
                       self.iqscale,dtype = _IQTYPE)
         self.I_data = np.array(data * np.cos(2* np.pi * (tempx * self.ssb_freq + self.phase/360.0)),dtype = _IQTYPE)
 
-    def i_generator(self, data):
+    def i_generator(self,data):
         tempx = np.arange(self.width * 1.0)
         self.Q_data = np.zeros(len(data))
         # self.I_data = np.array(data)
-        self.I_data = np.array(data * np.cos(2 * np.pi * (tempx * self.ssb_freq + self.phase / 360.0)), dtype=_IQTYPE)
+        self.I_data = np.array(data * np.cos(2* np.pi * (tempx * self.ssb_freq + self.phase/360.0)),dtype = _IQTYPE)
 
-    def q_generator(self, data):
+    def q_generator(self,data):
         tempx = np.arange(self.width * 1.0)
-        self.Q_data = np.array(data * np.sin(2 * np.pi * (tempx * self.ssb_freq + self.phase / 360.0 +
-                                                          self.skew_phase / 360.0)) * self.iqscale, dtype=_IQTYPE)
+        self.Q_data = np.array(data * np.sin(2 * np.pi *(tempx * self.ssb_freq  + self.phase/360.0 +
+                                                         self.skew_phase/360.0)) * self.iqscale,dtype = _IQTYPE)
         # self.I_data = np.array(data)
         self.I_data = np.zeros(len(data))
 
@@ -140,7 +140,6 @@ class SquareQ(Pulse):
     def data_generator(self):
         data = (np.zeros(self.width) + 1.0) * self.height  # making a Square function
         self.q_generator(data)
-
 
 
 class Marker(Pulse):
