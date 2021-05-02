@@ -18,7 +18,8 @@ def make_seq():
     #seq = 'Wave,9e-7,1.4e-6,Gauss\nWave,1e-7,3e-7,Load Wfm'+ '\n' + 'Green,1.5e-6,2.5e-6'
     #seq = 'Wave,9e-7+t,1.4e-6+t,Gauss\n'+'Green,1.5e-6,2.5e-6\n'+'S2,5e-7,1.5e-6\n'+'S2,2e-6,2.5e-6\n' + \
     #        'Green,3e-6, 3.2e-6\n'+'Measure,1.5e-6,1.8e-6'
-    seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,Sech,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
+    #seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,Sech,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
+    seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,SquareI,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 1}
     s = Sequence(seq,pulseparams=newparams,timeres=1.0)
@@ -78,6 +79,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    #test_sequence()
-    test_seq_list()
+    test_sequence()
+    #test_seq_list()
     #make_long_seq()

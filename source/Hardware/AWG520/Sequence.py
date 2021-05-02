@@ -20,7 +20,7 @@ import logging
 from pathlib import Path
 from typing import List, NewType
 from decimal import Decimal, getcontext
-from source.Hardware.AWG520.Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave, Pulse
+from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ,Marker, Sech, Lorentzian, LoadWave, Pulse
 from source.common.utils import log_with, create_logger, get_project_root
 import copy, re, sys
 
@@ -55,7 +55,7 @@ _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 _PULSE_PARAMS = {'amplitude': 0.0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                  'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
 # allowed values of the Waveform types
-_PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'Load Wfm']
+_PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'SquareI','SquareQ','Load Wfm']
 
 _IQTYPE = np.dtype('<f4')  # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1')  # AWG520 stores marker values as 1 byte
@@ -385,10 +385,11 @@ class SquarePulse(WaveEvent):
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
         self.extract_pulse_params_from_dict()
-        pwidth_idx = int(self.pulsewidth / self.sampletime)
-        if self.duration < 6 * self.pulsewidth:
-            self.duration = 6 * self.pulsewidth
-            self.stop = self.start + self.duration
+        # for square pulses, the pulsewidth and the duration are the same, so we comment out the next few lines
+        # pwidth_idx = int(self.pulsewidth / self.sampletime)
+        # if self.duration < 6 * self.pulsewidth:
+        #     self.duration = 6 * self.pulsewidth
+        #     self.stop = self.start + self.duration
         pulse = Square(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, self.amplitude,
                        self.skewphase)
         pulse.data_generator()  # generate the data
@@ -413,6 +414,44 @@ class LorentzPulse(WaveEvent):
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
+
+class SquarePulseI(WaveEvent):
+    """Generates a Wave event with a Square shape"""
+    PULSE_KEYWORD = "SquareI"
+
+    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+        super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
+                         dt=dt, sampletime=sampletime)
+        self.pulse_type = self.PULSE_KEYWORD
+        self.extract_pulse_params_from_dict()
+        # for square pulses, the pulsewidth and the duration are the same, so we comment out the next few lines
+        # pwidth_idx = int(self.pulsewidth / self.sampletime)
+        # if self.duration < 6 * self.pulsewidth:
+        #     self.duration = 6 * self.pulsewidth
+        #     self.stop = self.start + self.duration
+        pulse = SquareI(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, self.amplitude,
+                        self.skewphase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+class SquarePulseQ(WaveEvent):
+    """Generates a Wave event with a Square shape"""
+    PULSE_KEYWORD = "SquareI"
+
+    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+        super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
+                         dt=dt, sampletime=sampletime)
+        self.pulse_type = self.PULSE_KEYWORD
+        self.extract_pulse_params_from_dict()
+        # for square pulses, the pulsewidth and the duration are the same, so we comment out the next few lines
+        # pwidth_idx = int(self.pulsewidth / self.sampletime)
+        # if self.duration < 6 * self.pulsewidth:
+        #     self.duration = 6 * self.pulsewidth
+        #     self.stop = self.start + self.duration
+        pulse = SquareQ(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, self.amplitude,
+                        self.skewphase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
 
 class ArbitraryPulse(WaveEvent):
     """Generates a Wave event with any shape given by numerically generated data read from text file"""
@@ -628,6 +667,12 @@ class Channel:
                 event = LorentzPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
                                      stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[4]:
+                event = SquarePulseI(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                                     stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
+            elif pulse_type == _PULSE_TYPES[5]:
+                event = SquarePulseQ(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                                     stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
+            elif pulse_type == _PULSE_TYPES[-1]:
                 event = ArbitraryPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params,
                                        start_inc=start_inc,
                                        stop_inc=stop_inc, filename=fname, dt=dt, sampletime=self.sampletime)
@@ -741,6 +786,30 @@ class Channel:
     # @first_channel_event.setter
     # def first_channel_event(self,var):
     #     self.__first_channel_event = var
+
+
+def find_start_stop_increment_times(pulse):
+    """This method finds the start, stop and increment factors"""
+    start, stop, start_increment, stop_increment = (0.0, 0.0, 0.0, 0.0)
+    if '+' in pulse[1]:
+        t1, t2 = pulse[1].split('+')  # '1000+2t' becomes '1000' and '2t'
+        start = float(t1)
+        if t2 == 't':
+            start_increment = 1.0
+        else:
+            start_increment = float(t2[:-1])
+    else:
+        start = float(pulse[1])
+    if '+' in pulse[2]:
+        t1, t2 = pulse[2].split('+')
+        stop = float(t1)
+        if t2 == 't':
+            stop_increment = 1.0
+        else:
+            stop_increment = float(t2[:-1])
+    else:
+        stop = float(pulse[2])
+    return start, stop, start_increment, stop_increment
 
 
 class Sequence:
@@ -895,29 +964,6 @@ class Sequence:
                 chan.set_first_channel_event()
                 chan.set_latest_channel_event()
 
-    def find_start_stop_increment_times(self, pulse):
-        """This method finds the start, stop and increment factors"""
-        start, stop, start_increment, stop_increment = (0.0, 0.0, 0.0, 0.0)
-        if '+' in pulse[1]:
-            t1, t2 = pulse[1].split('+')  # '1000+2t' becomes '1000' and '2t'
-            start = float(t1)
-            if t2 == 't':
-                start_increment = 1.0
-            else:
-                start_increment = float(t2[:-1])
-        else:
-            start = float(pulse[1])
-        if '+' in pulse[2]:
-            t1, t2 = pulse[2].split('+')
-            stop = float(t1)
-            if t2 == 't':
-                stop_increment = 1.0
-            else:
-                stop_increment = float(t2[:-1])
-        else:
-            stop = float(pulse[2])
-        return start, stop, start_increment, stop_increment
-
     def convert_text_to_seq(self, seqtext):
         """This method parses the sequence definition which is currently just a string, and converts
         it to a list of list of strings.  Eventually may include more sophisticated parsing techniques, e.g. using a
@@ -966,7 +1012,7 @@ class Sequence:
                                 num_events = val if (val > 1) else 1
                         if len(opt_params) >=4:
                             self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
-                    elif pulsetype == _PULSE_TYPES[4]:  # this is for loading waveforms
+                    elif pulsetype == _PULSE_TYPES[-1]:  # this is for loading waveforms
                         # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
                         if len(opt_params) >= 2:
                             patt = r'(f[name]?\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
@@ -1030,7 +1076,7 @@ class Sequence:
         for i in range(len(self.seq)):
             # the first 3 in the list are mandatory
             ch_type.append(self.seq[i][0])
-            t_start[i], t_stop[i], start_inc[i], stop_inc[i] = self.find_start_stop_increment_times(pulse=self.seq[i])
+            t_start[i], t_stop[i], start_inc[i], stop_inc[i] = find_start_stop_increment_times(pulse=self.seq[i])
             # then we could have optional parameters
             ptype, ampfactor, nevents, fname = self.unpack_optional_params(seq_idx=i)
             # create the channel
