@@ -342,12 +342,14 @@ class GaussPulse(WaveEvent):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
+        self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
         # if duration < 6 * pulsewidth, set it equal to at least that much
         if self.duration < 6 * self.pulsewidth:
             self.duration = 6 * self.pulsewidth
             self.stop = self.start + self.duration
         pulse = Gaussian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
-                         self.pulsewidth, self.amplitude, self.skewphase)
+                         pwidth_idx, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
@@ -361,11 +363,12 @@ class SechPulse(WaveEvent):
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
         self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
         if self.duration < 6 * self.pulsewidth:
             self.duration = 6 * self.pulsewidth
             self.stop = self.start + self.duration
-        pwidth_idx = int(self.pulsewidth/self.sampletime)
-        print(f'original pulsewidth {self.pulsewidth} converted pulsewidth {pwidth_idx}')
+
+        # print(f'original pulsewidth {self.pulsewidth} converted pulsewidth {pwidth_idx}')
         # data = np.arange(self.duration * 1.0)
         pulse = Sech(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
                      pwidth_idx, self.amplitude, self.skewphase)
@@ -381,6 +384,8 @@ class SquarePulse(WaveEvent):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
+        self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
         if self.duration < 6 * self.pulsewidth:
             self.duration = 6 * self.pulsewidth
             self.stop = self.start + self.duration
@@ -398,10 +403,12 @@ class LorentzPulse(WaveEvent):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
+        self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
         if self.duration < 6 * self.pulsewidth:
             self.duration = 6 * self.pulsewidth
             self.stop = self.start + float(self.duration)
-        pulse = Lorentzian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, self.pulsewidth,
+        pulse = Lorentzian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, pwidth_idx,
                            self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
@@ -419,11 +426,13 @@ class ArbitraryPulse(WaveEvent):
             filename = 'test4.txt'
         self.pulse_type = self.PULSE_KEYWORD
         self.filename = pulseshapedir / filename
+        self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
         if self.duration < 6 * self.pulsewidth:
             self.duration = 6 * self.pulsewidth
             self.stop = self.start + float(self.duration)
         pulse = LoadWave(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
-                         self.pulsewidth, self.amplitude, self.skewphase)
+                         pwidth_idx, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
