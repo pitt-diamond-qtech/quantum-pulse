@@ -228,9 +228,15 @@ class SequenceEvent:
 
 class WaveEvent(SequenceEvent):
     """Provides functionality for events that are analog in nature. Inherits from :class:`sequence event <SequenceEvent>`
+    :param start: start time for event
+    :param stop: stop time for event
+    :param start_inc: increment for start time
+    :param stop_inc: increment for stop time
+    :param dt: increment value
     :param pulse_params: A dictionary containing parameters for the IQ modulator: amplitude, pulseWidth,
                         SB frequency, IQ scale factor, phase, skewPhase.
     :param pulse_type: type of pulse desired, eg Gauss, Sech etc
+    :param sampletime: the sampling time (clock rate) used for this event
     """
     # these 2 class variables keep track of the class type and the number of instances
     EVENT_KEYWORD = "Wave"
@@ -417,7 +423,7 @@ class LorentzPulse(WaveEvent):
 
 
 class SquarePulseI(WaveEvent):
-    """Generates a Wave event with a Square shape"""
+    """Generates a Wave event with a Square shape, only outputs on I channel"""
     PULSE_KEYWORD = "SquareI"
 
     def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
@@ -436,7 +442,7 @@ class SquarePulseI(WaveEvent):
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
 class SquarePulseQ(WaveEvent):
-    """Generates a Wave event with a Square shape"""
+    """Generates a Wave event with a Square shape, only outputs on Q channel"""
     PULSE_KEYWORD = "SquareI"
 
     def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
@@ -481,7 +487,11 @@ class MarkerEvent(SequenceEvent):
     """ Provides functionality for events that are digital in nature using marker output of AWG
     :param start: start time for marker event
     :param stop: stop time for marker event
+    :param start_inc: increment for start time
+    :param stop_inc: increment for stop time
+    :param dt: increment value
     :param connection_dict: dictionary that specifies which markers are connected to which hardware
+   :param sampletime: the sampling time (clock rate) used for this event
         """
     # these 2 class variables define the event type and track the number of marker events
     EVENT_KEYWORD = "Marker"
@@ -599,6 +609,7 @@ class Channel:
                         SB frequency, IQ scale factor, phase, skewPhase.
     :param connection_dict: A dictionary of the connections between AWG channels and switches/IQ modulators.
     :param event_channel_idx: index of event in channel where event train is added
+    :param sampletime: the sampling time (clock rate) used for this channel
     """
 
     def __init__(self, ch_type=None, event_train=None, delay=None, pulse_params=None, connection_dict=None,
@@ -790,7 +801,7 @@ class Channel:
 
 
 def find_start_stop_increment_times(pulse):
-    """This method finds the start, stop and increment factors"""
+    """This method finds the start, stop and increment factors from a list of strings"""
     start, stop, start_increment, stop_increment = (0.0, 0.0, 0.0, 0.0)
     if '+' in pulse[1]:
         t1, t2 = pulse[1].split('+')  # '1000+2t' becomes '1000' and '2t'
@@ -817,9 +828,9 @@ class Sequence:
     def __init__(self, seqtext=None, delay=None, pulseparams=None, connectiondict=None, timeres=1):
         """Class that implements a collection of :class:`channels <Channel>`
             :param seqtext: string that specifies sequence in the form 'type,start,stop, optionalparams'\n,
-            eg. here is Rabi sequence 'S1,1000,1000+t\nGreen,2000+t,5000+t\nMeasure,2000+t,2100+t'
-            for a gaussian pulse would use 'Wave,1000,1000+t,Gauss\nGreen,2000+t,5000+t\nMeasure,2000+t,
-            2100+t'
+            eg. here is Rabi sequence 'S1,1e-6,1.01e-6+t\nGreen,1.02e-6+t,4.02e-6+t\nMeasure,1.02e-6+t,1.12e-6+t'
+            for a gaussian pulse would use 'Wave,1e-6,1e-6+t,Gauss\nGreen,2e-6+t,5e-6+t\nMeasure,2e-6+t,
+            2.1e-6+t'
             :param delay: list with [AOM delay, MW delay] , possibly other delays to be added.
             :param pulseparams: a dictionary containing the amplitude, pulsewidth,SB frequency,IQ scale factor,
                         phase, skewphase
@@ -830,10 +841,10 @@ class Sequence:
             and then the arrays created will be: wavedata (analag I and Q data), c1markerdata, c2markerdata
         """
         if delay is None:
-            delay = [0, 0]
+            delay = [0.0, 0.0]
         self.logger = logging.getLogger('seqlogger.seq_class')  # start the class logger
         if seqtext is None:
-            seqtext = 'S1,1000,1000+t\nGreen,2000+t,5000+t\nMeasure,2000+t,2100+t'
+            seqtext = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,SquareI,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
         self.seq = []
         self.convert_text_to_seq(seqtext)  # this function creates the seq object, a list of list of strings
         self.timeres = float(timeres) * _ns  # old code was written assuming everything in ns, so fix that
@@ -1064,7 +1075,7 @@ class Sequence:
         """This method parses the sequence definition which is currently just a list of list of strings, and converts
         it to Channel objects.  Eventually may include more sophisticated parsing techniques, e.g. using a
         lexer/parser library like PLY, ATL5
-        :param dt: increment for the start or stop times, will be multiplied by any increment factor specified in the string"""
+        :param dt: increment for the start or stop times, will be multiplied by any increment factor specified in string"""
 
         t_start = np.zeros(len(self.seq))
         t_stop = t_start.copy()
@@ -1138,8 +1149,6 @@ class Sequence:
             elif channel.ch_type == _ADWIN_TRIG:
                 for (n, evt) in enumerate(channel.event_train):
                     c2m2[evt.t1_idx:evt.t2_idx] = evt.data
-
-
         self.c1markerdata = c1m1 + c1m2
         self.c2markerdata = c2m1 + c2m2
         # the wavedata will store the data for the I and Q channels in a 2D array
@@ -1149,16 +1158,16 @@ class Sequence:
 class SequenceList(object):
     def __init__(self, sequence, delay=None, scanparams=None, pulseparams=None, connectiondict=None, timeres=1):
         """This class creates a list of sequence objects that each have the waveforms for one step in the scanlist.
-        Currently the only real new argument is
+        :param sequence: string that will be interpreted in same manner as Sequence class def
+        :param delay: list with [AOM delay, MW delay] , possibly other delays to be added.
+        :param pulseparams: a dictionary containing the amplitude, pulsewidth,SB frequency,IQ scale factor,
+                        phase, skewphase
+        :param connectiondict: a dictionary of the connections between AWG channels and switches/IQ modulators
+        :param timeres: clock rate in ns
         :param scanparams : a dictionary that specifies the type, start, stepsize, number of steps
-        so perhaps this entire class could be removed and just the function create_sequence_list could be put inside
-        Sequence.
-        However the main issue I encountered is that the function would have to create more instances of the
-        sequence objects, especially for scans that change the pulsewidth or other aspects of the pulse like
-        frequency etc. For now I will stay with this approach and later we can rewrite if needed.
         """
         if delay is None:
-            delay = [0, 0]
+            delay = [0.0, 0.0]
         if scanparams is None:
             self.scanparams = {'type': 'amplitude', 'start': 0, 'stepsize': 10, 'steps': 10}
         else:

@@ -11,17 +11,19 @@ def make_seq():
     wfmdir = Path('../../..') / 'arbpulseshape'
     filestr= str((wfmdir/'test4.txt').resolve())
     #print(str(wfmdir.resolve()))
-    #seq='Green,0.01e-7,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\n' + \
-    #    'Wave,1.8e-6,2.2e-6,Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
+    seq='Green,0.01e-7,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\n' + \
+        'Wave,1.8e-6,2.2e-6,Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
     #seq = 'Green,0.01e-6,1e-6'
     #seq = 'Wave,9e-7,1.4e-6,Gauss\nWave,1e-7,3e-7,Load Wfm,fname='+filestr+'\n'+'Green,1.5e-6,2.5e-6'
     #seq = 'Wave,9e-7,1.4e-6,Gauss\nWave,1e-7,3e-7,Load Wfm'+ '\n' + 'Green,1.5e-6,2.5e-6'
-    #seq = 'Wave,9e-7+t,1.4e-6+t,Gauss\n'+'Green,1.5e-6,2.5e-6\n'+'S2,5e-7,1.5e-6\n'+'S2,2e-6,2.5e-6\n' + \
-    #        'Green,3e-6, 3.2e-6\n'+'Measure,1.5e-6,1.8e-6'
-    seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,Sech,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
+    # seq = 'Wave,9e-7+t,1.4e-6+t,Gauss\n'+'Green,1.5e-6,2.5e-6\n'+'S2,5e-7,1.5e-6\n'+'S2,2e-6,2.5e-6\n' + \
+    #         'Green,3e-6, 3.2e-6\n'+'Measure,1.5e-6,1.8e-6'
+    # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,Sech,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,SquareI,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
-    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
+    #seq = 'S1,1e-6,1.01e-6+t\nGreen,1.02e-6+t,4.02e-6+t\nMeasure,1.02e-6+t,1.12e-6+t'
+    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-2, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 1}
+    #delay = [8.2e-7,1e-8]   # use this format for delay now and pass it to Sequence object
     s = Sequence(seq,pulseparams=newparams,timeres=1.0)
     s.create_sequence(dt=0.0e-6)
     tt = np.linspace(0,s.latest_sequence_event,len(s.c1markerdata))*1e6
