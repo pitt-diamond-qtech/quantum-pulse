@@ -22,7 +22,7 @@ from typing import List, NewType
 from decimal import Decimal, getcontext
 from source.Hardware.AWG520.Pulse import Gaussian, Square, Marker, Sech, Lorentzian, LoadWave, Pulse
 from source.common.utils import log_with, create_logger, get_project_root
-import copy, re,sys
+import copy, re, sys
 
 maindir = get_project_root()
 seqfiledir = maindir / 'Hardware/sequencefiles/'
@@ -220,7 +220,7 @@ class SequenceEvent:
 
 
 class WaveEvent(SequenceEvent):
-    """ Provides functionality for events that are analog in nature. Inherits from :class:`sequence event <SequenceEvent>`
+    """Provides functionality for events that are analog in nature. Inherits from :class:`sequence event <SequenceEvent>`
     :param pulse_params: A dictionary containing parameters for the IQ modulator: amplitude, pulseWidth,
                         SB frequency, IQ scale factor, phase, skewPhase.
     :param pulse_type: type of pulse desired, eg Gauss, Sech etc
@@ -357,6 +357,8 @@ class SechPulse(WaveEvent):
         if self.duration < 6 * self.pulsewidth:
             self.duration = 6 * self.pulsewidth
             self.stop = self.start + self.duration
+        # self.extract_pulse_params_from_dict()
+        # data = np.arange(self.duration * 1.0)
         pulse = Sech(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
                      self.pulsewidth, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
@@ -1051,8 +1053,8 @@ class Sequence:
         for (idx, channel) in enumerate(self.channels):
             if channel.ch_type == _WAVE:
                 for (n, evt) in enumerate(channel.event_train):
-                    waveI[evt.t1_idx:evt.t2_idx] = evt.I_data
-                    waveQ[evt.t1_idx:evt.t2_idx] = evt.Q_data
+                    waveI[evt.t1_idx:evt.t2_idx] = evt.data[0]
+                    waveQ[evt.t1_idx:evt.t2_idx] = evt.data[1]
             elif channel.ch_type == _GREEN_AOM:
                 for (n, evt) in enumerate(channel.event_train):
                     c1m2[evt.t1_idx:evt.t2_idx] = evt.data

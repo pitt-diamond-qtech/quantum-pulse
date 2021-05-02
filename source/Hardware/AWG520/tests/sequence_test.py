@@ -11,14 +11,14 @@ def make_seq():
     wfmdir = Path('../../..') / 'arbpulseshape'
     filestr= str((wfmdir/'test4.txt').resolve())
     #print(str(wfmdir.resolve()))
-    #seq='Green,0,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\nWave,1.8e-6,2.2e-6,' \
+    #seq='Green,0.01e-7,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\nWave,1.8e-6,2.2e-6,' \
     #   'Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
-    #seq = 'Green,0.0,1e-6'
-    seq = 'Wave,9e-7,1.4e-6\nWave,1e-7,3e-7,Load Wfm,fname='+filestr+'\n'+'Green,1.5e-6,2.5e-6'
+    # seq = 'Green,0.01e-6,1e-6'
+    #seq = 'Wave,9e-7,1.4e-6\nWave,1e-7,3e-7,Load Wfm,fname='+filestr+'\n'+'Green,1.5e-6,2.5e-6'
     # seq = 'Wave,9e-7+t,1.4e-6+t,Gauss\n'+'Green,1.5e-6,2.5e-6\n'+'S2,5e-7,1.5e-6\n'+'S2,2e-6,2.5e-6\n'
     #        +'Green,3e-6, 3.2e-6\n'+'Measure,1.5e-6,1.8e-6'
-    # seq = [['S2', '1000', '1200'],['Green', '1100', '1700'],['S2','1800','2000']]
-    newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
+    seq = 'Green,1.6e-6,2.5e-6\nWave,1e-6+t,1.5e-6+t,Sech\nMeasure,1.5e-6+t,1.8e-6+t'
+    newparams = {'amplitude': 100.0, 'pulsewidth': 10e-9, 'SB freq': 0.001, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 1}
     s = Sequence(seq,pulseparams=newparams,timeres=1.0)
     s.create_sequence(dt=0.1e-6)
