@@ -12,11 +12,11 @@ def make_seq():
     filestr= str((wfmdir/'test4.txt').resolve())
     #print(str(wfmdir.resolve()))
     #seq='Green,0,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\nWave,1.8e-6,2.2e-6,' \
-    #    'Square\nWave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
-    seq = 'Green,0.0,1e-6'
-    #seq = [['Wave', '900', '1400', 'Load Wfm',wfmdir/'test4.txt'],['Green', '1500', '2500']]
-    # seq = [['Wave', '900+t', '1400+t', 'Gauss'], ['Green', '1500', '2500'],['S2','500','1500'],['S2','2000','2500'],
-    #        ['Green', '3000', '3200'],['Measure','1500','1800']]
+    #   'Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
+    #seq = 'Green,0.0,1e-6'
+    seq = 'Wave,9e-7,1.4e-6\nWave,1e-7,3e-7,Load Wfm,fname='+filestr+'\n'+'Green,1.5e-6,2.5e-6'
+    # seq = 'Wave,9e-7+t,1.4e-6+t,Gauss\n'+'Green,1.5e-6,2.5e-6\n'+'S2,5e-7,1.5e-6\n'+'S2,2e-6,2.5e-6\n'
+    #        +'Green,3e-6, 3.2e-6\n'+'Measure,1.5e-6,1.8e-6'
     # seq = [['S2', '1000', '1200'],['Green', '1100', '1700'],['S2','1800','2000']]
     newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 1}
@@ -33,9 +33,10 @@ def make_seq_list():
     wfmdir = Path('../../..') / 'arbpulseshape'
     # print(str(wfmdir.resolve()))
     # notice the sequence below scans time by setting all times after the pulse that is being scanned are also moved
-    # seq = [['Green', '1600', '2500'],['Wave', '1000+t', '1500+t', 'Sech'],['Measure','1500+t','1800+t']]
-    seq = [['S2', '1000', '1025'],['S2', '1030+t', '1050+t'],['Green','1050+t','4025+t'],['Measure','1025+t','1125+t']]
-    # seq = [['Green', '0', '1000']]
+    # seq = 'Green,1.6e-6,2.5e-6\n'Wave,1e-6+t,1.5e-6+t,Sech\n Measure,1.5e-6+t,1.8e-6+t'
+    seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.05e-6+t,4.025e-6+t\n'+ \
+          'Measure,1.025e-6+t,1.125e-6+t'
+    #  seq = 'Green,0.0,1e-6'
     newparams = {'amplitude': 100, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase': 0.0, 'num pulses': 1}
     newscanparams = {'type':'time','start': 0, 'stepsize': 100, 'steps': 3}
@@ -60,7 +61,7 @@ def make_long_seq():
                  'skew phase': 0.0, 'num pulses': 1}
     s = Sequence(seq, pulseparams=newparams, timeres=1)
     s.create_sequence(dt=0)
-    tt = np.linspace(0, s.maxend, len(s.c1markerdata))
+    tt = np.linspace(0, s.latest_sequence_event, len(s.c1markerdata))
     plt.plot(tt, s.wavedata[0, :], 'r-', tt, s.wavedata[1, :], 'b-', tt, s.c1markerdata, 'g--', tt, s.c2markerdata,
              'y-')
     # plt.plot(tt,s.wavedata[1,:])

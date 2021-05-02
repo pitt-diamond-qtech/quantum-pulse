@@ -86,7 +86,7 @@ class SequenceEvent:
         self.__start_increment = start_increment
         self.__stop_increment = stop_increment
         self.increment_time(dt=0.0)
-        self.__duration = self.stop - self.start
+        self.__duration = self.__stop - self.__start
         self.__sampletime = sampletime
         # these variables store the start, stop, and duration in units of the sampletime, useful for indexing arrays
         # and writing data to the AWG
@@ -976,6 +976,7 @@ class Sequence:
                     self.logger.error('Runtime warning/error: {0}'.format(err))
                     sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
         else:  # if channel type is marker, then only one other parameter is allowed, the number of pulses
+            pulsetype = self.seq[seq_idx][0]   # the pulsetype and channel name are identical for marker types
             try:
                 if opt_params is None:
                     num_events = 1
@@ -1037,7 +1038,7 @@ class Sequence:
         # create all the channels from the self.seq object
         self.create_channels_from_seq(dt=dt)
         # now we need to find the data length i.e. the largest stop time in the list of stop times
-        maxend = np.int64(self.latest_sequence_event / self.timeres)
+        maxend = np.int64(self.latest_sequence_event / self.timeres)+1
         # print("the max. event value is {}".format(self.maxend))
         # now we can init the arrays
         # dummydata = np.zeros(maxend, dtype=_MARKTYPE)
@@ -1054,7 +1055,7 @@ class Sequence:
                     waveQ[evt.t1_idx:evt.t2_idx] = evt.Q_data
             elif channel.ch_type == _GREEN_AOM:
                 for (n, evt) in enumerate(channel.event_train):
-                    c1m1[evt.t1_idx:evt.t2_idx] = evt.data
+                    c1m2[evt.t1_idx:evt.t2_idx] = evt.data
                 c1m2 = np.roll(c1m2, -aomdelay)
             elif channel.ch_type == _MW_S2:
                 for (n, evt) in enumerate(channel.event_train):
@@ -1068,6 +1069,7 @@ class Sequence:
             elif channel.ch_type == _ADWIN_TRIG:
                 for (n, evt) in enumerate(channel.event_train):
                     c2m2[evt.t1_idx:evt.t2_idx] = evt.data
+
         self.c1markerdata = c1m1 + c1m2
         self.c2markerdata = c2m1 + c2m2
         # the wavedata will store the data for the I and Q channels in a 2D array
