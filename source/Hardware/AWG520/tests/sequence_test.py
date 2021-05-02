@@ -18,14 +18,15 @@ def make_seq():
     # seq = 'Wave,9e-7+t,1.4e-6+t,Gauss\n'+'Green,1.5e-6,2.5e-6\n'+'S2,5e-7,1.5e-6\n'+'S2,2e-6,2.5e-6\n'
     #        +'Green,3e-6, 3.2e-6\n'+'Measure,1.5e-6,1.8e-6'
     seq = 'Green,1.6e-6,2.5e-6\nWave,1e-6+t,1.5e-6+t,Sech\nMeasure,1.5e-6+t,1.8e-6+t'
-    newparams = {'amplitude': 100.0, 'pulsewidth': 10e-9, 'SB freq': 0.001, 'IQ scale factor': 1.0, 'phase': 0.0,
+    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 1}
     s = Sequence(seq,pulseparams=newparams,timeres=1.0)
     s.create_sequence(dt=0.1e-6)
-    tt = np.linspace(0,s.latest_sequence_event,len(s.c1markerdata))
+    tt = np.linspace(0,s.latest_sequence_event,len(s.c1markerdata))*1e6
     # plt.plot(tt,s.c1m1,'r-',tt,s.c1m2,'g-')
     plt.plot(tt,s.wavedata[0,:],'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
     #plt.plot(tt,s.wavedata[1,:])
+    print(s.c1markerdata[1700:1750])
     plt.show()
     #raise RuntimeError('test the runtime handling')
 

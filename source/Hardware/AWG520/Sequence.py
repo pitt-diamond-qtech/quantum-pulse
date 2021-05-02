@@ -116,13 +116,14 @@ class SequenceEvent:
 
     @start.setter
     def start(self, var):
-        try:
-            if type(var) == float or type(var) == int:
-                self.__start = float(var)
-            else:
-                raise TypeError('start time must be a floating point number or integer')
-        except TypeError as err:
-            modlogger.error("Type error {0}".format(err))
+        self.__start = float(var)
+        # try:
+        #     if type(var) == float or type(var) == int:
+        #         self.__start = float(var)
+        #     else:
+        #         raise TypeError('start time must be a floating point number or integer')
+        # except TypeError as err:
+        #     modlogger.error("Type error {0}".format(err))
 
     @property
     def stop(self):
@@ -130,13 +131,14 @@ class SequenceEvent:
 
     @stop.setter
     def stop(self, var):
-        try:
-            if type(var) == float or type(var) == int:
-                self.__stop = float(var)
-            else:
-                raise TypeError('stop time must be a floating point number or integer')
-        except TypeError as err:
-            modlogger.error("Type error {0}".format(err))
+        self.__stop = float(var)
+        # try:
+        #     if type(var) == float or type(var) == int:
+        #         self.__stop = float(var)
+        #     else:
+        #         raise TypeError('stop time must be a floating point number or integer')
+        # except TypeError as err:
+        #     modlogger.error("Type error {0}".format(err))
 
     @property
     def start_increment(self):
@@ -144,13 +146,14 @@ class SequenceEvent:
 
     @start_increment.setter
     def start_increment(self, var):
-        try:
-            if type(var) == float or type(var) == int:
-                self.__start_increment = float(var)
-            else:
-                raise TypeError('start increment must be a floating point number or integer')
-        except TypeError as err:
-            modlogger.error("Type error {0}".format(err))
+        self.__start_increment = float(var)
+        # try:
+        #     if type(var) == float or type(var) == int:
+        #         self.__start_increment = float(var)
+        #     else:
+        #         raise TypeError('start increment must be a floating point number or integer')
+        # except TypeError as err:
+        #     modlogger.error("Type error {0}".format(err))
 
     @property
     def stop_increment(self):
@@ -158,13 +161,14 @@ class SequenceEvent:
 
     @stop_increment.setter
     def stop_increment(self, var):
-        try:
-            if type(var) == float or type(var) == int:
-                self.__stop_increment = float(var)
-            else:
-                raise TypeError('stop increment must be a floating point number or integer')
-        except TypeError as err:
-            modlogger.error("Type error {0}".format(err))
+        self.__stop_increment = float(var)
+        # try:
+        #     if type(var) == float or type(var) == int:
+        #         self.__stop_increment = float(var)
+        #     else:
+        #         raise TypeError('stop increment must be a floating point number or integer')
+        # except TypeError as err:
+        #     modlogger.error("Type error {0}".format(err))
 
     @property
     def duration(self):
@@ -172,13 +176,14 @@ class SequenceEvent:
 
     @duration.setter
     def duration(self, var):
-        try:
-            if type(var) == float or type(var) == int:
-                self.__duration = float(var)  # duration is kept as a floating point number for easy manipulation
-            else:
-                raise TypeError('duration must be a floating point number or integer')
-        except TypeError as err:
-            modlogger.error("Type error {0}".format(err))
+        self.__duration = float(var)
+        # try:
+        #     if type(var) == float or type(var) == int:
+        #         self.__duration = float(var)  # duration is kept as a floating point number for easy manipulation
+        #     else:
+        #         raise TypeError('duration must be a floating point number or integer')
+        # except TypeError as err:
+        #     modlogger.error("Type error {0}".format(err))
 
     @property
     def sampletime(self):
@@ -186,13 +191,14 @@ class SequenceEvent:
 
     @sampletime.setter
     def sampletime(self, var):
-        try:
-            if type(var) == float or type(var) == int:
-                self.__sampletime = float(var)
-            else:
-                raise TypeError('sample time must be a floating point number or integer')
-        except TypeError as err:
-            modlogger.error("Type error {0}".format(err))
+        self.__sampletime = float(var)
+        # try:
+        #     if type(var) == float or type(var) == int:
+        #         self.__sampletime = float(var)
+        #     else:
+        #         raise TypeError('sample time must be a floating point number or integer')
+        # except TypeError as err:
+        #     modlogger.error("Type error {0}".format(err))
 
     @property
     def t1_idx(self):  # this variable stores the start time in integer format suitable for indexing arrays
@@ -284,14 +290,14 @@ class WaveEvent(SequenceEvent):
 
     def extract_pulse_params_from_dict(self):
         """This helper method simply extracts the relevant params from the iq dictionary"""
-        self.__ssb_freq = float(self.pulse_params['SB freq']) * _MHz  # SB freq is in units of Mhz
+        self.__ssb_freq = float(self.pulse_params['SB freq'])   # SB freq is in units of Mhz
         self.__iqscale = float(self.pulse_params['IQ scale factor'])
         self.__phase = float(self.pulse_params['phase'])
         # TODO: should i divide by sampletime ?
-        self.__pulsewidth = int(self.pulse_params['pulsewidth'])
-        self.__amp = int(self.pulse_params['amplitude'])  # needs to be a number between 0 and 100
+        self.__pulsewidth = float(self.pulse_params['pulsewidth'])
+        self.__amp = float(self.pulse_params['amplitude'])  # needs to be a number between 0 and 100
         self.__skew_phase = float(self.pulse_params['skew phase'])
-        self.__npulses = self.pulse_params['num pulses']  # not needed for a single WaveEvent
+        self.__npulses = int(self.pulse_params['num pulses'])  # not needed for a single WaveEvent
 
     @property
     def data(self):
@@ -354,13 +360,15 @@ class SechPulse(WaveEvent):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
+        self.extract_pulse_params_from_dict()
         if self.duration < 6 * self.pulsewidth:
             self.duration = 6 * self.pulsewidth
             self.stop = self.start + self.duration
-        # self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth/self.sampletime)
+        print(f'original pulsewidth {self.pulsewidth} converted pulsewidth {pwidth_idx}')
         # data = np.arange(self.duration * 1.0)
         pulse = Sech(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
-                     self.pulsewidth, self.amplitude, self.skewphase)
+                     pwidth_idx, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
