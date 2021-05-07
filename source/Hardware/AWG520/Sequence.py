@@ -963,16 +963,21 @@ class Sequence:
         for (id, chan) in enumerate(self.channels):
             if chan.ch_type != insertchan.ch_type:
                 for idx, evt in enumerate(chan.event_train):
+                    # store any values of the start_increment and stop intcrement from the event
                     temp1 = evt.start_increment
                     temp2 = evt.stop_increment
+                    # check if the inserted channel start time conflicts with previous start times
                     if (evt.start > earliest_start_time) and (evt.start < latest_stop_time):
-                        evt.start_increment = 1
+                        evt.start_increment = 1    # set the increments to 1
                         evt.stop_increment = 1
-                        evt.increment_time(dt=push_time)
+                        evt.increment_time(dt=push_time)     # increment the event
+                    # restore the old values of increment
                     evt.start_increment = temp1
                     evt.stop_increment = temp2
+                    # store the new start and stop times in the arrays
                     chan.event_start_times[idx] = evt.start
                     chan.event_stop_times[idx] = evt.stop
+                # update the first and latest channel events
                 chan.set_first_channel_event()
                 chan.set_latest_channel_event()
 
