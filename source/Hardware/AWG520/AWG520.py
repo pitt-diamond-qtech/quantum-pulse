@@ -46,7 +46,11 @@ _WFM_MEMORY_LIMIT = 1048512 # at most this many points can be in a waveform
 _SEQ_MEMORY_LIMIT = 8000
 _IQTYPE = np.dtype('<f4') # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1') # AWG520 stores marker values as 1 byte
-
+# unit conversion factors
+_GHz = 1.0e9  # Gigahertz
+_MHz = 1.0e6  # Megahertz
+_us = 1.0e-6  # Microseconds
+_ns = 1.0e-9  # Nanoseconds
 sourcedir = get_project_root()
 saveawgfilepath = sourcedir /'Hardware/AWG520/sequencefiles/'
 # ensure that the awg files can be saved
@@ -552,7 +556,9 @@ class AWGFile(object):
 
                 # first create an empty waveform in channel 1 and 2 but turn on the green laser
                 # so that measurements can start after a trigger is received.
-                arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
+                # ---2021-05-10: modified the arm sequence string because the new Sequence module can directly read
+                # the string , but do have to be careful about units again since old code assumed everything in ns
+                arm_sequence = Sequence('Green,0,'+str(wfmlen*self.timeres*_ns),timeres=self.timeres)
                 arm_sequence.create_sequence()
                 self.write_waveform(arm_sequence,'arm', 1)
                 self.write_waveform(arm_sequence,'arm', 2)
