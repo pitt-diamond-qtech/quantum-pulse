@@ -18,7 +18,7 @@ import logging
 from pathlib import Path
 import os
 
-from .Pulse import Gaussian, Square, SquareI, SquareQ, Marker, Sech, Lorentzian, LoadWave
+from .Pulse import Gaussian, Square, SquareI, SquareQ, DataIQ, Marker, Sech, Lorentzian, LoadWave
 from source.common.utils import log_with, create_logger,get_project_root
 import copy
 
@@ -343,9 +343,7 @@ class Sequence(object):
         self.timeres = timeres
 
         if pulseparams == None:
-            self.pulseparams = {'amplitude': 100, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
-                                'phase': 0.0, 'skew phase':
-                                    0.0, 'num pulses': 1}
+            self.pulseparams = {'amplitude': 100, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,'phase': 0.0, 'skew phase':0.0, 'num pulses': 1}
         else:
             self.pulseparams = pulseparams
         if connectiondict == None:
@@ -436,13 +434,15 @@ class Sequence(object):
                         channel = SquareI(num, dur_list[j], ssb_freq, iqscale, phase, amp, skew_phase)
                     elif pulse[3] == 'SquareQ':
                         channel = SquareQ(num, dur_list[j], ssb_freq, iqscale, phase, amp, skew_phase)
+                    elif pulse[3] == 'DataIQ':
+                        filename = pulse[4]
+                        channel = DataIQ(filename, num, dur_list[j], ssb_freq, iqscale, phase, deviation, amp, skew_phase)
                     elif pulse[3] == 'Lorentz':
                         channel = Lorentzian(num, dur_list[j], ssb_freq, iqscale, phase, deviation, amp, skew_phase)
                     elif pulse[3] == 'Load Wfm':
                         # TODO: Must also figure out how to send that filename to this point
                         filename = pulse[4]  # i will pass the filename in the last element of the list
-                        channel = LoadWave(filename, num, dur_list[j], ssb_freq, iqscale, phase, deviation, amp,
-                                           skew_phase)
+                        channel = LoadWave(filename, num, dur_list[j], ssb_freq, iqscale, phase, deviation, amp, skew_phase)
                     else:
                         self.logger.error('Pulse type has to be either Gauss, Sech, Square, Lorentz, or Load Wfm')
                         raise ValueError('Pulse type has to be either Gauss, Sech, Square, Lorentz, or Load Wfm')

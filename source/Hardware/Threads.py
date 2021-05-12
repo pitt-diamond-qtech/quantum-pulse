@@ -171,8 +171,8 @@ class ScanThread(QtCore.QThread):
         """
     # declare the pyqtsignals (i) data which emits signal and ref counts , (ii) tracking which emits the tracking
     # counts
-    data=QtCore.pyqtSignal(int,int)
-    tracking=QtCore.pyqtSignal(int)
+    data = QtCore.pyqtSignal(int, int)
+    tracking = QtCore.pyqtSignal(int)
 
     def __init__(self,parent=None,scan = None,params = None,awgparams = None,pulseparams = None,mwparams = None, \
                  timeRes = 1,maxcounts=100):
@@ -231,16 +231,16 @@ class ScanThread(QtCore.QThread):
         while self.scanning:
             threshold = self.parameters[4]
             if self.p_conn.poll(1): # check if there is data
-                reply=self.p_conn.recv() # get the data
+                reply = self.p_conn.recv() # get the data
                 self.logger.info('reply is {} '.format(reply))
                 # 3/6/20 - I noticed this next line sends the proc_running parameter which is never really altered
                 # by the main thread, whereas the param scanning is altered depending on the reply from the process,
                 # therefore I believe this line was a mistake and the new line I have added should be correct
                 # self.p_conn.send((threshold,self.proc_running))
                 # send the scan process the threshold and whether to keep running
-                self.p_conn.send((threshold,self.scanning))
+                self.p_conn.send((threshold, self.scanning))
                 print("scan thread is sending threshold {0} and scanning status {1}".format(threshold,self.scanning))
-                if reply=='Abort!':
+                if reply == 'Abort!':
                     self.scanning = False
                     self.logger.debug('reply is {}'.format(reply))
                     break
@@ -248,7 +248,7 @@ class ScanThread(QtCore.QThread):
                     self.tracking.emit(reply)
                     self.logger.debug('reply emitted from tracking is {}'.format(reply))
                 elif len(reply)==2:
-                    self.data.emit(reply[0],reply[1]) # if the reply is a tuple with signal and ref,send that signal to main app
+                    self.data.emit(reply[0], reply[1]) # if the reply is a tuple with signal and ref,send that signal to main app
                     self.logger.debug('signal and ref emitted is {0:d} and {1:d}'.format(reply[0],reply[1]))
 
 class ScanProcess(multiprocessing.Process):

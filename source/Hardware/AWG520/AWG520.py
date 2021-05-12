@@ -271,7 +271,7 @@ class AWG520(object):
     def mw_on_sb10MHz(self,enable_iq = False):
         '''Turns the MW on, param to be passed is whether IQ modulator is connected '''
         self.set_ref_clock_external()  # setup the ref to be the Rubidium lab clock
-        self.set_clock_internal()  # use the internal clock which is now derived from ext clock
+        # self.set_clock_internal()  # use the internal clock which is now derived from ext clock
         self.sendcommand('SOUR1:MARK1:VOLT:LOW 2.0\n') # doesn't really turn on MW right now since we are using the
         # IQ modulator, so we now use the FG mode to send out sine and cosine waves at 10MHz
         if enable_iq:
@@ -552,7 +552,7 @@ class AWGFile(object):
 
                 # first create an empty waveform in channel 1 and 2 but turn on the green laser
                 # so that measurements can start after a trigger is received.
-                arm_sequence = Sequence([['Green','0',str(wfmlen)]],timeres=self.timeres)
+                arm_sequence = Sequence([['Wave', '0', str(wfmlen), 'SquareI'], ['Green','0',str(wfmlen)]], timeres=self.timeres)
                 arm_sequence.create_sequence()
                 self.write_waveform(arm_sequence,'arm', 1)
                 self.write_waveform(arm_sequence,'arm', 2)
