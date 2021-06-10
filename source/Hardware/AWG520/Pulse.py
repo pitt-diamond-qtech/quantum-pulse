@@ -50,21 +50,18 @@ class Pulse(object):
         # Making I and Q correction
         # print(f'ssb freq {self.ssb_freq}, phase {self.phase}, iqscale {self.iqscale},skewphase {self.skew_phase}')
         tempx = np.arange(self.width * 1.0)
-        self.Q_data = np.array(data * np.sin(2 * np.pi *(tempx * self.ssb_freq  + self.phase/360.0 +
-                                                         self.skew_phase/360.0)) * \
-                      self.iqscale,dtype = _IQTYPE)
-        self.I_data = np.array(data * np.cos(2* np.pi * (tempx * self.ssb_freq + self.phase/360.0)),dtype = _IQTYPE)
+        self.Q_data = np.array(data * np.sin(2 * np.pi * (tempx * self.ssb_freq + self.phase/360.0 + self.skew_phase/360.0)) * self.iqscale, dtype=_IQTYPE)
+        self.I_data = np.array(data * np.cos(2 * np.pi * (tempx * self.ssb_freq + self.phase/360.0)), dtype=_IQTYPE)
 
     def i_generator(self,data):
         tempx = np.arange(self.width * 1.0)
         self.Q_data = np.zeros(len(data))
         # self.I_data = np.array(data)
-        self.I_data = np.array(data * np.cos(2* np.pi * (tempx * self.ssb_freq + self.phase/360.0)),dtype = _IQTYPE)
+        self.I_data = np.array(data * np.cos(2 * np.pi * (tempx * self.ssb_freq + self.phase/360.0)), dtype=_IQTYPE)
 
     def q_generator(self,data):
         tempx = np.arange(self.width * 1.0)
-        self.Q_data = np.array(data * np.sin(2 * np.pi *(tempx * self.ssb_freq  + self.phase/360.0 +
-                                                         self.skew_phase/360.0)) * self.iqscale,dtype = _IQTYPE)
+        self.Q_data = np.array(data * np.sin(2 * np.pi * (tempx * self.ssb_freq  + self.phase/360.0 + self.skew_phase/360.0)) * self.iqscale, dtype=_IQTYPE)
         # self.I_data = np.array(data)
         self.I_data = np.zeros(len(data))
 
@@ -141,6 +138,41 @@ class SquareQ(Pulse):
         data = (np.zeros(self.width) + 1.0) * self.height  # making a Square function
         self.q_generator(data)
 
+class DataIQ(Pulse):
+    def __init__(self, filename, num, width, ssb_freq, iqscale, phase, deviation, amp, skew_phase=0):
+        super().__init__(num, width, ssb_freq, iqscale, phase, skew_phase)
+        self.amp = amp * self.vmax/_DAC_UPPER  # amp can be a value anywhere from 0 - 1000
+        self.deviation = deviation
+        self.mean = self.width/2.0
+        self.filename = filename  # may want to fix this so path is always the same place.
+
+    def data_generator(self):
+        try:
+            csv = np.genfromtxt(self.filename, delimiter=',')  # load a file with amplitude and phase values written by the other module/function
+            tt = np.array(csv[:, 1], dtype=_IQTYPE)
+            dataI = np.array(csv[:, 2], dtype=_IQTYPE)
+            dataQ = np.array(csv[:, 3], dtype=_IQTYPE)
+            maxampI = np.amax(dataI)  # find maximum value before resampling
+            maxampQ = np.amax(dataQ)
+            # now we need to resample the data to be compatible with the width
+            resampleidx = np.linspace(tt[0], tt[-1], self.width) # generate a list of integers which goes from tmin to tmax and has width number of samples
+            dataI = np.interp(resampleidx, tt, dataI)  # obtain values of amplitude at resampled values
+            dataI = dataI * self.amp / maxampI  # normalize to maximum value
+            dataQ = np.interp(resampleidx, tt, dataQ)  # obtain values of amplitude at resampled values
+            dataQ = dataQ * self.amp / maxampQ  # normalize to maximum value
+            self.time = np.interp(resampleidx, tt, tt)  # obtain time at resampled values
+
+            self.Q_data = np.array(dataQ)
+            self.I_data = np.array(dataI)
+
+        except IOError as err:
+            print("OS error: {0}".format(err))
+            pulselogger.error("OS error: {0}".format(err))
+        except ValueError:
+            pulselogger.error('Could not resample supplied waveform data')
+        except:
+            pulselogger.error('Unknown error')
+
 
 class Marker(Pulse):
     def __init__(self, num, width, markernum, marker_on, marker_off):
@@ -166,7 +198,7 @@ class Marker(Pulse):
             self.data += 2
 
 class LoadWave(Pulse):
-    def __init__(self,filename,num, width, ssb_freq,iqscale,phase,amp,deviation,skew_phase=0):
+    def __init__(self,filename,num, width, ssb_freq, iqscale, phase, deviation, amp, skew_phase=0):
         super().__init__(num,width,ssb_freq,iqscale,phase,skew_phase)
         self.amp = amp * self.vmax/ _DAC_UPPER # amp can be a value anywhere from 0 - 1000
         self.deviation = deviation

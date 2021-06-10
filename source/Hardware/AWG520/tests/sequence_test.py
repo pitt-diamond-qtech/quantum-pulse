@@ -27,6 +27,7 @@ def make_seq():
     s = Sequence(seq,pulseparams=newparams,timeres=1.0)
     s.create_sequence(dt=0.0e-6)
     tt = np.linspace(0,s.latest_sequence_event,len(s.c1markerdata))*1e6
+
     # plt.plot(tt,s.c1m1,'r-',tt,s.c1m2,'g-')
     plt.plot(tt,s.wavedata[0,:],'r-',tt,s.wavedata[1,:],'b-',tt,s.c1markerdata,'g--',tt,s.c2markerdata,'y-')
     # plt.plot(tt,s.wavedata[0,:],'r--',tt,s.wavedata[1,:],'b--')
@@ -59,7 +60,8 @@ def make_seq_list():
         c1dat = s.sequencelist[nn].c1markerdata
         c2dat = s.sequencelist[nn].c2markerdata
         tt = np.linspace(0, xstop, points)
-        plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
+        # plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
+        plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :])
         plt.show()
     # plt.plot(tt,s.wavedata[1,:])
 

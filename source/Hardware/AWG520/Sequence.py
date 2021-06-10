@@ -24,7 +24,6 @@ from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ,Mark
 from source.common.utils import log_with, create_logger, get_project_root
 import copy, re, sys
 
-
 maindir = get_project_root()
 seqfiledir = maindir / 'Hardware/sequencefiles/'
 pulseshapedir = maindir / 'arbpulseshape/'
@@ -53,7 +52,7 @@ _ANALOG2 = 'Analog2'  # new keyword for channel 2
 # dictionary of connections from marker channels to devices,
 _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 # dictionary of IQ parameters that will be used as default if none is supplied
-_PULSE_PARAMS = {'amplitude': 0.0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
+_PULSE_PARAMS = {'amplitude': 0.0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                  'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
 # allowed values of the Waveform types
 _PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'SquareI','SquareQ','Load Wfm']
@@ -851,6 +850,8 @@ class Sequence:
 
         if pulseparams is None:
             self.pulseparams = _PULSE_PARAMS
+        #if pulseparams == None:
+        #    self.pulseparams = {'amplitude': 100, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,'phase': 0.0, 'skew phase':0.0, 'num pulses': 1}
         else:
             self.pulseparams = pulseparams
         if connectiondict is None:
@@ -1154,6 +1155,7 @@ class Sequence:
             elif channel.ch_type == _ADWIN_TRIG:
                 for (n, evt) in enumerate(channel.event_train):
                     c2m2[evt.t1_idx:evt.t2_idx] = evt.data
+
         self.c1markerdata = c1m1 + c1m2
         self.c2markerdata = c2m1 + c2m2
         # the wavedata will store the data for the I and Q channels in a 2D array
@@ -1178,7 +1180,7 @@ class SequenceList(object):
         else:
             self.scanparams = scanparams
         if pulseparams is None:
-            self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
+            self.pulseparams = {'amplitude': 0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                                 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
         else:
             self.pulseparams = pulseparams

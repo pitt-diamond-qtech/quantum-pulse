@@ -25,6 +25,11 @@ frames/
 *.tar
 *.zip
 
+
+# Waveform Files #
+######################
+*.wfm
+
 # Logs and databases #
 ######################
 *.log
