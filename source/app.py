@@ -26,23 +26,27 @@ from matplotlib.animation import FuncAnimation
 from pathlib import Path
 import sys,numpy,datetime,os
 import logging
-# if I import the Ui_Pulseshaper class from the python file then I will have to inherit from it in the main appGUI
-# class
-# from appgui load Ui_Pulseshaper
-# instead I use the uic module to directly load GUI, then I dont have to inherit from it and can assign a ui variable
-# inside the appGUI class. Either method is fine.
+
+import numpy as np
+import matplotlib.pyplot as plt
+from source.Hardware.AWG520.Sequence import Sequence
+
+"""
+if I import the Ui_Pulseshaper class from the python file, then I will have to inherit from it in the main appGUI class from appgui, load Ui_Pulseshaper. Instead I use the uic 
+module to directly load GUI. Then I dont have to inherit from it and can assign a ui variable inside the appGUI class. Either method is fine.
+"""
+
 thisdir = get_project_root()
-qtdesignerfile = thisdir /'appgui_V2.ui' # this is the .ui file created in QtCreator
+qtdesignerfile = thisdir/'appgui_V3.ui'  # this is the .ui file created in QtCreator
 
 # start the logger
 logger = create_logger('qpulseapp')
 
-
-Ui_quantumpulse,junk = uic.loadUiType(qtdesignerfile)
+Ui_quantumpulse, junk = uic.loadUiType(qtdesignerfile)
 
 @log_with(logger)
 class appGUI(QtWidgets.QMainWindow):
-    ''' this is the main class for the GUI. It has several important variables:
+    """ this is the main class for the GUI. It has several important variables:
      1. mw : dictionary where each key value has an array contains all the mw parameters such as 'enable device',
      'frequency (GHz)', 'enable scan', 'start', 'step','stop'
      2. scan: array contains all amplitude scan parameters such as start, stop, numsteps
@@ -56,14 +60,14 @@ class appGUI(QtWidgets.QMainWindow):
      9. maxcounts : keeps track of maximum counts while tracking
      10. parameters: has all the parameters for pulse sequence such as 'sample', 'count time', 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
      11. seq: the array which specifies the sequence
-    '''
+    """
+
     def __init__(self, parent=None,nohardware=False):
         #QtWidgets.QWidget.__init__(self, parent)
         super().__init__(parent)
         # create and setup the UI
         self.ui = Ui_quantumpulse()
         self.ui.setupUi(self)
-
 
         # Data matplotlib widget
         fig = Figure()
@@ -76,24 +80,18 @@ class appGUI(QtWidgets.QMainWindow):
         self.sigPlot = None
         self.refPlot = None
         self.dataPlot_renew = False
-        
+
         # initialize the parameters for scan, MW, AWG, seq
-        self.scan = dict([('type','amplitude'),('start','0'),('stepsize','50'),('steps','20')])
-        self.mw = {'PTS':[True, '2.870', False, '2.840','0.001','100','2.940'],'SRS':[False, '2.870', False, '2.840',
-                                                                                      '0.001','100','2.940']}
-        #self.mw = {'PTS':[True, '2870.0', False, '2840.0','1','100','2940.0'],'SRS':[False, '2870.0', False,
-        # '2840.0','1','100','2940.0']}
-        self.awgparams= {'awg device': 'awg520', 'time resolution': 1, \
-                   'pulseshape': 'Square', 'enable IQ': False}
-        self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
-                            'phase': 0.0, 'skew phase': 0.0,'num pulses': 1}
+        self.scan = dict([('type', 'amplitude'), ('start', '0'), ('stepsize', '50'), ('steps', '20')])
+        self.mw = {'PTS': [True, '2.870', False, '2.840', '0.001', '100', '2.940'], 'SRS': [False, '2.870', False, '2.840', '0.001','100','2.940']}
+        # self.mw = {'PTS':[True, '2870.0', False, '2840.0','1','100','2940.0'],'SRS':[False, '2870.0', False, '2840.0','1','100','2940.0']}
+        self.awgparams= {'awg device': 'awg520', 'time resolution': 1, 'pulseshape': 'Square', 'enable IQ': False}
+        self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
+        self.parameters = [50000, 300, 2000, 10, 10, 740, 10]
+        # should make into dictionary with keys ['sample', 'count time', 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay']
+        self.timeRes = 1  # default value for AWG time resolution
 
-        self.parameters = [50000, 300, 2000, 10, 10, 740,
-                           10]  # should make into dictionary with keys 'sample', 'count time',
-        # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
-        self.timeRes = 1 # default value for AWG time resolution
-
-
+        self.init_metadata_text_box()
         self.init_seq_text_box()
 
         self.standingby = False
@@ -110,16 +108,70 @@ class appGUI(QtWidgets.QMainWindow):
         self.maxcounts = 0
 
     def init_seq_text_box(self):
-        f = open('./SeqDesigns/rabi.txt')
+        f = open('./SeqDesigns/default.txt')
         list_of_strings = f.readlines()
-        # start_text = 'S2,1000,1300\nGreen,2300,5300\nMeasure,2300,2400'
         dummy_seq = ''
         for j, t in enumerate(list_of_strings):
             dummy_seq = dummy_seq + t
-        print("The initial sequeance text box is",dummy_seq)
+        print(f"The initial sequence text box is:\n{dummy_seq}")
         self.ui.metadatatextEdit.setText(dummy_seq)
         #self.updateSequenceText()
         f.close()
+
+    def init_metadata_text_box(self):
+        f = open('./metadata.txt')
+        list_of_strings = f.readlines()
+        mdtext = ''
+        for num, text in enumerate(list_of_strings):
+            mdtext = mdtext + text
+        self.ui.textEditMetaData.setText(mdtext)
+        f.close()
+
+    def metadata_save_as_default(self):
+        f = open('./metadata.txt', 'w')
+        text = self.ui.textEditMetaData.toPlainText()
+        f.write(text)
+        f.close()
+
+    def load_sequence(self):
+        try:
+            name = QtWidgets.QFileDialog.getOpenFileName(self, 'Open Sequence File', './SeqDesigns')
+            # print(name[0])
+            if name[0] != '':
+                file = open(name[0], 'r')
+                with file:
+                    text = file.read()
+                    self.ui.metadatatextEdit.setText(text)
+                file.close()
+        except Exception as e:
+            print(e)
+
+    def save_sequence(self):
+        name = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Sequence File', './SeqDesigns')
+        if name[0] != '':
+            file = open(name[0], 'w')
+            text = self.ui.metadatatextEdit.toPlainText()
+            file.write(text)
+            file.close()
+
+    def show_sequence(self):
+        try:
+            text = self.ui.metadatatextEdit.toPlainText()
+            self.convert_text_to_seq(text)
+            self.getReady()
+            newparams = {'amplitude': 1000, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase':0.0, 'num pulses': 1}
+            s = Sequence(self.seq, pulseparams=newparams, timeres=1)
+            s.create_sequence(dt=500)
+            tt = np.linspace(0,s.maxend,len(s.c1markerdata))
+            plt.plot(tt, s.wavedata[0, :], 'r-', label='I Channel')
+            plt.plot(tt, s.wavedata[1, :], 'b-', label='Q Channel')
+            plt.plot(tt, s.c1markerdata, 'g-', label='S2+Green')
+            plt.plot(tt, s.c2markerdata, 'y-', label='Measure')
+            plt.legend()
+            plt.show()
+        except Exception as e:
+            print(e)
+
 
     def setup_connections(self):
         # setup scan buttons and line edits
@@ -191,6 +243,12 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.pushButtonSaveData.clicked.connect(self.saveData)
         self.ui.pushButtonStop.clicked.connect(self.stop)
 
+        # added by Pubudu for the appGUI v3
+        self.ui.pushButtonMetaDatasad.clicked.connect(self.metadata_save_as_default)
+        self.ui.pushButtonloadSeq.clicked.connect(self.load_sequence)
+        self.ui.pushButtonsaveSeq.clicked.connect(self.save_sequence)
+        self.ui.pushButtonshowSeq.clicked.connect(self.show_sequence)
+
     # this section updates all the line edits related to samples, count time and reset time
     def updateSamples(self):
         self.parameters[0] = int(self.ui.lineEditSamples.text())
@@ -200,16 +258,14 @@ class appGUI(QtWidgets.QMainWindow):
 
     def updateResetTime(self):
         self.parameters[2] = int(self.ui.lineEditResetTime.text())
-    
+
     # this section updates all AWG related parameters from the GUI
     def set_awgvalidator(self):
-        self.ui.lineEditSBfreq.setValidator(QtGui.QDoubleValidator(-100.0,100.0,6)) # freq in MHz allowed
+        self.ui.lineEditSBfreq.setValidator(QtGui.QDoubleValidator(-100.0,100.0,9)) # freq in MHz allowed
         self.ui.lineEditPhase.setValidator(QtGui.QDoubleValidator(-179.99,180.0,3)) # phase in degrees allowed
         self.ui.lineEditSkewPhase.setValidator(QtGui.QDoubleValidator(-179.99,180.0,3)) # skew phase in adegrees
         self.ui.lineEditIQscale.setValidator(QtGui.QDoubleValidator(0.0,1.0,3)) # IQ ratio allowed
         self.ui.lineEditPulsewidth.setValidator(QtGui.QIntValidator(5,1000)) # pulseweidth in ns allowed
-
-
 
     def awgSelect(self):
         device = int(self.ui.awgSelectcomboBox.currentIndex())
@@ -253,7 +309,7 @@ class appGUI(QtWidgets.QMainWindow):
         # print(value)
         #amp = self.ui.voltageSlider.tickPosition()
         self.pulseparams['amplitude'] = value
-        
+
     def updatePulsewidth(self):
         self.pulseparams['pulsewidth'][2] = int(self.ui.lineEditPulsewidth.text())
 
@@ -264,10 +320,10 @@ class appGUI(QtWidgets.QMainWindow):
 
     def updateIQscale(self):
         self.pulseparams['IQ scale factor']= int(self.ui.lineEditIQscale.text())
-    
+
     def updatePhase(self):
         self.pulseparams['phase'] = float(self.ui.lineEditPhase.text())
-    
+
     def updateSkewPhase(self):
         self.pulseparams['skew phase'] = float(self.ui.lineEditSkewPhase.text())
 
@@ -447,7 +503,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.lineEditScanNum.setText(str(num))
     # end amplitude scan updates
     # begin PTS scan updates
-    
+
     def enablePTS(self, checkState):
         if checkState:
             #self.ui.checkBoxScanPTS.setEnabled(True)
@@ -549,7 +605,10 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.pushButtonUpload.setEnabled(True)
         self.ui.pushButtonStart.setEnabled(True)
         self.ui.statusbar.showMessage("Upload Done!", 3000)
-    # end upload functions    
+        if self.ui.checkBoxStart.isChecked():
+            self.start()
+
+    # end upload functions
     # begin KeepNV  functions
     def standby(self):
         self.standingby = True
@@ -574,7 +633,7 @@ class appGUI(QtWidgets.QMainWindow):
         elif s.startswith('Monitoring counts...'):
             self.maxcounts = int(s[20:]) # the keep thread emits a string signal which can be either 1. "Tracking..."
             # or 2. "Monitoring counts...NNN" where NNN is the counts
-            
+
     def updateThreshold(self):
         self.parameters[4] = int(self.ui.lineEditThreshold.text())
         try:
@@ -660,7 +719,7 @@ class appGUI(QtWidgets.QMainWindow):
         numsteps = int(self.scan['steps'])
         numavgs = self.parameters[3]
         dir = Path('.')
-        dir = 'D:\\AllData\\PulsedESR\\' + str(datetime.date.today())
+        dir = 'D:\\Data\\quantum-pulse\\' + str(datetime.date.today())
         if not os.path.isdir(dir):
             os.makedirs(dir)
         self.dir = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Data As...', dir + '\\' + 'Untitled' + '.txt',
@@ -724,32 +783,44 @@ class appGUI(QtWidgets.QMainWindow):
         self.standby()
 
     def saveData(self):
-        #self.getDataDir()
-        date_today = str(datetime.date.today())
-        time_now = (datetime.datetime.now()).strftime("%H-%M-%S")
-        numsteps = int(self.scan['steps'])
-        numavgs = self.parameters[3]
+        # self.getDataDir()
+        try:
+            date_today = str(datetime.date.today())
+            time_now = (datetime.datetime.now()).strftime("%H-%M-%S")
 
-        dir = 'D:\\AllData\\PulsedESR\\' + date_today
-        if not os.path.isdir(dir):
-            os.makedirs(dir)
+            numsteps = int(self.scan['steps'])
+            numavgs = self.parameters[3]
 
-        self.dir = dir + '\\' + time_now + '.txt'
-        self.dir_log = dir + '\\' + time_now + '.log'
+            dir = 'D:\\Data\\quantum-pulse\\' + date_today
+            if not os.path.isdir(dir):
+                os.makedirs(dir)
 
-        if self.dir != '':
-            f = open(self.dir, 'a')
-            for i in range(self.avgCount * numsteps):
-                f.write(str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\n')
-            f.close()
+            filename = self.ui.lineEditExpName.text()
+            if filename == '':
+                self.dir = dir + '\\' + time_now + '.txt'
+                self.dir_log = dir + '\\' + time_now + '.log'
+            else:
+                self.dir = dir + '\\' + filename + '.txt'
+                self.dir_log = dir + '\\' + filename + '.log'
 
-            f = open(self.dir_log, 'w')
-            f.write(
-                str(self.parameters) + '\n' + str(self.scan) + '\n' + str(self.mw) + '\n' + str(self.avgCount) + '\n')
-            for each_x in self.x_arr:
-                f.write(str(each_x) + '\t')
-            f.write('\n')
-            f.close()
+            if self.dir != '':
+                f = open(self.dir, 'a')
+                for i in range(self.avgCount * numsteps):
+                    f.write(str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\n')
+                f.close()
+
+                f = open(self.dir_log, 'w')
+                f.write(str(self.parameters) + '\n' + str(self.scan) + '\n' + str(self.mw) + '\n' + str(self.avgCount) + '\n')
+                for each_x in self.x_arr:
+                    f.write(str(each_x) + '\t')
+                f.write('\n\n')
+                metadata = self.ui.textEditMetaData.toPlainText()
+                f.write(metadata)
+                f.write('\n')
+                f.close()
+        except Exception as e:
+            print(e)
+        self.ui.lineEditExpName.setText('')
 
     def updateDataPlot(self):
         avgData = numpy.average(self.tab_data[:self.avgCount], 0)
@@ -777,7 +848,7 @@ class appGUI(QtWidgets.QMainWindow):
 
         self.ui.mplDataPlot.draw()
     # end scanning functions
-    
+
 if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)

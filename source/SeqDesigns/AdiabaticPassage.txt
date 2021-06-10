@@ -1,0 +1,4 @@
+S2,1000,1010+t
+Wave,1000,3000,DataIQ,./arbpulseshape/IQdata.txt
+Green,1010+t,4010+t
+Measure,1010+t,1110+t

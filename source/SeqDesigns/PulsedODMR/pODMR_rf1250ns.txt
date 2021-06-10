@@ -1,0 +1,3 @@
+Wave,1000,2250,SquareI
+Green,2250,5250
+Measure,2250,2350

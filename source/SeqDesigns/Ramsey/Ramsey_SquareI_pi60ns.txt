@@ -1,0 +1,4 @@
+Wave,1000,1030,SquareI
+Wave,1030+t,1060+t,SquareI
+Green,1060+t,4060+t
+Measure,1060+t,1160+t
