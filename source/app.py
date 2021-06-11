@@ -86,8 +86,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.mw = {'PTS': [True, '2.870', False, '2.840', '0.001', '100', '2.940'], 'SRS': [False, '2.870', False, '2.840', '0.001','100','2.940']}
         # self.mw = {'PTS':[True, '2870.0', False, '2840.0','1','100','2940.0'],'SRS':[False, '2870.0', False, '2840.0','1','100','2940.0']}
         self.awgparams= {'awg device': 'awg520', 'time resolution': 1, 'pulseshape': 'Square', 'enable IQ': False}
-        self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
-        self.parameters = [50000, 300, 2000, 10, 10, 740, 10]
+        self.pulseparams = {'amplitude': 0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
+        self.parameters = [50000, 300, 2000, 10, 10, 740e-9, 10e-9]
         # should make into dictionary with keys ['sample', 'count time', 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay']
         self.timeRes = 1  # default value for AWG time resolution
 
@@ -159,7 +159,7 @@ class appGUI(QtWidgets.QMainWindow):
             text = self.ui.metadatatextEdit.toPlainText()
             self.convert_text_to_seq(text)
             self.getReady()
-            newparams = {'amplitude': 1000, 'pulsewidth': 50, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase':0.0, 'num pulses': 1}
+            newparams = {'amplitude': 1000, 'pulsewidth': 50e-9, 'SB freq': 0.01, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase':0.0, 'num pulses': 1}
             s = Sequence(self.seq, pulseparams=newparams, timeres=1)
             s.create_sequence(dt=500)
             tt = np.linspace(0,s.maxend,len(s.c1markerdata))
@@ -230,7 +230,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.lineEditSkewPhase.editingFinished.connect(self.updateSkewPhase)
         #self.ui.checkBoxIteratePulses.stateChanged.connect(self.enableIterPulses) #removed this chekbox on 2/6/20
         #self.ui.lineEditNumPulses.stateChanged.connect(self.updatePulsenum) #removed this  on 2/6/20
-
+        self.ui.lineEditPulsewidth.setText('20e-9')
         # Misc line edits and buttons
         #self.ui.metadatatextEdit.editingFinished.connect(self.updateSequenceText)
         self.ui.lineEditThreshold.setValidator(QtGui.QIntValidator(1,1000000))
@@ -265,7 +265,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.lineEditPhase.setValidator(QtGui.QDoubleValidator(-179.99,180.0,3)) # phase in degrees allowed
         self.ui.lineEditSkewPhase.setValidator(QtGui.QDoubleValidator(-179.99,180.0,3)) # skew phase in adegrees
         self.ui.lineEditIQscale.setValidator(QtGui.QDoubleValidator(0.0,1.0,3)) # IQ ratio allowed
-        self.ui.lineEditPulsewidth.setValidator(QtGui.QIntValidator(5,1000)) # pulseweidth in ns allowed
+        # self.ui.lineEditPulsewidth.setValidator(QtGui.QIntValidator(5,1000)) # pulseweidth in ns allowed
+        self.ui.lineEditPulsewidth.setValidator(QtGui.QDoubleValidator(5e-9,1e-6,2)) # pulseweidth in ns allowed
 
     def awgSelect(self):
         device = int(self.ui.awgSelectcomboBox.currentIndex())
@@ -311,7 +312,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.pulseparams['amplitude'] = value
 
     def updatePulsewidth(self):
-        self.pulseparams['pulsewidth'][2] = int(self.ui.lineEditPulsewidth.text())
+        self.pulseparams['pulsewidth'][2] = float(self.ui.lineEditPulsewidth.text())
 
     def updateSBfreq(self):
         self.pulseparams['SB freq'] = float(self.ui.lineEditSBfreq.text())
@@ -457,7 +458,8 @@ class appGUI(QtWidgets.QMainWindow):
         if selector == 0: # amplitude scan
             regexp = QtCore.QRegExp("[0-9]{1,4}") # prevents negative numbers, and number can at most have 4 digits
         elif selector == 1: # time scan
-            regexp = QtCore.QRegExp("\d{1,6}") # match any sets of digits [0-9] upto 6 allowed i.e. ms long times
+            #regexp = QtCore.QRegExp("\d{1,6}") # match any sets of digits [0-9] upto 6 allowed i.e. ms long times
+            regexp = QtCore.QRegExp("\\d{1,6}(\\.)?\\d{,6}(e|E)?([+-])?\\d")  # match any number of type N.N, N.NE-N, N.Ne-N, N.NeN,etc
         elif selector == 2: # number scan
             regexp = QtCore.QRegExp("[0-9]{,3}") # can at most have 3 digits
         elif selector == 3: # MW frequency
@@ -465,7 +467,7 @@ class appGUI(QtWidgets.QMainWindow):
         elif selector == 4: # sideband frequency
             regexp = QtCore.QRegExp("[0-9]{,3}\\.[0-9]{1,3}") # we don't allow for scans larger than 100 MHz
         elif selector == 5: # pulsewidth
-            regexp = QtCore.QRegExp("[0-9]{,3}")  # we don't allow for pulsewidths larger than 1000 ns for now
+            regexp = QtCore.QRegExp("\\d{1,6}(\\.)?\\d{,6}(e|E)?([+-])?\\d")  # we don't allow for pulsewidths larger than 1000 ns for now
         else:
             regexp = QtCore.QRegExp("[0-9]*")
         validator = QtGui.QRegExpValidator(regexp)
@@ -475,6 +477,29 @@ class appGUI(QtWidgets.QMainWindow):
         # moment
         self.ui.lineEditAvgNum.setValidator(QtGui.QIntValidator(1,1000)) # same with number of averages
         self.ui.lineEditScanStop.setValidator(validator)
+
+    # def choosescanValidator(self):
+    #     selector = self.ui.scantypecomboBox.currentIndex()
+    #     if selector == 0:  # amplitude scan
+    #         validator = QtGui.QDoubleValidator(0.0, 1.0e3, 2)
+    #         # validator.setNotation(QtGui.QDoubleValidator.StandardNotation)
+    #     elif selector == 1:  # time scan
+    #         validator = QtGui.QDoubleValidator(0, 2.0e-3, 2)
+    #     elif selector == 2:  # number scan
+    #         validator = QtGui.QIntValidator(0, 1000)
+    #     elif selector == 3:  # MW frequency
+    #         validator = QtGui.QDoubleValidator(1.0, 3200.0, 3)
+    #     elif selector == 4:  # sideband frequency
+    #         validator = QtGui.QDoubleValidator(0, 100.0, 3)
+    #     elif selector == 5:  # pulsewidth
+    #         validator = QtGui.QDoubleValidator(0, 1.0e-6, 2)
+    #
+    #     self.ui.lineEditScanStart.setValidator(validator)
+    #     self.ui.lineEditScanStep.setValidator(validator)
+    #     self.ui.lineEditScanStop.setValidator(validator)
+    #     self.ui.lineEditScanNum.setValidator(QtGui.QIntValidator(1, 1000))  # we allow for at most 1000 steps at the moment
+    #     self.ui.lineEditAvgNum.setValidator(QtGui.QIntValidator(1, 1000))  # same with number of averages
+
 
     def updateScanStop(self):
         ''' This function will set up the amplitude scan when start, step, and numsteps are specified,
@@ -493,6 +518,7 @@ class appGUI(QtWidgets.QMainWindow):
         '''this function also updates the amplitude scan but when start, step, and stop are specified, so numsteps
         is calculated by the function'''
         #self.scanValidator()
+
         start = float(self.ui.lineEditScanStart.text())
         step = float(self.ui.lineEditScanStep.text())
         stop = float(self.ui.lineEditScanStop.text())

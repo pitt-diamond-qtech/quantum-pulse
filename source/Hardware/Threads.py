@@ -194,10 +194,10 @@ class ScanThread(QtCore.QThread):
             self.awgparams = {'awg device': 'awg520', 'time resolution': 1, \
                               'pulseshape': 'Square', 'enable IQ': False}
         if pulseparams == None:
-            self.pulseparams = {'amplitude': 0, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,
+            self.pulseparams = {'amplitude': 0, 'pulsewidth': 20e-9, 'SB freq': 0, 'IQ scale factor': 1.0,
                                 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
         if params == None:
-            self.parameters = [50000, 300, 1000, 10, 50, 820, 10]
+            self.parameters = [50000, 300, 1000, 10, 50, 820e-9, 10e-9]
             # should make into dictionary with keys 'sample', 'count time',
             # 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay'
 

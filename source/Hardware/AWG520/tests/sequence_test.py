@@ -60,8 +60,8 @@ def make_seq_list():
         c1dat = s.sequencelist[nn].c1markerdata
         c2dat = s.sequencelist[nn].c2markerdata
         tt = np.linspace(0, xstop, points)
-        # plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
-        plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :])
+        plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
+        #plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :])
         plt.show()
     # plt.plot(tt,s.wavedata[1,:])
 
@@ -87,6 +87,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    test_sequence()
-    #test_seq_list()
+    #test_sequence()
+    test_seq_list()
     #make_long_seq()
