@@ -20,13 +20,14 @@ import logging
 from pathlib import Path
 from typing import List, NewType
 from decimal import Decimal, getcontext
-from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ,Marker, Sech, Lorentzian, LoadWave, Pulse
+from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ,Marker, Sech, Lorentzian, LoadWave, Pulse, DataIQ
 from source.common.utils import log_with, create_logger, get_project_root
 import copy, re, sys
 
 maindir = get_project_root()
-seqfiledir = maindir / 'Hardware/sequencefiles/'
+# seqfiledir = maindir / 'Hardware/sequencefiles/'
 pulseshapedir = maindir / 'arbpulseshape/'
+print(pulseshapedir)
 # logfiledir = maindir / 'logs/'
 # print('the sequence file directory is {0} and log file directory is {1}'.format(seqfiledir.resolve(),logfiledir.resolve()))
 modlogger = create_logger('seqlogger')
@@ -478,6 +479,9 @@ class ArbitraryPulse(WaveEvent):
             self.stop = self.start + float(self.duration)
         pulse = LoadWave(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
                          pwidth_idx, self.amplitude, self.skewphase)
+        if 'IQdata.txt' in filename:
+            pulse = DataIQ(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                           pwidth_idx, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
@@ -1017,13 +1021,13 @@ class Sequence:
                     if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
                         # check if there are any other optional parameters
                         if len(opt_params) >= 2:
-                            patt = r'(a[mp]?\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
+                            patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
                             m = re.search(patt, str(opt_params[1]))
                             if m:
                                 val = float(m.group(2))  # the match is returned in group 2
                                 amplitude_scale = val if (0 <= val <= 1.0) else 1.0
                         if len(opt_params) >= 3:
-                            patt = r'(n[ump]?\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
+                            patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
                             m = re.search(patt, str(opt_params[2]))
                             if m:
                                 val = int(m.group(2))  # the match is returned in group 2
@@ -1033,17 +1037,17 @@ class Sequence:
                     elif pulsetype == _PULSE_TYPES[-1]:  # this is for loading waveforms
                         # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
                         if len(opt_params) >= 2:
-                            patt = r'(f[name]?\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
+                            patt = r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
                             m = re.match(patt, opt_params[1])
                             fname = m.group('file') + '.' + m.group('ext') if m else None
                         if len(opt_params) >= 3:
-                            patt = r'(a[mp]?\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
+                            patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
                             m = re.search(patt, str(opt_params[2]))
                             if m:
                                 val = float(m.group(2))  # the match is returned in group 2
                                 amplitude_scale = val if (0 <= val <= 1.0) else 1.0
                         if len(opt_params) >= 4:
-                            patt = r'(n[ump]\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
+                            patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
                             m = re.search(patt, str(opt_params[3]))
                             if m:
                                 val = int(m.group(2))  # the match is returned in group 2

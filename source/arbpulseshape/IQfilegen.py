@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-T = 1000
+T = 2000
 n = 100
 time = np.linspace(0, T, n)
 yI = np.cos(80e-3*np.pi*time**2/T)
@@ -15,6 +15,6 @@ with open(f,'w') as f:
         f.write(f'{i}, {tt}, {yI[i]}, {yQ[i]} \n')
 
 
-plt.plot(time,yQ)
+plt.plot(time,yI,time,yQ)
 plt.show()
 

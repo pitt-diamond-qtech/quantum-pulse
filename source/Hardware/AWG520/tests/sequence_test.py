@@ -10,9 +10,12 @@ print('Module name is: ',__name__)
 def make_seq():
     wfmdir = Path('../../..') / 'arbpulseshape'
     filestr= str((wfmdir/'test4.txt').resolve())
-    #print(str(wfmdir.resolve()))
-    seq='Green,0.01e-7,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\n' + \
-        'Wave,1.8e-6,2.2e-6,Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
+    filestr= 'IQdata.txt'
+    print(filestr)
+    # print(str(wfmdir.resolve()))
+    # seq='Green,0.01e-7,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\n' + \
+    #     'Wave,1.8e-6,2.2e-6,Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
+    seq='Wave,2.6e-6,3e-6,Load Wfm,fname='+filestr
     #seq = 'Green,0.01e-6,1e-6'
     #seq = 'Wave,9e-7,1.4e-6,Gauss\nWave,1e-7,3e-7,Load Wfm,fname='+filestr+'\n'+'Green,1.5e-6,2.5e-6'
     #seq = 'Wave,9e-7,1.4e-6,Gauss\nWave,1e-7,3e-7,Load Wfm'+ '\n' + 'Green,1.5e-6,2.5e-6'
@@ -87,6 +90,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    #test_sequence()
-    test_seq_list()
+    test_sequence()
+    # test_seq_list()
     #make_long_seq()
