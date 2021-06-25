@@ -597,6 +597,7 @@ class AWGFile(object):
 
 
 
+
     def setwaveform(self, wavenum, wavedata,markerdata):
         pass
 

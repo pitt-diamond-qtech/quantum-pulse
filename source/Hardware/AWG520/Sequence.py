@@ -27,7 +27,6 @@ import copy, re, sys
 maindir = get_project_root()
 # seqfiledir = maindir / 'Hardware/sequencefiles/'
 pulseshapedir = maindir / 'arbpulseshape/'
-print(pulseshapedir)
 # logfiledir = maindir / 'logs/'
 # print('the sequence file directory is {0} and log file directory is {1}'.format(seqfiledir.resolve(),logfiledir.resolve()))
 modlogger = create_logger('seqlogger')
@@ -484,6 +483,17 @@ class ArbitraryPulse(WaveEvent):
                            pwidth_idx, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
+
+class RandomPauliGate(WaveEvent):
+    """This class implements a randomization of the computational gate sequence of length l"""
+    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, filename=None, start_inc=0, stop_inc=0, dt=0,
+                 sampletime=1.0 * _ns, paulilength=2,pulsetype=None):
+        super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
+                         dt=dt, sampletime=sampletime)
+        if pulsetype is None:
+           pulsetype = 'Square'
+        pass
+
 
 
 class MarkerEvent(SequenceEvent):
@@ -1038,7 +1048,7 @@ class Sequence:
                         # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
                         if len(opt_params) >= 2:
                             patt = r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
-                            m = re.match(patt, opt_params[1])
+                            m = re.search(patt, opt_params[1])
                             fname = m.group('file') + '.' + m.group('ext') if m else None
                         if len(opt_params) >= 3:
                             patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
@@ -1208,6 +1218,9 @@ class SequenceList(object):
                          connectiondict=self.connectiondict, timeres=self.timeres)
             s.create_sequence(dt=0)
             self.sequencelist.append(s)
+        elif self.scanparams['type'] == 'random scan':
+            # generate a list of random values to interleave the pauli random scans
+            pass
         else:
             for x in self.scanlist:
                 if self.scanparams['type'] == 'time':
