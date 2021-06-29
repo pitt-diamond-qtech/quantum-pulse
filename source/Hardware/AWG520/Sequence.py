@@ -1213,6 +1213,7 @@ class SequenceList(object):
 
     def create_sequence_list(self):
         # dt = float(self.scanparams['stepsize'])
+        temp_pulseparams = self.pulseparams.copy()  # store a temporary copy of the pulseparams variable
         if self.scanparams['type'] == 'no scan':
             s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams,
                          connectiondict=self.connectiondict, timeres=self.timeres)
@@ -1223,6 +1224,7 @@ class SequenceList(object):
             pass
         else:
             for x in self.scanlist:
+                self.pulseparams = temp_pulseparams.copy()
                 if self.scanparams['type'] == 'time':
                     s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams,
                                  connectiondict=self.connectiondict, timeres=self.timeres)
