@@ -488,6 +488,7 @@ class RandomPauliGate(WaveEvent):
     """This class implements a randomization of the computational gate sequence.
     :param compgatelength: length of the computational gate sequence"""
     # trying a new way of unpacking all the keyword args as they were getting too long in the old way
+    PULSE_KEYWORD = "Random"
     def __init__(self, **kwargs):
         kwargdic = dict([])
         for k, v in kwargs.items():
@@ -534,8 +535,30 @@ class RandomPauliGate(WaveEvent):
             compgatelength = kwargdic['compgatelength']
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
-        if pulsetype is None:
-            pass
+
+        if filename is None:
+            filename = 'test4.txt'
+        self.pulse_type = self.PULSE_KEYWORD
+        self.compgatelength = compgatelength
+        self.filename = pulseshapedir / filename
+        self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
+        if self.duration < 6 * self.pulsewidth:
+            self.duration = 6 * self.pulsewidth
+            self.stop = self.start + float(self.duration)
+        if pulseshape == "Square":
+            pulse = Square(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, self.amplitude,
+                       self.skewphase)
+        elif pulseshape == "Gauss":
+            pulse = Gaussian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                pwidth_idx, self.amplitude, self.skewphase)
+        pulse = LoadWave(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                         pwidth_idx, self.amplitude, self.skewphase)
+        if 'IQdata.txt' in filename:
+            pulse = DataIQ(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                           pwidth_idx, self.amplitude, self.skewphase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
 
     def generate_computation_gates(self):
         """
@@ -550,11 +573,12 @@ class RandomPauliGate(WaveEvent):
         Ne = Number of Total experiments
 
         """
+        import random
         l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then truncated Nl times.
         P = ['(identity)', '(+pi_x)', '(+pi_y)', '(-pi_x)', '(-pi_y)']  # The Set of Pauli gates
         G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
         L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
-        l = 4
+        l = self.compgatelength
         """
         Generate the Ng computational gate sequences
         """
