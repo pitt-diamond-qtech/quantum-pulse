@@ -486,7 +486,7 @@ class ArbitraryPulse(WaveEvent):
 
 class RandomPauliGate(WaveEvent):
     """This class implements a randomization of the computational gate sequence.
-    :param sequencelength: length of the computational gate sequence"""
+    :param compgatelength: length of the computational gate sequence"""
     # trying a new way of unpacking all the keyword args as they were getting too long in the old way
     def __init__(self, **kwargs):
         kwargdic = dict([])
@@ -524,16 +524,18 @@ class RandomPauliGate(WaveEvent):
             filename = 'test4.txt'
         else:
             filename = kwargdic['filename']
-        if kwargdic['pulsetype'] is None:
-            pulsetype = 'Square'
+        if kwargdic['pulseshape'] is None:
+            pulseshape = 'Square'
         else:
-            pulsetype = kwargdic['pulsetype']
-
+            pulseshape = kwargdic['pulsetype']
+        if kwargdic['compgatelength'] is None:
+            compgatelength = 4
+        else:
+            compgatelength = kwargdic['compgatelength']
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         if pulsetype is None:
-
-        pass
+            pass
 
 
 
