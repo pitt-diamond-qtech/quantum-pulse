@@ -48,8 +48,10 @@ def make_seq_list():
     # print(str(wfmdir.resolve()))
     # notice the sequence below scans time by setting all times after the pulse that is being scanned are also moved
     # seq = 'Green,1.6e-6,2.5e-6\n'Wave,1e-6+t,1.5e-6+t,Sech\n Measure,1.5e-6+t,1.8e-6+t'
-    seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.05e-6+t,4.025e-6+t\n'+ \
-          'Measure,1.025e-6+t,1.125e-6+t'
+    # seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.05e-6+t,4.025e-6+t\n'+ \
+    #       'Measure,1.025e-6+t,1.125e-6+t'
+    # seq = 'Wave,2.6e-6,3e-6,Load Wfm,fname='+filestr+',amp = 0.4'
+    seq = 'Wave,2.6e-6,3e-6,Gauss,amp = 0.4'
     #  seq = 'Green,0.0,1e-6'
     newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 1}
@@ -90,6 +92,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    test_sequence()
-    # test_seq_list()
+    # test_sequence()
+    test_seq_list()
     #make_long_seq()

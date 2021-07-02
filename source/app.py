@@ -86,7 +86,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.mw = {'PTS': [True, '2.870', False, '2.840', '0.001', '100', '2.940'], 'SRS': [False, '2.870', False, '2.840', '0.001','100','2.940']}
         # self.mw = {'PTS':[True, '2870.0', False, '2840.0','1','100','2940.0'],'SRS':[False, '2870.0', False, '2840.0','1','100','2940.0']}
         self.awgparams= {'awg device': 'awg520', 'time resolution': 1, 'pulseshape': 'Square', 'enable IQ': False}
-        self.pulseparams = {'amplitude': 0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
+        self.pulseparams = {'amplitude': 1000, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
         self.parameters = [50000, 300, 2000, 10, 10, 740e-9, 10e-9]
         # should make into dictionary with keys ['sample', 'count time', 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay']
         self.timeRes = 1  # default value for AWG time resolution
