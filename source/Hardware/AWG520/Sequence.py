@@ -344,7 +344,7 @@ class GaussPulse(WaveEvent):
     """Generates a Wave event with a Gaussian shape"""
     PULSE_KEYWORD = "Gauss"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -364,7 +364,7 @@ class SechPulse(WaveEvent):
     """Generates a Wave event with a Sech shape"""
     PULSE_KEYWORD = "Sech"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -386,7 +386,7 @@ class SquarePulse(WaveEvent):
     """Generates a Wave event with a Square shape"""
     PULSE_KEYWORD = "Square"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -406,7 +406,7 @@ class LorentzPulse(WaveEvent):
     """Generates a Wave event with a Lorentzian shape"""
     PULSE_KEYWORD = "Lorentz"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -425,7 +425,7 @@ class SquarePulseI(WaveEvent):
     """Generates a Wave event with a Square shape, only outputs on I channel"""
     PULSE_KEYWORD = "SquareI"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -444,7 +444,7 @@ class SquarePulseQ(WaveEvent):
     """Generates a Wave event with a Square shape, only outputs on Q channel"""
     PULSE_KEYWORD = "SquareI"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -463,7 +463,7 @@ class ArbitraryPulse(WaveEvent):
     """Generates a Wave event with any shape given by numerically generated data read from text file"""
     PULSE_KEYWORD = "Load Wfm"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, filename=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, filename=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
@@ -485,13 +485,54 @@ class ArbitraryPulse(WaveEvent):
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
 class RandomPauliGate(WaveEvent):
-    """This class implements a randomization of the computational gate sequence of length l"""
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, filename=None, start_inc=0, stop_inc=0, dt=0,
-                 sampletime=1.0 * _ns, paulilength=2,pulsetype=None):
+    """This class implements a randomization of the computational gate sequence.
+    :param sequencelength: length of the computational gate sequence"""
+    # trying a new way of unpacking all the keyword args as they were getting too long in the old way
+    def __init__(self, **kwargs):
+        kwargdic = dict([])
+        for k, v in kwargs.items():
+            kwargdic[k] = v
+        if kwargdic['start'] is None:
+            start = 1e-6
+        else:
+            start = kwargdic['start']
+        if kwargdic['stop'] is None:
+            stop = 1.1e-6
+        else:
+            stop = kwargdic['stop']
+        if kwargdic['pulse_params'] is None:
+            pulse_params = _PULSE_PARAMS
+        else:
+            pulse_params = kwargdic['pulse_params']
+        if kwargdic['start_inc'] is None:
+            start_inc = 0
+        else:
+            start_inc = kwargdic['start_inc']
+        if kwargdic['stop_inc'] is None:
+            stop_inc = 0
+        else:
+            stop_inc = kwargdic['stop_inc']
+        if kwargdic['dt'] is None:
+            dt = 0
+        else:
+            dt = kwargdic['dt']
+        if kwargdic['sampletime'] is None:
+            sampletime = 1.0 * _ns
+        else:
+            sampletime = kwargdic['sampletime']
+        if kwargdic['filename'] is None:
+            filename = 'test4.txt'
+        else:
+            filename = kwargdic['filename']
+        if kwargdic['pulsetype'] is None:
+            pulsetype = 'Square'
+        else:
+            pulsetype = kwargdic['pulsetype']
+
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         if pulsetype is None:
-           pulsetype = 'Square'
+
         pass
 
 
@@ -510,7 +551,7 @@ class MarkerEvent(SequenceEvent):
     EVENT_KEYWORD = "Marker"
     _markercounter = 0
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0.0, stop_inc=0.0, dt=0.0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0.0, stop_inc=0.0, dt=0.0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, event_type=self.EVENT_KEYWORD, start_increment=start_inc,
                          stop_increment=stop_inc, sampletime=sampletime)
@@ -541,10 +582,10 @@ class Green(MarkerEvent):
     """Turns on the green AOM"""
     PULSE_KEYWORD = "Green"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -560,10 +601,10 @@ class Measure(MarkerEvent):
     """Turns on the Adwin trigger for measurement"""
     PULSE_KEYWORD = "Measure"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -579,10 +620,10 @@ class S1(MarkerEvent):
     """Turns on the MW switch S1"""
     PULSE_KEYWORD = "S1"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -598,10 +639,10 @@ class S2(MarkerEvent):
     """Turns on the MW switch S2"""
     PULSE_KEYWORD = "S2"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
