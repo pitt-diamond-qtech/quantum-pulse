@@ -1,0 +1,6 @@
+S2,1e-6,2e-6
+Wave,1e-6,2e-6,Load Wfm,fname=IQdata.txt,amp=0.4
+S2,2e-6,2.010e-6+t
+Wave,2e-6,2.010e-6+t,SquareI
+Green,2.010e-6+t,5.010e-6+t
+Measure,2.010e-6+t,2.110e-6+t

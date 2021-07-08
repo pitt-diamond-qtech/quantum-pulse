@@ -851,29 +851,30 @@ class Channel:
         """
         self.num_of_events += 1
         self.event_channel_index += 1
+        temp_pulseparams = self.pulse_params.copy()
         event = SequenceEvent()  # no need for this statement, but pycharm complains event may be assigned before ref?
         # TODO: simplify this remaining code using a dictionary or other function reference list and a for loop
         if self.ch_type == _WAVE:
             if pulse_type == _PULSE_TYPES[0]:
-                event = GaussPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                event = GaussPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                    stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[1]:
-                event = SechPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                event = SechPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                   stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[2]:
-                event = SquarePulse(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                event = SquarePulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                     stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[3]:
-                event = LorentzPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                event = LorentzPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                      stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[4]:
-                event = SquarePulseI(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                event = SquarePulseI(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                      stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[5]:
-                event = SquarePulseQ(start=time_on, stop=time_off, pulse_params=self.pulse_params, start_inc=start_inc,
+                event = SquarePulseQ(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                      stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[-1]:
-                event = ArbitraryPulse(start=time_on, stop=time_off, pulse_params=self.pulse_params,
+                event = ArbitraryPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams,
                                        start_inc=start_inc,
                                        stop_inc=stop_inc, filename=fname, dt=dt, sampletime=self.sampletime)
         elif pulse_type == _GREEN_AOM:
@@ -1092,8 +1093,9 @@ class Sequence:
     def add_channel(self, ch_type):
         """Adds a channel of specified channel type, but does not yet add the events data"""
         self.num_of_channels += 1
+        temp_pulseparams = self.pulseparams.copy()
         if self.num_of_channels != 1:
-            channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=self.pulseparams,
+            channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=temp_pulseparams,
                               connection_dict=self.connectiondict, sampletime=self.timeres, event_channel_idx=
                               self.channels[-1].event_channel_index + 1)
         else:
@@ -1370,8 +1372,10 @@ class Sequence:
         ch_type = []
         self.set_first_sequence_event()
         self.set_latest_sequence_event()
+        temp_pulseparams = self.pulseparams.copy()
         for i in range(len(self.seq)):
             # the first 3 in the list are mandatory
+            self.pulseparams = temp_pulseparams.copy()
             ch_type.append(self.seq[i][0])
             t_start[i], t_stop[i], start_inc[i], stop_inc[i] = find_start_stop_increment_times(pulse=self.seq[i])
             # then we could have optional parameters
