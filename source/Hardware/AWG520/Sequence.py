@@ -344,7 +344,7 @@ class GaussPulse(WaveEvent):
     """Generates a Wave event with a Gaussian shape"""
     PULSE_KEYWORD = "Gauss"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -364,7 +364,7 @@ class SechPulse(WaveEvent):
     """Generates a Wave event with a Sech shape"""
     PULSE_KEYWORD = "Sech"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -386,7 +386,7 @@ class SquarePulse(WaveEvent):
     """Generates a Wave event with a Square shape"""
     PULSE_KEYWORD = "Square"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -406,7 +406,7 @@ class LorentzPulse(WaveEvent):
     """Generates a Wave event with a Lorentzian shape"""
     PULSE_KEYWORD = "Lorentz"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -425,7 +425,7 @@ class SquarePulseI(WaveEvent):
     """Generates a Wave event with a Square shape, only outputs on I channel"""
     PULSE_KEYWORD = "SquareI"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -444,7 +444,7 @@ class SquarePulseQ(WaveEvent):
     """Generates a Wave event with a Square shape, only outputs on Q channel"""
     PULSE_KEYWORD = "SquareI"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
         self.pulse_type = self.PULSE_KEYWORD
@@ -463,7 +463,7 @@ class ArbitraryPulse(WaveEvent):
     """Generates a Wave event with any shape given by numerically generated data read from text file"""
     PULSE_KEYWORD = "Load Wfm"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, filename=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, filename=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
@@ -485,14 +485,188 @@ class ArbitraryPulse(WaveEvent):
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
 class RandomPauliGate(WaveEvent):
-    """This class implements a randomization of the computational gate sequence of length l"""
-    def __init__(self, start=1e-6, stop=1.1e-7, pulse_params=None, filename=None, start_inc=0, stop_inc=0, dt=0,
-                 sampletime=1.0 * _ns, paulilength=2,pulsetype=None):
+    """This class implements a randomization of the computational gate sequence.
+    :param compgatelength: length of the computational gate sequence"""
+    # trying a new way of unpacking all the keyword args as they were getting too long in the old way
+    PULSE_KEYWORD = "Random"
+    def __init__(self, **kwargs):
+        kwargdic = dict([])
+        for k, v in kwargs.items():
+            kwargdic[k] = v
+        if kwargdic['start'] is None:
+            start = 1e-6
+        else:
+            start = kwargdic['start']
+        if kwargdic['stop'] is None:
+            stop = 1.1e-6
+        else:
+            stop = kwargdic['stop']
+        if kwargdic['pulse_params'] is None:
+            pulse_params = _PULSE_PARAMS
+        else:
+            pulse_params = kwargdic['pulse_params']
+        if kwargdic['start_inc'] is None:
+            start_inc = 0
+        else:
+            start_inc = kwargdic['start_inc']
+        if kwargdic['stop_inc'] is None:
+            stop_inc = 0
+        else:
+            stop_inc = kwargdic['stop_inc']
+        if kwargdic['dt'] is None:
+            dt = 0
+        else:
+            dt = kwargdic['dt']
+        if kwargdic['sampletime'] is None:
+            sampletime = 1.0 * _ns
+        else:
+            sampletime = kwargdic['sampletime']
+        if kwargdic['filename'] is None:
+            filename = 'test4.txt'
+        else:
+            filename = kwargdic['filename']
+        if kwargdic['pulseshape'] is None:
+            pulseshape = 'Square'
+        else:
+            pulseshape = kwargdic['pulsetype']
+        if kwargdic['compgatelength'] is None:
+            compgatelength = 4
+        else:
+            compgatelength = kwargdic['compgatelength']
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
-        if pulsetype is None:
-           pulsetype = 'Square'
-        pass
+
+        if filename is None:
+            filename = 'test4.txt'
+        self.pulse_type = self.PULSE_KEYWORD
+        self.compgatelength = compgatelength
+        self.filename = pulseshapedir / filename
+        self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
+        if self.duration < 6 * self.pulsewidth:
+            self.duration = 6 * self.pulsewidth
+            self.stop = self.start + float(self.duration)
+        if pulseshape == "Square":
+            pulse = Square(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, self.amplitude,
+                       self.skewphase)
+        elif pulseshape == "Gauss":
+            pulse = Gaussian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                pwidth_idx, self.amplitude, self.skewphase)
+        pulse = LoadWave(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                         pwidth_idx, self.amplitude, self.skewphase)
+        if 'IQdata.txt' in filename:
+            pulse = DataIQ(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                           pwidth_idx, self.amplitude, self.skewphase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
+
+    def generate_computation_gates(self):
+        """
+        we have 3 types of pulses to generate:
+        Pauli Gates (pi_x, pi_y and pi_z), Computational Gates (pi/2_x, pi/2_y, pi/2_z) and the R gate (This is a custom gate to make sure the
+        final measurement is an eigenstate of sigma_z)
+
+        Parameters:
+        Nl = Number of different truncation lengths
+        Ng = Different computational gate sequences
+        Np = Number of Pauli Randomization
+        Ne = Number of Total experiments
+
+        """
+        import random
+        l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then truncated Nl times.
+        P = ['(identity)', '(+pi_x)', '(+pi_y)', '(-pi_x)', '(-pi_y)']  # The Set of Pauli gates
+        G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
+        L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
+        l = self.compgatelength
+        """
+        Generate the Ng computational gate sequences
+        """
+        Comp_seq_list = [[], [], [], []]
+        for seq in Comp_seq_list:
+            for i in range(l_max):
+                seq.append(random.choice(G))
+        """
+        Choose one of the Ng sequences randomly truncate it to length l (should be done to all Ng sequences, not just one sequence)
+        """
+        G_list = Comp_seq_list[random.randint(0, 3)][:l]
+
+        """Generate a list of l+2 Pauli gates randomly"""
+        P_list = []
+        for i in range(l + 2):
+            P_list.append(random.choice(P))
+        # print(P_list)
+        # print(G_list)
+
+        """"Pauli operators and their eigenstates"""
+        I = np.array([[1, 0], [0, 1]])  # Identity
+        X = np.array([[0, 1], [1, 0]])  # Sx
+        Y = np.array([[0, -1j], [1j, 0]])  # Sy
+        Z = np.array([[1, 0], [0, -1]])  # Sz
+
+        z0 = np.array([[1], [0]])  # |+z>
+        z1 = np.array([[0], [1]])  # |-z>
+        x0 = np.round(np.array([[1], [1]]) / np.sqrt(2), 3)  # |+x>
+        x1 = np.round(np.array([[1], [-1]]) / np.sqrt(2), 3)  # |-x>
+        y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
+        y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
+
+        def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
+            # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
+            return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
+
+        gate = {'(identity)': I,
+                '(+pi_x)': rotation(X, np.pi),
+                '(-pi_x)': rotation(-1 * X, np.pi),
+                '(+pi_y)': rotation(Y, np.pi),
+                '(-pi_y)': rotation(-1 * Y, np.pi),
+                '(+pi/2_x)': rotation(X, np.pi / 2),
+                '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                '(+pi/2_y)': rotation(Y, np.pi / 2),
+                '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                '(+pi_z)': rotation(Z, np.pi),
+                '(-pi_z)': rotation(-1 * Z, np.pi),
+                '(+pi/2_z)': rotation(Z, np.pi / 2),
+                '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                }
+        r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
+                  '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                  '(+pi/2_y)': rotation(Y, np.pi / 2),
+                  '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                  '(+pi/2_z)': rotation(Z, np.pi / 2),
+                  '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                  }
+
+        def find_R(gate_list):
+            M = I
+            Rlist = []
+            for i in gate_list:
+                M = np.matmul(gate[i], M)
+            for i in r_gate:
+                M2 = np.matmul(r_gate[i], M)
+                if np.allclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M2, z0)))),
+                        1) or np.allclose(
+                        abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M2, z0)))), 1):
+                    Rlist.append(i)
+            R = random.choice(Rlist)
+            M3 = np.matmul(r_gate[R], M)
+            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z0'
+            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z1'
+            else:
+                print("error!!!")
+            return R, final_state
+
+        """"Generate the full sequence"""
+        R, final_state = find_R(G_list)
+        sequence = []
+        for i in range(l):
+            sequence.append(P_list[i])
+            sequence.append(G_list[i])
+        sequence.append(P_list[-2])
+        sequence.append(R)
+        sequence.append(P_list[-1])
 
 
 
@@ -510,7 +684,7 @@ class MarkerEvent(SequenceEvent):
     EVENT_KEYWORD = "Marker"
     _markercounter = 0
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0.0, stop_inc=0.0, dt=0.0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0.0, stop_inc=0.0, dt=0.0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, event_type=self.EVENT_KEYWORD, start_increment=start_inc,
                          stop_increment=stop_inc, sampletime=sampletime)
@@ -541,10 +715,10 @@ class Green(MarkerEvent):
     """Turns on the green AOM"""
     PULSE_KEYWORD = "Green"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -560,10 +734,10 @@ class Measure(MarkerEvent):
     """Turns on the Adwin trigger for measurement"""
     PULSE_KEYWORD = "Measure"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -579,10 +753,10 @@ class S1(MarkerEvent):
     """Turns on the MW switch S1"""
     PULSE_KEYWORD = "S1"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -598,10 +772,10 @@ class S2(MarkerEvent):
     """Turns on the MW switch S2"""
     PULSE_KEYWORD = "S2"
 
-    def __init__(self, start=1e-6, stop=1.1e-7, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -1202,7 +1376,6 @@ class SequenceList(object):
                                 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
         else:
             self.pulseparams = pulseparams
-            self.temp_pulseparams = copy.deepcopy(pulseparams)
         if connectiondict is None:
             self.connectiondict = _CONN_DICT
         else:
@@ -1230,7 +1403,6 @@ class SequenceList(object):
         else:
             for x in self.scanlist:
                 self.pulseparams = temp_pulseparams.copy()
-                print(temp_pulseparams)
                 if self.scanparams['type'] == 'time':
                     s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams,
                                  connectiondict=self.connectiondict, timeres=self.timeres)
