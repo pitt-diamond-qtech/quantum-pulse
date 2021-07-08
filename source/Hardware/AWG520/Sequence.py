@@ -1211,7 +1211,7 @@ class Sequence:
                     if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
                         # check if there are any other optional parameters
                         if len(opt_params) > 4:
-                            self.logger.warning(f"only 4 optional parameters supported for {pulsetype} channels")
+                            self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N in any order
                             patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
@@ -1235,8 +1235,8 @@ class Sequence:
                         if len(opt_params) < 2:  # not enough optional parms were supplied
                             raise RuntimeWarning('Filename must be supplied else will use default')
                         if len(opt_params) > 5:
-                            self.logger.error(f"only 5 optional parameters supported for {pulsetype} channels")
-                            raise RuntimeError(f"only 5 optional parameters supported for {pulsetype} channels")
+                            self.logger.error(f"only 4 optional parameters supported for {pulsetype} channels")
+                            raise RuntimeError(f"only 4 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N, fname = ABC in any order
                             patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
