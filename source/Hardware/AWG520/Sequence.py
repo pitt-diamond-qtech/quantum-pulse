@@ -1213,18 +1213,20 @@ class Sequence:
                         if len(opt_params) > 4:
                             self.logger.warning(f"only 4 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
+                            # the allowed patterns are amp = N.N, phase = N.N, num = N in any order
                             patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
                                    r'(n\s*=\s*)(?P<num>\d{,4})[\.]?'
                             m = re.search(patt,s)
                             if m:
                                 if m.group('amp'):
-                                    val = float(m.group('amp'))  # the match is returned in group 2
+                                    val = float(m.group('amp'))  # the match is returned in group 'amp'
                                     amplitude_scale = val if (0 <= val <= 1.0) else 1.0
                                 elif m.group('num'):
-                                    val = int(m.group('num'))  # the match is returned in group 2
+                                    val = int(m.group('num'))  # the match is returned in group 'num'
                                     num_events = val if (val > 1) else 1
                                 elif m.group('phase'):
-                                    val = Decimal(m.group('phase'))
+                                    val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
+                                    # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
                                     phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
                             else:
                                 pass
@@ -1234,25 +1236,27 @@ class Sequence:
                             raise RuntimeWarning('Filename must be supplied else will use default')
                         if len(opt_params) > 5:
                             self.logger.error(f"only 5 optional parameters supported for {pulsetype} channels")
-                            raise RuntimeError('Filename must be supplied else will use default')
+                            raise RuntimeError(f"only 5 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
+                            # the allowed patterns are amp = N.N, phase = N.N, num = N, fname = ABC in any order
                             patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
                                    r'(n\s*=\s*)(?P<num>\d{,4})[\.]?|(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
                             m = re.search(patt, s)
                             if m:
                                 if m.group('amp'):
-                                    val = float(m.group('amp'))  # the match is returned in group 2
+                                    val = float(m.group('amp'))  # the match is returned in group 'amp'
                                     amplitude_scale = val if (0 <= val <= 1.0) else 1.0
                                 elif m.group('num'):
-                                    val = int(m.group('num'))  # the match is returned in group 2
+                                    val = int(m.group('num'))  # the match is returned in group 'num'
                                     num_events = val if (val > 1) else 1
                                 elif m.group('phase'):
-                                    val = float(m.group('phase'))
-                                    phase = val % 360.0 if (val > 360.0) else val
+                                    val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
+                                    # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
+                                    phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
                                 elif m.group('file'):
                                     fname = m.group('file') + '.' + m.group('ext')
-                                else:
-                                    pass
+                            else:
+                                pass
                     else:
                         raise RuntimeError(f'Supported types are {_PULSE_TYPES} for Wave channels')
                 else:
@@ -1383,7 +1387,7 @@ class Sequence:
             # create the channel
             self.pulseparams['amplitude'] = self.pulseparams['amplitude'] * ampfactor
             self.pulseparams['num pulses'] = nevents
-            self.pulseparams['phase'] = phase
+            self.pulseparams['phase'] = phase  # added this on 2020-07-08 to change the phase as well
             num_event_train[i] = nevents
             self.add_channel(ch_type=ch_type[i])
             ch = self.channels[i]
