@@ -49,6 +49,7 @@ _FULL = 'Full'  # new keyword which turns on all channels high, to be implemente
 _MARKER = 'Marker'  # new keyword for any marker
 _ANALOG1 = 'Analog1'  # new keyword for channel 1
 _ANALOG2 = 'Analog2'  # new keyword for channel 2
+_RANDBENCH = "Rand BenchMark"   # new keyword for randomized benchmarking
 # dictionary of connections from marker channels to devices,
 _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 # dictionary of IQ parameters that will be used as default if none is supplied
@@ -488,7 +489,7 @@ class RandomPauliGate(WaveEvent):
     """This class implements a randomization of the computational gate sequence.
     :param compgatelength: length of the computational gate sequence"""
     # trying a new way of unpacking all the keyword args as they were getting too long in the old way
-    PULSE_KEYWORD = "Random"
+    PULSE_KEYWORD = _RANDBENCH
     def __init__(self, **kwargs):
         kwargdic = dict([])
         for k, v in kwargs.items():
@@ -1185,6 +1186,8 @@ class Sequence:
         # self.seq = self.seq[:-1]
         # print('text box converted to', self.seq)
 
+    ## Changes made by Gurudev 2020-07-08 : Modifying the unpacking of optional params so that order of the optional
+    # params does not matter, also added in a new optional param phase = NN
     def unpack_optional_params(self, seq_idx=0):
         '''get the optional params in the list of strings
         :param seq_idx: index in the list of strings to unpack
@@ -1195,6 +1198,7 @@ class Sequence:
         amplitude_scale = 1.0
         num_events = 1
         fname = None
+        phase = 0.0
         pulsetype = ''
         if ch_type == _WAVE:  # if the ch_type is Wave, then we need several other params
             simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
@@ -1204,42 +1208,49 @@ class Sequence:
                     pulsetype = opt_params[0]
                     if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
                         # check if there are any other optional parameters
-                        if len(opt_params) >= 2:
-                            patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
-                            m = re.search(patt, str(opt_params[1]))
+                        if len(opt_params) > 4:
+                            self.logger.warning(f"only 4 optional parameters supported for {pulsetype} channels")
+                        for s in opt_params[1:]:
+                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
+                                   r'(n\s*=\s*)(?P<num>\d{,4})[\.]?'
+                            m = re.search(patt,s)
                             if m:
-                                val = float(m.group(2))  # the match is returned in group 2
-                                amplitude_scale = val if (0 <= val <= 1.0) else 1.0
-                        if len(opt_params) >= 3:
-                            patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
-                            m = re.search(patt, str(opt_params[2]))
-                            if m:
-                                val = int(m.group(2))  # the match is returned in group 2
-                                num_events = val if (val > 1) else 1
-                        if len(opt_params) >=4:
-                            self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
+                                if m.group('amp'):
+                                    val = float(m.group('amp'))  # the match is returned in group 2
+                                    amplitude_scale = val if (0 <= val <= 1.0) else 1.0
+                                elif m.group('num'):
+                                    val = int(m.group('num'))  # the match is returned in group 2
+                                    num_events = val if (val > 1) else 1
+                                elif m.group('phase'):
+                                    val = Decimal(m.group('phase'))
+                                    phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
+                            else:
+                                pass
                     elif pulsetype == _PULSE_TYPES[-1]:  # this is for loading waveforms
                         # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
-                        if len(opt_params) >= 2:
-                            patt = r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
-                            m = re.search(patt, opt_params[1])
-                            fname = m.group('file') + '.' + m.group('ext') if m else None
-                        if len(opt_params) >= 3:
-                            patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
-                            m = re.search(patt, str(opt_params[2]))
-                            if m:
-                                val = float(m.group(2))  # the match is returned in group 2
-                                amplitude_scale = val if (0 <= val <= 1.0) else 1.0
-                        if len(opt_params) >= 4:
-                            patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
-                            m = re.search(patt, str(opt_params[3]))
-                            if m:
-                                val = int(m.group(2))  # the match is returned in group 2
-                                num_events = val if (val > 1) else 1
-                        if len(opt_params) >= 5:
-                            self.logger.warning(f"only 4 optional parameters supported for {pulsetype} channels")
                         if len(opt_params) < 2:  # not enough optional parms were supplied
                             raise RuntimeWarning('Filename must be supplied else will use default')
+                        if len(opt_params) > 5:
+                            self.logger.error(f"only 5 optional parameters supported for {pulsetype} channels")
+                            raise RuntimeError('Filename must be supplied else will use default')
+                        for s in opt_params[1:]:
+                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
+                                   r'(n\s*=\s*)(?P<num>\d{,4})[\.]?|(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
+                            m = re.search(patt, s)
+                            if m:
+                                if m.group('amp'):
+                                    val = float(m.group('amp'))  # the match is returned in group 2
+                                    amplitude_scale = val if (0 <= val <= 1.0) else 1.0
+                                elif m.group('num'):
+                                    val = int(m.group('num'))  # the match is returned in group 2
+                                    num_events = val if (val > 1) else 1
+                                elif m.group('phase'):
+                                    val = float(m.group('phase'))
+                                    phase = val % 360.0 if (val > 360.0) else val
+                                elif m.group('file'):
+                                    fname = m.group('file') + '.' + m.group('ext')
+                                else:
+                                    pass
                     else:
                         raise RuntimeError(f'Supported types are {_PULSE_TYPES} for Wave channels')
                 else:
@@ -1263,7 +1274,87 @@ class Sequence:
             except (RuntimeWarning, RuntimeError) as err:
                 self.logger.error('Runtime warning/error: {0}'.format(err))
                 sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
-        return pulsetype, amplitude_scale, num_events, fname
+        return pulsetype, amplitude_scale, num_events, fname,phase
+
+    # def unpack_optional_params(self, seq_idx=0):
+    #     '''get the optional params in the list of strings
+    #     :param seq_idx: index in the list of strings to unpack
+    #     '''
+    #     ch_type = self.seq[seq_idx][0]  # type of channel
+    #     opt_params = self.seq[seq_idx][3:]  # all the optional parameters
+    #     # currently we support 4 parameters: pulsetype, num-events, amplitude_scale,fname
+    #     amplitude_scale = 1.0
+    #     num_events = 1
+    #     fname = None
+    #     pulsetype = ''
+    #     if ch_type == _WAVE:  # if the ch_type is Wave, then we need several other params
+    #         simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
+    #         # at a minimum this type must be present
+    #         try:
+    #             if len(opt_params) >= 1:
+    #                 pulsetype = opt_params[0]
+    #                 if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
+    #                     # check if there are any other optional parameters
+    #                     if len(opt_params) >= 2:
+    #                         patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
+    #                         m = re.search(patt, str(opt_params[1]))
+    #                         if m:
+    #                             val = float(m.group(2))  # the match is returned in group 2
+    #                             amplitude_scale = val if (0 <= val <= 1.0) else 1.0
+    #                     if len(opt_params) >= 3:
+    #                         patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
+    #                         m = re.search(patt, str(opt_params[2]))
+    #                         if m:
+    #                             val = int(m.group(2))  # the match is returned in group 2
+    #                             num_events = val if (val > 1) else 1
+    #                     if len(opt_params) >=4:
+    #                         self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
+    #                 elif pulsetype == _PULSE_TYPES[-1]:  # this is for loading waveforms
+    #                     # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
+    #                     if len(opt_params) >= 2:
+    #                         patt = r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
+    #                         m = re.search(patt, opt_params[1])
+    #                         fname = m.group('file') + '.' + m.group('ext') if m else None
+    #                     if len(opt_params) >= 3:
+    #                         patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
+    #                         m = re.search(patt, str(opt_params[2]))
+    #                         if m:
+    #                             val = float(m.group(2))  # the match is returned in group 2
+    #                             amplitude_scale = val if (0 <= val <= 1.0) else 1.0
+    #                     if len(opt_params) >= 4:
+    #                         patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
+    #                         m = re.search(patt, str(opt_params[3]))
+    #                         if m:
+    #                             val = int(m.group(2))  # the match is returned in group 2
+    #                             num_events = val if (val > 1) else 1
+    #                     if len(opt_params) >= 5:
+    #                         self.logger.warning(f"only 4 optional parameters supported for {pulsetype} channels")
+    #                     if len(opt_params) < 2:  # not enough optional parms were supplied
+    #                         raise RuntimeWarning('Filename must be supplied else will use default')
+    #                 else:
+    #                     raise RuntimeError(f'Supported types are {_PULSE_TYPES} for Wave channels')
+    #             else:
+    #                 raise RuntimeError('Must specify type of pulse for Wave channels')
+    #         except (RuntimeWarning, RuntimeError) as err:
+    #             self.logger.error('Runtime warning/error: {0}'.format(err))
+    #             sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
+    #     else:  # if channel type is marker, then only one other parameter is allowed, the number of pulses
+    #         pulsetype = self.seq[seq_idx][0]   # the pulsetype and channel name are identical for marker types
+    #         try:
+    #             if opt_params is None:
+    #                 num_events = 1
+    #             elif len(opt_params) >= 1:
+    #                 patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1 or n = 1
+    #                 m = re.search(patt, str(opt_params[0]))
+    #                 if opt_params[0] and m:
+    #                     val = int(m.group(2))
+    #                     num_events = val if (val > 1) else 1
+    #                 else:
+    #                     raise RuntimeError('only one opt param type n = D allowed for Marker types')
+    #         except (RuntimeWarning, RuntimeError) as err:
+    #             self.logger.error('Runtime warning/error: {0}'.format(err))
+    #             sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
+    #     return pulsetype, amplitude_scale, num_events, fname
 
     def create_channels_from_seq(self, dt=0.0):
         """This method parses the sequence definition which is currently just a list of list of strings, and converts
@@ -1284,10 +1375,11 @@ class Sequence:
             ch_type.append(self.seq[i][0])
             t_start[i], t_stop[i], start_inc[i], stop_inc[i] = find_start_stop_increment_times(pulse=self.seq[i])
             # then we could have optional parameters
-            ptype, ampfactor, nevents, fname = self.unpack_optional_params(seq_idx=i)
+            ptype, ampfactor, nevents, fname, phase = self.unpack_optional_params(seq_idx=i)
             # create the channel
             self.pulseparams['amplitude'] = self.pulseparams['amplitude'] * ampfactor
             self.pulseparams['num pulses'] = nevents
+            self.pulseparams['phase'] = phase
             num_event_train[i] = nevents
             self.add_channel(ch_type=ch_type[i])
             ch = self.channels[i]
