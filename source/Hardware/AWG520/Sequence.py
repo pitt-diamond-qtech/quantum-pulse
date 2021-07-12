@@ -1221,15 +1221,15 @@ class Sequence:
                                 if m.group('amp'):
                                     val = float(m.group('amp'))  # the match is returned in group 'amp'
                                     amplitude_scale = val if (0 <= val <= 1.0) else 1.0
-                                elif m.group('num'):
+                                if m.group('num'):
                                     val = int(m.group('num'))  # the match is returned in group 'num'
                                     num_events = val if (val > 1) else 1
-                                elif m.group('phase'):
+                                if m.group('phase'):
                                     val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
                                     # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
                                     phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
                             else:
-                                pass
+                                raise RuntimeError("Optional params must be of form amp = D.D or phase = D.D or n = D")
                     elif pulsetype == _PULSE_TYPES[-1]:  # this is for loading waveforms
                         # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
                         if len(opt_params) < 2:  # not enough optional parms were supplied
@@ -1246,17 +1246,17 @@ class Sequence:
                                 if m.group('amp'):
                                     val = float(m.group('amp'))  # the match is returned in group 'amp'
                                     amplitude_scale = val if (0 <= val <= 1.0) else 1.0
-                                elif m.group('num'):
+                                if m.group('num'):
                                     val = int(m.group('num'))  # the match is returned in group 'num'
                                     num_events = val if (val > 1) else 1
-                                elif m.group('phase'):
+                                if m.group('phase'):
                                     val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
                                     # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
                                     phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
-                                elif m.group('file'):
+                                if m.group('file'):
                                     fname = m.group('file') + '.' + m.group('ext')
                             else:
-                                pass
+                                raise RuntimeError("Optional params must be of form amp = D.D or phase = D.D or n = D or fname = ABC.txt or fname = ABC.csv")
                     else:
                         raise RuntimeError(f'Supported types are {_PULSE_TYPES} for Wave channels')
                 else:
