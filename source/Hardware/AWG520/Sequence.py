@@ -1202,6 +1202,8 @@ class Sequence:
         fname = None
         phase = 0.0
         pulsetype = ''
+        ## GURUDEV 2021-07-12: trying to fix issue that number scan is being overwritten by the nevents parameter
+        temp_pulseparams = self.pulseparams.copy()
         if ch_type == _WAVE:  # if the ch_type is Wave, then we need several other params
             simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
             # at a minimum this type must be present
@@ -1215,7 +1217,7 @@ class Sequence:
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N in any order
                             patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
-                                   r'(n\s*=\s*)(?P<num>\d{,4})[\.]?'
+                                   r'(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?'  ## Gurudev: trying this
                             m = re.search(patt,s)
                             if m:
                                 if m.group('amp'):
@@ -1224,6 +1226,8 @@ class Sequence:
                                 if m.group('num'):
                                     val = int(m.group('num'))  # the match is returned in group 'num'
                                     num_events = val if (val > 1) else 1
+                                if m.group('incn') == '++':
+                                    num_events = temp_pulseparams['num pulses']
                                 if m.group('phase'):
                                     val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
                                     # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
@@ -1240,7 +1244,7 @@ class Sequence:
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N, fname = ABC in any order
                             patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
-                                   r'(n\s*=\s*)(?P<num>\d{,4})[\.]?|(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
+                                   r'(n\s*=\s*)(?P<num>\d{,4})(?P<inc>\+\+)?|(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
                             m = re.search(patt, s)
                             if m:
                                 if m.group('amp'):
@@ -1249,6 +1253,8 @@ class Sequence:
                                 if m.group('num'):
                                     val = int(m.group('num'))  # the match is returned in group 'num'
                                     num_events = val if (val > 1) else 1
+                                if m.group('incn') == '++':
+                                    num_events = temp_pulseparams['num pulses']
                                 if m.group('phase'):
                                     val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
                                     # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
@@ -1523,7 +1529,7 @@ class SequenceList(object):
                     s.create_sequence(dt=0)
                     self.sequencelist.append(s)
                 elif self.scanparams['type'] == 'number':
-                    self.pulseparams['num pulses'] = int(x) + 1
+                    self.pulseparams['num pulses'] = int(x)
                     s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams,
                                  connectiondict=self.connectiondict, timeres=self.timeres)
                     s.create_sequence(dt=0)

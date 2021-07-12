@@ -53,11 +53,11 @@ def make_seq_list():
     # seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.05e-6+t,4.025e-6+t\n'+ \
     #       'Measure,1.025e-6+t,1.125e-6+t'
     # seq = 'Wave,2.6e-6,3e-6,Load Wfm,fname='+filestr+',amp = 0.4'
-    seq = 'Wave,2.6e-6,3e-6,Gauss,amp = 0.5\nWave,3e-6,5e-6,SquareI,amp=0.4'
+    seq = 'Wave,2.6e-6,3e-6,Gauss,n=1++\nGreen,3.5e-6,5e-6'
     #  seq = 'Green,0.0,1e-6'
     newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
-                 'skew phase':0.0, 'num pulses': 1}
-    newscanparams = {'type':'time','start': 0, 'stepsize': 10e-7, 'steps': 3}
+                 'skew phase':0.0, 'num pulses': 3}
+    newscanparams = {'type':'number','start': 0, 'stepsize': 2, 'steps': 3}
     s = SequenceList(seq, pulseparams=newparams, timeres=1, scanparams=newscanparams)
     s.create_sequence_list()
     for nn in list(range(len(s.sequencelist))):
@@ -66,7 +66,7 @@ def make_seq_list():
         ydat = s.sequencelist[nn].wavedata
         c1dat = s.sequencelist[nn].c1markerdata
         c2dat = s.sequencelist[nn].c2markerdata
-        tt = np.linspace(0, xstop, points)
+        tt = np.linspace(0, xstop, points)*1e6
         plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
         #plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :])
         plt.show()
@@ -94,6 +94,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    test_sequence()
-    # test_seq_list()
+    # test_sequence()
+    test_seq_list()
     #make_long_seq()
