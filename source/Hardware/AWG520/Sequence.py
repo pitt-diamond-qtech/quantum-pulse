@@ -495,50 +495,37 @@ class RandomPauliGate(WaveEvent):
         for k, v in kwargs.items():
             kwargdic[k] = v
         if kwargdic['start'] is None:
-            start = 1e-6
-        else:
-            start = kwargdic['start']
+            kwargdic['start'] = 1e-6
         if kwargdic['stop'] is None:
-            stop = 1.1e-6
-        else:
-            stop = kwargdic['stop']
+            kwargdic['stop'] = 1.1e-6
         if kwargdic['pulse_params'] is None:
-            pulse_params = _PULSE_PARAMS
-        else:
-            pulse_params = kwargdic['pulse_params']
+            kwargdic['pulse_params'] = _PULSE_PARAMS
         if kwargdic['start_inc'] is None:
-            start_inc = 0
-        else:
-            start_inc = kwargdic['start_inc']
+            kwargdic['start_inc'] = 0
         if kwargdic['stop_inc'] is None:
-            stop_inc = 0
-        else:
-            stop_inc = kwargdic['stop_inc']
+            kwargdic['stop_inc'] = 0
         if kwargdic['dt'] is None:
-            dt = 0
-        else:
-            dt = kwargdic['dt']
+            kwargdic['dt'] = 0
         if kwargdic['sampletime'] is None:
-            sampletime = 1.0 * _ns
-        else:
-            sampletime = kwargdic['sampletime']
+            kwargdic['sampletime'] = 1.0 * _ns
         if kwargdic['filename'] is None:
-            filename = 'test4.txt'
-        else:
-            filename = kwargdic['filename']
+            kwargdic['filename'] = 'test4.txt'
         if kwargdic['pulseshape'] is None:
-            pulseshape = 'Square'
-        else:
-            pulseshape = kwargdic['pulsetype']
+            kwargdic['pulseshape'] = 'Square'
         if kwargdic['compgatelength'] is None:
-            compgatelength = 4
-        else:
-            compgatelength = kwargdic['compgatelength']
+            kwargdic['compgatelength'] = 4
+        start = kwargdic['start']
+        stop = kwargdic['stop']
+        pulse_params = kwargdic['pulse_params']
+        start_inc = kwargdic['start_inc']
+        stop_inc = kwargdic['stop_inc']
+        dt = kwargdic['dt']
+        filename = kwargdic['filename']
+        sampletime = kwargdic['sampletime']
+        pulseshape = kwargdic['pulsetype']
+        compgatelength = kwargdic['compgatelength']
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
                          dt=dt, sampletime=sampletime)
-
-        if filename is None:
-            filename = 'test4.txt'
         self.pulse_type = self.PULSE_KEYWORD
         self.compgatelength = compgatelength
         self.filename = pulseshapedir / filename
@@ -1485,8 +1472,8 @@ class SequenceList(object):
         self.scanlist = np.arange(self.scanparams['start'], self.scanparams['start'] + self.scanparams['stepsize'] *
                                   self.scanparams['steps'], self.scanparams['stepsize'])
         self.delay = delay
-        self.pulseparams = pulseparams
-        self.connectiondict = connectiondict
+        # self.pulseparams = pulseparams
+        # self.connectiondict = connectiondict
         self.timeres = timeres
         self.sequence = sequence
         self.sequencelist = []
