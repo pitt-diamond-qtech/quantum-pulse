@@ -1231,7 +1231,7 @@ class Sequence:
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N, fname = ABC in any order
                             patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
-                                   r'(n\s*=\s*)(?P<num>\d{,4})(?P<inc>\+\+)?|(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
+                                   r'(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?|(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
                             m = re.search(patt, s)
                             if m:
                                 if m.group('amp'):
