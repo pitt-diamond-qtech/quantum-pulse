@@ -488,18 +488,18 @@ class ScanProcess(multiprocessing.Process):
             self.awgcomm.trigger() # if the arg is 'jump' we have to trigger again for some reason.
         self.logger.info(f'Adwin Par_10 just before while is {self.adw.Get_Par(10):d}')
         # wait until data updates
-        while flag==self.adw.Get_Par(10):
+        while flag == self.adw.Get_Par(10):
             time.sleep(0.1)
             self.logger.info(f'Adwin Par_10 within while is {self.adw.Get_Par(10):d}')
 
-        sig=self.adw.Get_Par(1)
-        ref=self.adw.Get_Par(2)
+        sig = self.adw.Get_Par(1)
+        ref = self.adw.Get_Par(2)
 
         # dat1 = self.adw.GetData_Long(1,1,samples)
         # dat2 = self.adw.GetData_Long(2,1,samples)
         # dat3 = self.adw.GetData_Long(3,1,samples)
 
-        return sig,ref
+        return sig, ref
 
         #
         # #wait until data updates
@@ -549,7 +549,7 @@ class ScanProcess(multiprocessing.Process):
         self.nd.ReleaseAllHandles()
         
         self.adw.Start_Process(2)  # Restart the ADWin measure process
-        time.sleep(0.3)
+        time.sleep(0.2)
         
     def go(self, command):
         # we need to check if the position has really gone to the command position
@@ -558,8 +558,7 @@ class ScanProcess(multiprocessing.Process):
 
         while abs(position - command) > self.accuracy:
             self.logger.info(f'moving to {command} from {position}')
-            print(f'{self.axis} moving to {command} from {position}')
-            position=self.nd.MonitorN(command, self.axis, self.handle)
+            position = self.nd.MonitorN(command, self.axis, self.handle)
             time.sleep(0.1)
             i += 1
             if i == 20:
@@ -567,14 +566,16 @@ class ScanProcess(multiprocessing.Process):
 
     def count(self):
         # this function uses the Adwin process 1 to simply record the counts
+        total_count_time = (50000*300)
+        self.adw.Set_Par(30, total_count_time)
         self.adw.Start_Process(1)
-        time.sleep(1.01) # feels like an excessive delay, check by decreasing if it can be made smaller
-        counts=self.adw.Get_Par(1)
+        time.sleep(total_count_time*1e-9 + 0.1)
+        counts = self.adw.Get_Par(1)
         print(f'counts collected from the count method is {counts}')
         self.adw.Stop_Process(1)
         return counts
     
-    def scan_track(self,ran=0.25,step=0.05):
+    def scan_track(self, ran=0.25, step=0.05):
         '''This is the function that maximizes the counts by scanning a small range around the current position.
         Params are
          1. ran : range to scan in microns ie 250 nm is default

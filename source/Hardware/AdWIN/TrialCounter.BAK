@@ -26,12 +26,11 @@
 
 
 init:
-  Processdelay = 4545455
+  Processdelay = par_30/5
   Cnt_Enable(0)
   Cnt_Clear(1)           ' Clear counter 1
   Cnt_Mode(1,8)          ' Counter input external
   Cnt_Enable(1)         ' enable counter 1
-
 
 
 
