@@ -443,7 +443,7 @@ class SquarePulseI(WaveEvent):
 
 class SquarePulseQ(WaveEvent):
     """Generates a Wave event with a Square shape, only outputs on Q channel"""
-    PULSE_KEYWORD = "SquareI"
+    PULSE_KEYWORD = "SquareQ"
 
     def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,

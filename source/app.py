@@ -312,12 +312,10 @@ class appGUI(QtWidgets.QMainWindow):
         self.pulseparams['amplitude'] = value
 
     def updatePulsewidth(self):
-        self.pulseparams['pulsewidth'][2] = float(self.ui.lineEditPulsewidth.text())
+        self.pulseparams['pulsewidth'] = float(self.ui.lineEditPulsewidth.text())
 
     def updateSBfreq(self):
         self.pulseparams['SB freq'] = float(self.ui.lineEditSBfreq.text())
-
-
 
     def updateIQscale(self):
         self.pulseparams['IQ scale factor']= int(self.ui.lineEditIQscale.text())
