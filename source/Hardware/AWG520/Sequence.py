@@ -17,8 +17,6 @@ import sys
 
 import numpy as np
 import logging
-from pathlib import Path
-from typing import List, NewType
 from decimal import Decimal, getcontext
 from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ,Marker, Sech, Lorentzian, LoadWave, Pulse, DataIQ
 from source.common.utils import log_with, create_logger, get_project_root
@@ -49,7 +47,7 @@ _FULL = 'Full'  # new keyword which turns on all channels high, to be implemente
 _MARKER = 'Marker'  # new keyword for any marker
 _ANALOG1 = 'Analog1'  # new keyword for channel 1
 _ANALOG2 = 'Analog2'  # new keyword for channel 2
-_RANDBENCH = "Rand BenchMark"   # new keyword for randomized benchmarking
+_RANDBENCH = "RandBench"   # new keyword for randomized benchmarking
 # dictionary of connections from marker channels to devices,
 _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 # dictionary of IQ parameters that will be used as default if none is supplied
@@ -352,8 +350,8 @@ class GaussPulse(WaveEvent):
         self.extract_pulse_params_from_dict()
         pwidth_idx = int(self.pulsewidth / self.sampletime)
         # if duration < 6 * pulsewidth, set it equal to at least that much
-        if self.duration < 6 * self.pulsewidth:
-            self.duration = 6 * self.pulsewidth
+        if self.duration < 8 * self.pulsewidth:
+            self.duration = 8 * self.pulsewidth
             self.stop = self.start + self.duration
         pulse = Gaussian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
                          pwidth_idx, self.amplitude, self.skewphase)
@@ -371,8 +369,8 @@ class SechPulse(WaveEvent):
         self.pulse_type = self.PULSE_KEYWORD
         self.extract_pulse_params_from_dict()
         pwidth_idx = int(self.pulsewidth / self.sampletime)
-        if self.duration < 6 * self.pulsewidth:
-            self.duration = 6 * self.pulsewidth
+        if self.duration < 8 * self.pulsewidth:
+            self.duration = 8 * self.pulsewidth
             self.stop = self.start + self.duration
 
         # print(f'original pulsewidth {self.pulsewidth} converted pulsewidth {pwidth_idx}')
@@ -413,8 +411,8 @@ class LorentzPulse(WaveEvent):
         self.pulse_type = self.PULSE_KEYWORD
         self.extract_pulse_params_from_dict()
         pwidth_idx = int(self.pulsewidth / self.sampletime)
-        if self.duration < 6 * self.pulsewidth:
-            self.duration = 6 * self.pulsewidth
+        if self.duration < 8 * self.pulsewidth:
+            self.duration = 8 * self.pulsewidth
             self.stop = self.start + float(self.duration)
         pulse = Lorentzian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, pwidth_idx,
                            self.amplitude, self.skewphase)
@@ -474,8 +472,8 @@ class ArbitraryPulse(WaveEvent):
         self.filename = pulseshapedir / filename
         self.extract_pulse_params_from_dict()
         pwidth_idx = int(self.pulsewidth / self.sampletime)
-        if self.duration < 6 * self.pulsewidth:
-            self.duration = 6 * self.pulsewidth
+        if self.duration < 8 * self.pulsewidth:
+            self.duration = 8 * self.pulsewidth
             self.stop = self.start + float(self.duration)
         pulse = LoadWave(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
                          pwidth_idx, self.amplitude, self.skewphase)
@@ -484,177 +482,6 @@ class ArbitraryPulse(WaveEvent):
                            pwidth_idx, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
-
-class RandomPauliGate(WaveEvent):
-    """This class implements a randomization of the computational gate sequence.
-    :param compgatelength: length of the computational gate sequence"""
-    # trying a new way of unpacking all the keyword args as they were getting too long in the old way
-    PULSE_KEYWORD = _RANDBENCH
-    def __init__(self, **kwargs):
-        kwargdic = dict([])
-        for k, v in kwargs.items():
-            kwargdic[k] = v
-        if kwargdic['start'] is None:
-            kwargdic['start'] = 1e-6
-        if kwargdic['stop'] is None:
-            kwargdic['stop'] = 1.1e-6
-        if kwargdic['pulse_params'] is None:
-            kwargdic['pulse_params'] = _PULSE_PARAMS
-        if kwargdic['start_inc'] is None:
-            kwargdic['start_inc'] = 0
-        if kwargdic['stop_inc'] is None:
-            kwargdic['stop_inc'] = 0
-        if kwargdic['dt'] is None:
-            kwargdic['dt'] = 0
-        if kwargdic['sampletime'] is None:
-            kwargdic['sampletime'] = 1.0 * _ns
-        if kwargdic['filename'] is None:
-            kwargdic['filename'] = 'test4.txt'
-        if kwargdic['pulseshape'] is None:
-            kwargdic['pulseshape'] = 'Square'
-        if kwargdic['compgatelength'] is None:
-            kwargdic['compgatelength'] = 4
-        start = kwargdic['start']
-        stop = kwargdic['stop']
-        pulse_params = kwargdic['pulse_params']
-        start_inc = kwargdic['start_inc']
-        stop_inc = kwargdic['stop_inc']
-        dt = kwargdic['dt']
-        filename = kwargdic['filename']
-        sampletime = kwargdic['sampletime']
-        pulseshape = kwargdic['pulsetype']
-        compgatelength = kwargdic['compgatelength']
-        super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
-                         dt=dt, sampletime=sampletime)
-        self.pulse_type = self.PULSE_KEYWORD
-        self.compgatelength = compgatelength
-        self.filename = pulseshapedir / filename
-        self.extract_pulse_params_from_dict()
-        pwidth_idx = int(self.pulsewidth / self.sampletime)
-        if self.duration < 6 * self.pulsewidth:
-            self.duration = 6 * self.pulsewidth
-            self.stop = self.start + float(self.duration)
-        if pulseshape == "Square":
-            pulse = Square(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase, self.amplitude,
-                       self.skewphase)
-        elif pulseshape == "Gauss":
-            pulse = Gaussian(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
-                pwidth_idx, self.amplitude, self.skewphase)
-        pulse = LoadWave(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
-                         pwidth_idx, self.amplitude, self.skewphase)
-        if 'IQdata.txt' in filename:
-            pulse = DataIQ(self.filename, self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
-                           pwidth_idx, self.amplitude, self.skewphase)
-        pulse.data_generator()  # generate the data
-        self.data = np.array((pulse.I_data, pulse.Q_data))
-
-    def generate_computation_gates(self):
-        """
-        we have 3 types of pulses to generate:
-        Pauli Gates (pi_x, pi_y and pi_z), Computational Gates (pi/2_x, pi/2_y, pi/2_z) and the R gate (This is a custom gate to make sure the
-        final measurement is an eigenstate of sigma_z)
-
-        Parameters:
-        Nl = Number of different truncation lengths
-        Ng = Different computational gate sequences
-        Np = Number of Pauli Randomization
-        Ne = Number of Total experiments
-
-        """
-        import random
-        l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then truncated Nl times.
-        P = ['(identity)', '(+pi_x)', '(+pi_y)', '(-pi_x)', '(-pi_y)']  # The Set of Pauli gates
-        G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
-        L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
-        l = self.compgatelength
-        """
-        Generate the Ng computational gate sequences
-        """
-        Comp_seq_list = [[], [], [], []]
-        for seq in Comp_seq_list:
-            for i in range(l_max):
-                seq.append(random.choice(G))
-        """
-        Choose one of the Ng sequences randomly truncate it to length l (should be done to all Ng sequences, not just one sequence)
-        """
-        G_list = Comp_seq_list[random.randint(0, 3)][:l]
-
-        """Generate a list of l+2 Pauli gates randomly"""
-        P_list = []
-        for i in range(l + 2):
-            P_list.append(random.choice(P))
-        # print(P_list)
-        # print(G_list)
-
-        """"Pauli operators and their eigenstates"""
-        I = np.array([[1, 0], [0, 1]])  # Identity
-        X = np.array([[0, 1], [1, 0]])  # Sx
-        Y = np.array([[0, -1j], [1j, 0]])  # Sy
-        Z = np.array([[1, 0], [0, -1]])  # Sz
-
-        z0 = np.array([[1], [0]])  # |+z>
-        z1 = np.array([[0], [1]])  # |-z>
-        x0 = np.round(np.array([[1], [1]]) / np.sqrt(2), 3)  # |+x>
-        x1 = np.round(np.array([[1], [-1]]) / np.sqrt(2), 3)  # |-x>
-        y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
-        y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
-
-        def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
-            # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
-            return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
-
-        gate = {'(identity)': I,
-                '(+pi_x)': rotation(X, np.pi),
-                '(-pi_x)': rotation(-1 * X, np.pi),
-                '(+pi_y)': rotation(Y, np.pi),
-                '(-pi_y)': rotation(-1 * Y, np.pi),
-                '(+pi/2_x)': rotation(X, np.pi / 2),
-                '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
-                '(+pi/2_y)': rotation(Y, np.pi / 2),
-                '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
-                '(+pi_z)': rotation(Z, np.pi),
-                '(-pi_z)': rotation(-1 * Z, np.pi),
-                '(+pi/2_z)': rotation(Z, np.pi / 2),
-                '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
-                }
-        r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
-                  '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
-                  '(+pi/2_y)': rotation(Y, np.pi / 2),
-                  '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
-                  '(+pi/2_z)': rotation(Z, np.pi / 2),
-                  '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
-                  }
-
-        def find_R(gate_list):
-            M = I
-            Rlist = []
-            for i in gate_list:
-                M = np.matmul(gate[i], M)
-            for i in r_gate:
-                M2 = np.matmul(r_gate[i], M)
-                if np.allclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M2, z0)))),
-                        1) or np.allclose(
-                        abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M2, z0)))), 1):
-                    Rlist.append(i)
-            R = random.choice(Rlist)
-            M3 = np.matmul(r_gate[R], M)
-            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
-                final_state = 'z0'
-            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
-                final_state = 'z1'
-            else:
-                print("error!!!")
-            return R, final_state
-
-        """"Generate the full sequence"""
-        R, final_state = find_R(G_list)
-        sequence = []
-        for i in range(l):
-            sequence.append(P_list[i])
-            sequence.append(G_list[i])
-        sequence.append(P_list[-2])
-        sequence.append(R)
-        sequence.append(P_list[-1])
 
 
 
@@ -777,7 +604,7 @@ class S2(MarkerEvent):
 
 class Channel:
     """Provides functionality for a sequence of :class:`sequence events <SequenceEvent>`.
-    :param ch_type: type of channel, e.g. Marker or Wave
+    :param ch_type: type of channel, e.g. Marker, Wave, RBenchMark
     :param event_train: A collection of :class:`sequence events <SequenceEvent>`.
     :param delay: Delay in the format [AOM delay, MW delay].
     :param pulse_params: A dictionary containing parameters for the IQ modulator: amplitude, pulseWidth,
@@ -841,7 +668,7 @@ class Channel:
         temp_pulseparams = self.pulse_params.copy()
         event = SequenceEvent()  # no need for this statement, but pycharm complains event may be assigned before ref?
         # TODO: simplify this remaining code using a dictionary or other function reference list and a for loop
-        if self.ch_type == _WAVE:
+        if self.ch_type == _WAVE or self.ch_type == _RANDBENCH:
             if pulse_type == _PULSE_TYPES[0]:
                 event = GaussPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                    stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
@@ -876,6 +703,7 @@ class Channel:
         elif pulse_type == _MW_S2:
             event = S2(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                            stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
+
         else:
             event = SequenceEvent(start=time_on, stop=time_off, start_increment=start_inc,
                                   stop_increment=stop_inc, sampletime=self.sampletime)
@@ -922,6 +750,47 @@ class Channel:
             return True
         else:
             return False
+
+    def insert_channel_events(self, newchan):
+        """This method inserts new events from another channel into the channel of the same type"""
+         # if the new channel events conflict with the current channel we need to insert it carefully
+        earliest_start_time = self.first_channel_event
+        latest_stop_time = self.latest_channel_event
+        latest_start_time = np.amax(np.array(self.event_start_times, dtype=np.float32))
+        push_time = float(latest_start_time - earliest_start_time)
+
+        if self.ch_type == newchan.ch_type:
+            events = newchan.event_train   # get all the events in the newchan
+            self.num_of_events += len(events)  # update the number of events
+            self.event_channel_index += len(events)  # update the event index
+            for idx, evt in enumerate(newchan.event_train):
+                # store any values of the start_increment and stop intcrement from the event
+                temp1 = evt.start_increment
+                temp2 = evt.stop_increment
+                # check if the inserted channel start time conflicts with previous start times
+                if (evt.start > earliest_start_time) and (evt.start < latest_stop_time):
+                    evt.start_increment = 1  # set the increments to 1
+                    evt.stop_increment = 1
+                    evt.increment_time(dt=push_time)  # increment the event
+                # restore the old values of increment
+                evt.start_increment = temp1
+                evt.stop_increment = temp2
+            self.event_train.extend(events)  # extend the channel with these events
+            self.event_start_times.extend(newchan.event_start_times)  # extend the start times
+            self.event_stop_times.extend(newchan.event_stop_times)  # extedn the stop times
+            # store the new start and stop times in the arrays
+            for idx,evt in enumerate(self.event_train):
+                self.event_start_times[idx] = evt.start
+                self.event_stop_times[idx] = evt.stop
+            # update the first and latest channel events
+            self.set_first_channel_event()   # keep track of the new first channel event
+            self.set_latest_channel_event()  # and the last channel event
+
+
+        # # now we check all the other channels to see if we need to change any of their start/stop times
+        # self.adjust_channel_times(chantype=newchan.ch_type)
+        # self.set_first_sequence_event()
+        # self.set_latest_sequence_event()
 
     def has_coincident_events(self):
         found_coincident_event = False
@@ -1070,9 +939,9 @@ class Sequence:
 
     def set_latest_sequence_event(self):
         self.latest_sequence_event = 0
-        for i in range(self.num_of_channels):
-            if self.channels[i].latest_channel_event > self.latest_sequence_event:
-                self.latest_sequence_event = self.channels[i].latest_channel_event
+        for id,chan in enumerate(self.channels):
+            if chan.latest_channel_event > self.latest_sequence_event:
+                self.latest_sequence_event = chan.latest_channel_event
         if self.num_of_wait_events > 0:
             if float(self.wait_events[-1]) > self.latest_sequence_event:
                 self.latest_sequence_event = float(self.wait_events[-1])
@@ -1081,7 +950,7 @@ class Sequence:
         """Adds a channel of specified channel type, but does not yet add the events data"""
         self.num_of_channels += 1
         temp_pulseparams = self.pulseparams.copy()
-        if self.num_of_channels != 1:
+        if self.num_of_channels > 1:
             channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=temp_pulseparams,
                               connection_dict=self.connectiondict, sampletime=self.timeres, event_channel_idx=
                               self.channels[-1].event_channel_index + 1)
@@ -1106,23 +975,7 @@ class Sequence:
         else:
             return False
 
-    def insert_channel_events(self, newchan: Channel):
-        """This method inserts new events from a channel object newchan into the channel of the same type"""
-        for (id, chan) in enumerate(self.channels):  # stepping through the channnels
-            if chan.ch_type == newchan.ch_type:
-                events = newchan.event_train   # get all the events in the newchan
-                chan.event_train.extend(events)   # extend the channel with these events
-                chan.event_start_times.extend(newchan.event_start_times)  # etend the start times
 
-                chan.event_stop_times.extend(newchan.event_stop_times)   # extedn the stop times
-                chan.num_of_events += len(events)     # update the number of events
-                chan.event_channel_index += len(events)   # update the event index
-                chan.set_first_channel_event()   # keep track of the new first channel event
-                chan.set_latest_channel_event()  # and the last channel event
-        # now we check all the other channels to see if we need to change any of their start/stop times
-        self.adjust_channel_times(chantype=newchan.ch_type)
-        self.set_first_sequence_event()
-        self.set_latest_sequence_event()
 
     def adjust_channel_times(self, chantype='a1'):
         """this is a critical method that adjusts channel times for all other channels besides the one specified.
@@ -1191,7 +1044,8 @@ class Sequence:
         pulsetype = ''
         ## GURUDEV 2021-07-12: trying to fix issue that number scan is being overwritten by the nevents parameter
         temp_pulseparams = self.pulseparams.copy()
-        if ch_type == _WAVE:  # if the ch_type is Wave, then we need several other params
+        if ch_type == _WAVE or ch_type == _RANDBENCH:  # if the ch_type is Wave or RandBench, then we need several
+            # other params
             simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
             # at a minimum this type must be present
             try:
@@ -1275,85 +1129,121 @@ class Sequence:
                 sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
         return pulsetype, amplitude_scale, num_events, fname,phase
 
-    # def unpack_optional_params(self, seq_idx=0):
-    #     '''get the optional params in the list of strings
-    #     :param seq_idx: index in the list of strings to unpack
-    #     '''
-    #     ch_type = self.seq[seq_idx][0]  # type of channel
-    #     opt_params = self.seq[seq_idx][3:]  # all the optional parameters
-    #     # currently we support 4 parameters: pulsetype, num-events, amplitude_scale,fname
-    #     amplitude_scale = 1.0
-    #     num_events = 1
-    #     fname = None
-    #     pulsetype = ''
-    #     if ch_type == _WAVE:  # if the ch_type is Wave, then we need several other params
-    #         simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
-    #         # at a minimum this type must be present
-    #         try:
-    #             if len(opt_params) >= 1:
-    #                 pulsetype = opt_params[0]
-    #                 if pulsetype in simple_ptypes:  # check whether pulsetype is of 1st 3 types
-    #                     # check if there are any other optional parameters
-    #                     if len(opt_params) >= 2:
-    #                         patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
-    #                         m = re.search(patt, str(opt_params[1]))
-    #                         if m:
-    #                             val = float(m.group(2))  # the match is returned in group 2
-    #                             amplitude_scale = val if (0 <= val <= 1.0) else 1.0
-    #                     if len(opt_params) >= 3:
-    #                         patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
-    #                         m = re.search(patt, str(opt_params[2]))
-    #                         if m:
-    #                             val = int(m.group(2))  # the match is returned in group 2
-    #                             num_events = val if (val > 1) else 1
-    #                     if len(opt_params) >=4:
-    #                         self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
-    #                 elif pulsetype == _PULSE_TYPES[-1]:  # this is for loading waveforms
-    #                     # regex allows f = blah.txt, f = blah.csv ,fname = blah.txt etc
-    #                     if len(opt_params) >= 2:
-    #                         patt = r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
-    #                         m = re.search(patt, opt_params[1])
-    #                         fname = m.group('file') + '.' + m.group('ext') if m else None
-    #                     if len(opt_params) >= 3:
-    #                         patt = r'(amp\s*\=\s*)(\d\.?\d*)'  # regex which allows amp = 1.0,a=1.0 etc
-    #                         m = re.search(patt, str(opt_params[2]))
-    #                         if m:
-    #                             val = float(m.group(2))  # the match is returned in group 2
-    #                             amplitude_scale = val if (0 <= val <= 1.0) else 1.0
-    #                     if len(opt_params) >= 4:
-    #                         patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1,n = 1,n=1 etc
-    #                         m = re.search(patt, str(opt_params[3]))
-    #                         if m:
-    #                             val = int(m.group(2))  # the match is returned in group 2
-    #                             num_events = val if (val > 1) else 1
-    #                     if len(opt_params) >= 5:
-    #                         self.logger.warning(f"only 4 optional parameters supported for {pulsetype} channels")
-    #                     if len(opt_params) < 2:  # not enough optional parms were supplied
-    #                         raise RuntimeWarning('Filename must be supplied else will use default')
-    #                 else:
-    #                     raise RuntimeError(f'Supported types are {_PULSE_TYPES} for Wave channels')
-    #             else:
-    #                 raise RuntimeError('Must specify type of pulse for Wave channels')
-    #         except (RuntimeWarning, RuntimeError) as err:
-    #             self.logger.error('Runtime warning/error: {0}'.format(err))
-    #             sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
-    #     else:  # if channel type is marker, then only one other parameter is allowed, the number of pulses
-    #         pulsetype = self.seq[seq_idx][0]   # the pulsetype and channel name are identical for marker types
-    #         try:
-    #             if opt_params is None:
-    #                 num_events = 1
-    #             elif len(opt_params) >= 1:
-    #                 patt = r'(n\s*=\s*)(\d{,4})[\.]?'  # regex which allows 1 or n = 1
-    #                 m = re.search(patt, str(opt_params[0]))
-    #                 if opt_params[0] and m:
-    #                     val = int(m.group(2))
-    #                     num_events = val if (val > 1) else 1
-    #                 else:
-    #                     raise RuntimeError('only one opt param type n = D allowed for Marker types')
-    #         except (RuntimeWarning, RuntimeError) as err:
-    #             self.logger.error('Runtime warning/error: {0}'.format(err))
-    #             sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
-    #     return pulsetype, amplitude_scale, num_events, fname
+
+    def randomize_gate_sequence(self,compgatelength):
+        """This function implements a randomization of the computational gate sequence.
+        :param compgatelength: length of the computational gate sequence"""
+
+        def find_R(gate_list):
+            M = I
+            Rlist = []
+            final_state = 'z0'
+            for i in gate_list:
+                M = np.matmul(gate[i], M)
+            for i in r_gate:
+                M2 = np.matmul(r_gate[i], M)
+                if np.allclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M2, z0)))),
+                        1) or np.allclose(
+                    abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M2, z0)))), 1):
+                    Rlist.append(i)
+            R = random.choice(Rlist)
+            M3 = np.matmul(r_gate[R], M)
+            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z0'
+            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z1'
+            else:
+                print("error!!!")
+            return R, final_state
+
+        def generate_computation_gates(self,Nl=2,Ng=2,Np=2,Ne=2):
+            """
+            we have 3 types of pulses to generate:
+            Pauli Gates (pi_x, pi_y and pi_z), Computational Gates (pi/2_x, pi/2_y, pi/2_z) and the R gate (This is a custom gate to make sure the
+            final measurement is an eigenstate of sigma_z)
+
+            Parameters:
+            :param Nl: Number of different truncation lengths
+            :param Ng: Different computational gate sequences
+            :param Np: Number of Pauli Randomization
+            :param Ne:  Number of Total experiments
+
+            """
+            import random
+            l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then truncated Nl times.
+            P = ['(identity)', '(+pi_x)', '(+pi_y)', '(-pi_x)', '(-pi_y)']  # The Set of Pauli gates
+            G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
+            L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
+            l = self.compgatelength
+            """
+            Generate the Ng computational gate sequences
+            """
+            Comp_seq_list = [[], [], [], []]
+            for seq in Comp_seq_list:
+                for i in range(l_max):
+                    seq.append(random.choice(G))
+            """
+            Choose one of the Ng sequences randomly truncate it to length l (should be done to all Ng sequences, not just one sequence)
+            """
+            G_list = Comp_seq_list[random.randint(0, 3)][:l]
+
+            """Generate a list of l+2 Pauli gates randomly"""
+            P_list = []
+            for i in range(l + 2):
+                P_list.append(random.choice(P))
+            # print(P_list)
+            # print(G_list)
+
+            """"Pauli operators and their eigenstates"""
+            I = np.array([[1, 0], [0, 1]])  # Identity
+            X = np.array([[0, 1], [1, 0]])  # Sx
+            Y = np.array([[0, -1j], [1j, 0]])  # Sy
+            Z = np.array([[1, 0], [0, -1]])  # Sz
+
+            z0 = np.array([[1], [0]])  # |+z>
+            z1 = np.array([[0], [1]])  # |-z>
+            x0 = np.round(np.array([[1], [1]]) / np.sqrt(2), 3)  # |+x>
+            x1 = np.round(np.array([[1], [-1]]) / np.sqrt(2), 3)  # |-x>
+            y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
+            y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
+
+            def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
+                # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
+                return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
+
+            gate = {'(identity)': I,
+                    '(+pi_x)': rotation(X, np.pi),
+                    '(-pi_x)': rotation(-1 * X, np.pi),
+                    '(+pi_y)': rotation(Y, np.pi),
+                    '(-pi_y)': rotation(-1 * Y, np.pi),
+                    '(+pi/2_x)': rotation(X, np.pi / 2),
+                    '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                    '(+pi/2_y)': rotation(Y, np.pi / 2),
+                    '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                    '(+pi_z)': rotation(Z, np.pi),
+                    '(-pi_z)': rotation(-1 * Z, np.pi),
+                    '(+pi/2_z)': rotation(Z, np.pi / 2),
+                    '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                    }
+            r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
+                      '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                      '(+pi/2_y)': rotation(Y, np.pi / 2),
+                      '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                      '(+pi/2_z)': rotation(Z, np.pi / 2),
+                      '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                      }
+
+
+
+        """"Generate the full sequence"""
+        R, final_state = find_R(G_list)
+        sequence = []
+        for i in range(l):
+            sequence.append(P_list[i])
+            sequence.append(G_list[i])
+        sequence.append(P_list[-2])
+        sequence.append(R)
+        sequence.append(P_list[-1])
 
     def create_channels_from_seq(self, dt=0.0):
         """This method parses the sequence definition which is currently just a list of list of strings, and converts
@@ -1369,23 +1259,47 @@ class Sequence:
         ch_type = []
         self.set_first_sequence_event()
         self.set_latest_sequence_event()
-        temp_pulseparams = self.pulseparams.copy()
-        for i in range(len(self.seq)):
-            # the first 3 in the list are mandatory
-            self.pulseparams = temp_pulseparams.copy()
-            ch_type.append(self.seq[i][0])
-            t_start[i], t_stop[i], start_inc[i], stop_inc[i] = find_start_stop_increment_times(pulse=self.seq[i])
-            # then we could have optional parameters
-            ptype, ampfactor, nevents, fname, phase = self.unpack_optional_params(seq_idx=i)
-            # create the channel
-            self.pulseparams['amplitude'] = self.pulseparams['amplitude'] * ampfactor
-            self.pulseparams['num pulses'] = nevents
-            self.pulseparams['phase'] = phase  # added this on 2020-07-08 to change the phase as well
-            num_event_train[i] = nevents
-            self.add_channel(ch_type=ch_type[i])
-            ch = self.channels[i]
-            ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
-                               stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
+        temp_pulseparams = self.pulseparams.copy()  # this must be done as pulseparams is an immutable dict
+        for i in range(len(self.seq)):          # loop through the list of list of strings
+            self.pulseparams = temp_pulseparams.copy()   # get the original pulse params
+            chan_name = self.seq[i][0]  # the first element is the name of the channel
+            if chan_name not in ch_type:   # if the channel does not exist already
+                ch_type.append(chan_name)
+                # the first 3 in the list are mandatory
+                t_start[i], t_stop[i], start_inc[i], stop_inc[i] = find_start_stop_increment_times(pulse=self.seq[i])
+                # then we could have optional parameters
+                ptype, ampfactor, nevents, fname, phase = self.unpack_optional_params(seq_idx=i)
+                # create the channel modifying the pulse params as needed for that channel
+                self.pulseparams['amplitude'] = self.pulseparams['amplitude'] * ampfactor
+                self.pulseparams['num pulses'] = nevents
+                self.pulseparams['phase'] = phase  # added this on 2020-07-08 to change the phase as well
+                num_event_train[i] = nevents
+                self.add_channel(ch_type=ch_type[i])
+                # get this last added channel
+                ch = self.channels[-1]
+                ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
+                                   stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
+            else:  # we have an existing channel of this name
+                # get all the parameters of the pulses to be added to the existing channel
+                # the first 3 in the list are mandatory
+                ch_type.append(chan_name)  # we still append the channel name
+                t_start[i], t_stop[i], start_inc[i], stop_inc[i] = find_start_stop_increment_times(pulse=self.seq[i])
+                # then we could have optional parameters
+                ptype, ampfactor, nevents, fname, phase = self.unpack_optional_params(seq_idx=i)
+                # set the pulse params as needed for the pulse
+                self.pulseparams['amplitude'] = self.pulseparams['amplitude'] * ampfactor
+                self.pulseparams['num pulses'] = nevents
+                self.pulseparams['phase'] = phase  # added this on 2020-07-08 to change the phase as well
+                num_event_train[i] = nevents
+                for (id,chan) in enumerate(self.channels):
+                    if chan.ch_type == chan_name:
+                        tempchan = Channel(ch_type=chan_name, delay=self.delay, pulse_params=self.pulseparams,
+                            connection_dict=self.connectiondict, sampletime=self.timeres, event_channel_idx=
+                            self.channels[-1].event_channel_index + 1)
+                        tempchan.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
+                                   stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
+                        chan.insert_channel_events(tempchan)
+
         for i in range(len(self.seq)):
             self.adjust_channel_times(chantype=ch_type[i])   # if we need to adjust all the channels after this
         self.set_first_sequence_event()
@@ -1416,7 +1330,7 @@ class Sequence:
         waveQ = waveI.copy()
 
         for (idx, channel) in enumerate(self.channels):
-            if channel.ch_type == _WAVE:
+            if channel.ch_type == _WAVE or channel.ch_type == _RANDBENCH:
                 for (n, evt) in enumerate(channel.event_train):
                     waveI[evt.t1_idx:evt.t2_idx] = evt.data[0]
                     waveQ[evt.t1_idx:evt.t2_idx] = evt.data[1]
