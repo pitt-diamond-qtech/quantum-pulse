@@ -1057,8 +1057,8 @@ class Sequence:
                             self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N in any order
-                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
-                                   r'(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?'  ## Gurudev: trying this
+                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)'\
+                                r'(?P<incp>\+\+)?|(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?'  ## Gurudev: trying this
                             m = re.search(patt,s)
                             if m:
                                 if m.group('amp'):
@@ -1067,11 +1067,16 @@ class Sequence:
                                 if m.group('num'):
                                     val = int(m.group('num'))  # the match is returned in group 'num'
                                     num_events = val if (val > 1) else 1
-                                if m.group('incn') == '++':
+                                if m.group('incn') == '++':  # we take the number from the pulseparams,
+                                    # used when scanning the number of pulses
                                     num_events = temp_pulseparams['num pulses']
                                 if m.group('phase'):
                                     val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
                                     # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
+                                    phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
+                                if m.group('incp') == '++':
+                                    # we take the phase from the pulseparams, used when scanning the phase
+                                    val = temp_pulseparams['phase']
                                     phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
                             else:
                                 raise RuntimeError("Optional params must be of form amp = D.D or phase = D.D or n = D")
@@ -1084,8 +1089,9 @@ class Sequence:
                             raise RuntimeError(f"only 4 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N, fname = ABC in any order
-                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)|' \
-                                   r'(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?|(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
+                            patt =  r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)'\
+                                    r'(?P<incp>\+\+)?|(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?|'\
+                                    r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
                             m = re.search(patt, s)
                             if m:
                                 if m.group('amp'):
@@ -1100,10 +1106,15 @@ class Sequence:
                                     val = Decimal(m.group('phase'))  # the match is returned in group 'phase'
                                     # we take the phase modulo 360 degrees, have to use Decimal for modulo to work
                                     phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
+                                if m.group('incp') == '++':
+                                    # we take the phase from the pulseparams, used when scanning the phase
+                                    val = temp_pulseparams['phase']
+                                    phase = float(val % Decimal('360.0')) if (val > 360.0) else float(val)
                                 if m.group('file'):
                                     fname = m.group('file') + '.' + m.group('ext')
                             else:
-                                raise RuntimeError("Optional params must be of form amp = D.D or phase = D.D or n = D or fname = ABC.txt or fname = ABC.csv")
+                                raise RuntimeError("Optional params must be of form amp = D.D or phase = D.D or n = "
+                                                   "D or fname = ABC.txt or fname = ABC.csv")
                     else:
                         raise RuntimeError(f'Supported types are {_PULSE_TYPES} for Wave channels')
                 else:
@@ -1174,7 +1185,7 @@ class Sequence:
             P = ['(identity)', '(+pi_x)', '(+pi_y)', '(-pi_x)', '(-pi_y)']  # The Set of Pauli gates
             G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
             L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
-            l = self.compgatelength
+            l = compgatelength
             """
             Generate the Ng computational gate sequences
             """
