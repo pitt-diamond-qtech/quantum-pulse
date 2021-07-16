@@ -1,0 +1,6 @@
+S2,1e-6,1.025e-6
+S2,1.025e-6+t,1.050e-6+t
+Wave,1e-6,1.025e-6,SquareI
+Wave,1.025e-6+t,1.050e-6+t,SquareI
+Green,1.050e-6+t,4.050e-6+t
+Measure,1.050e-6+t,1.150e-6+t

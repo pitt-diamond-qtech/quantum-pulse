@@ -48,6 +48,7 @@ class Pulse(object):
         # you create the "raw pulse data"
 
         # Making I and Q correction
+        # print(f'ssb freq {self.ssb_freq}, phase {self.phase}, iqscale {self.iqscale},skewphase {self.skew_phase}')
         tempx = np.arange(self.width * 1.0)
         self.Q_data = np.array(data * np.sin(2 * np.pi * (tempx * self.ssb_freq + self.phase/360.0 + self.skew_phase/360.0)) * self.iqscale, dtype=_IQTYPE)
         self.I_data = np.array(data * np.cos(2 * np.pi * (tempx * self.ssb_freq + self.phase/360.0)), dtype=_IQTYPE)
@@ -84,6 +85,7 @@ class Sech(Pulse):
         self.mean = self.width / 2.0  # The center of the Gaussian pulse
         self.deviation = deviation
         self.amp = amp * self.vmax / _DAC_UPPER # amp can be a value anywhere from 0 - 1000
+        # print('mean {0}, deviation {1}, amp {2}, width {3}'.format(self.mean,self.deviation,self.amp,self.width))
 
     def data_generator(self):
         data = np.arange(self.width * 1.0)
@@ -182,13 +184,18 @@ class Marker(Pulse):
         self.data = np.zeros(self.width * 1, dtype=_MARKTYPE)
 
     def data_generator(self):
+        """
+
+        :rtype: object
+        """
         if self.markernum == 1 or self.markernum == 3:
             # For marker 1 and 3, turning on the 1st bit of the marker byte
-            self.data[
-            self.marker_on:self.marker_off] += 1
+            #self.data[self.marker_on:self.marker_off] += 1
+            self.data += 1
         elif self.markernum == 2 or self.markernum == 4:
             # For marker 2 and 4, turning on the 2nd bit of the marker byte
-            self.data[self.marker_on:self.marker_off] += 2
+            #self.data[self.marker_on:self.marker_off] += 2
+            self.data += 2
 
 class LoadWave(Pulse):
     def __init__(self,filename,num, width, ssb_freq, iqscale, phase, deviation, amp, skew_phase=0):

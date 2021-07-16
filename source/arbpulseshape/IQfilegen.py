@@ -1,20 +1,22 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+T = 4000  # Time Range (ns)
+n = 4000  # Number of Steps
+sweep_range = 20.0e-3  # Sweep range (GHz)
 
-T = 1000
-n = 100
-time = np.linspace(0, T, n)
-yI = np.cos(80e-3*np.pi*time**2/T)
-yQ = np.sin(80e-3*np.pi*time**2/T)
+time = np.linspace(0, T, n)  # time-space
+yI = np.sin(2*np.pi*sweep_range*(time/T-1)*time)
+yQ = np.cos(2*np.pi*sweep_range*(time/T-1)*time)
 
-f = r'D:\PyCharmProjects\quantum-pulse\source\arbpulseshape\IQdata.txt'
-
-with open(f,'w') as f:
-    for i, tt in enumerate(time):
-        f.write(f'{i}, {tt}, {yI[i]}, {yQ[i]} \n')
+def create_wfmfile(time, yI, yQ):
+    f = r"D:\PyCharmProjects\quantum-pulse\source\arbpulseshape\IQdata.txt"
+    with open(f, 'w') as f:
+        for i, tt in enumerate(time):
+            f.write(f'{i}, {tt}, {yI[i]}, {yQ[i]} \n')
 
 
-plt.plot(time,yQ)
+create_wfmfile(time, yI, yQ)
+
+plt.plot(time, yI, time, yQ)
 plt.show()
-
