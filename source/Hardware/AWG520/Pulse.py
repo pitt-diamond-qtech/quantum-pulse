@@ -56,8 +56,8 @@ class Pulse(object):
     def i_generator(self,data):
         tempx = np.arange(self.width * 1.0)
         self.Q_data = np.zeros(len(data))
-        # self.I_data = np.array(data)
-        self.I_data = np.array(data * np.cos(2 * np.pi * (tempx * self.ssb_freq + self.phase/360.0)), dtype=_IQTYPE)
+        self.I_data = np.array(data)
+        # self.I_data = np.array(data * np.cos(2 * np.pi * (tempx * self.ssb_freq + self.phase/360.0)), dtype=_IQTYPE)
 
     def q_generator(self,data):
         tempx = np.arange(self.width * 1.0)

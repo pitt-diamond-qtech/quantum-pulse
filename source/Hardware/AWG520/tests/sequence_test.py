@@ -25,7 +25,7 @@ def make_seq():
     # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,Sech,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,SquareI,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     # seq = 'S1,1e-6,1.01e-6+t\nGreen,1.02e-6+t,4.02e-6+t\nMeasure,1.02e-6+t,1.12e-6+t'
-    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 10e-6, 'IQ scale factor': 1.0, 'phase': 0.0,
+    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 10e-5, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase': 0.0, 'num pulses': 1}
     #delay = [8.2e-7,1e-8]   # use this format for delay now and pass it to Sequence object
     s = Sequence(seq,pulseparams=newparams,timeres=0.1)

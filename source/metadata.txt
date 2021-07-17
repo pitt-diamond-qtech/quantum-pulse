@@ -1,8 +1,11 @@
 Sample Name: Harvard RIE E6
 NV Name: #1
+NV depth (from surface): 19.2 um
+NV Peak Counts: ~65 kCps
 Waveguide: Silver Standard
-Waveguide Transport: 
-Att between amp and IQm: 16 dB
-MW Power @ DUT:
+Att between amp and IQm: 6 dB
+MW Power @ DUT: 5 W
+Laser Power: 3.6 mW
+Laser Driving Voltage: 1.17 V
 Microscope Objective: 
  

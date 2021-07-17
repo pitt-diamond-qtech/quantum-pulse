@@ -1187,7 +1187,7 @@ class Sequence:
         amplitude_scale = 1.0
         num_events = 1
         fname = None
-        phase = 0.0
+        phase = self.pulseparams['phase']
         pulsetype = ''
         ## GURUDEV 2021-07-12: trying to fix issue that number scan is being overwritten by the nevents parameter
         temp_pulseparams = self.pulseparams.copy()
@@ -1522,6 +1522,12 @@ class SequenceList(object):
                     s.create_sequence(dt=0)
                     self.sequencelist.append(s)
                 elif self.scanparams['type'] == 'Carrier frequency':
+                    s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams,
+                                 connectiondict=self.connectiondict, timeres=self.timeres)
+                    s.create_sequence(dt=0)
+                    self.sequencelist.append(s)
+                elif self.scanparams['type'] == 'phase':
+                    self.pulseparams['phase'] = float(x)
                     s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams,
                                  connectiondict=self.connectiondict, timeres=self.timeres)
                     s.create_sequence(dt=0)

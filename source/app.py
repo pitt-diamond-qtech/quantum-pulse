@@ -443,7 +443,7 @@ class appGUI(QtWidgets.QMainWindow):
 
     def updateScanType(self):
         selection = self.ui.scantypecomboBox.currentIndex()
-        scantypes = {0:'amplitude',1:'time',2: 'number',3:'Carrier frequency',4:'SB freq',5:'pulsewidth',-1:'no scan'}
+        scantypes = {0:'amplitude', 1:'time', 2: 'number', 3:'Carrier frequency', 4:'SB freq', 5:'pulsewidth', 6:'phase', -1:'no scan'}
         self.scan['type'] = scantypes.get(selection)
         self.choosescanValidator()
 
@@ -466,6 +466,8 @@ class appGUI(QtWidgets.QMainWindow):
             regexp = QtCore.QRegExp("[0-9]{,3}\\.[0-9]{1,3}") # we don't allow for scans larger than 100 MHz
         elif selector == 5: # pulsewidth
             regexp = QtCore.QRegExp("\\d{1,6}(\\.)?\\d{,6}(e|E)?([+-])?\\d")  # we don't allow for pulsewidths larger than 1000 ns for now
+        elif selector == 6: # phase scan
+            regexp = QtCore.QRegExp("(?:36[0]|3[0-5][0-9]|[12][0-9][0-9]|[1-9]?[0-9])?$")  # we don't allow for pulsewidths larger than 1000 ns for now
         else:
             regexp = QtCore.QRegExp("[0-9]*")
         validator = QtGui.QRegExpValidator(regexp)
