@@ -12,15 +12,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-import sys
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA import sys
 
 import numpy as np
 import logging
 from decimal import Decimal, getcontext
-from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ,Marker, Sech, Lorentzian, LoadWave, Pulse, DataIQ
+from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ, Marker, Sech, Lorentzian, LoadWave, Pulse, \
+    DataIQ
 from source.common.utils import log_with, create_logger, get_project_root
-import copy, re, sys
+import re, sys, os, random
 
 maindir = get_project_root()
 # seqfiledir = maindir / 'Hardware/sequencefiles/'
@@ -47,14 +47,14 @@ _FULL = 'Full'  # new keyword which turns on all channels high, to be implemente
 _MARKER = 'Marker'  # new keyword for any marker
 _ANALOG1 = 'Analog1'  # new keyword for channel 1
 _ANALOG2 = 'Analog2'  # new keyword for channel 2
-_RANDBENCH = "RandBench"   # new keyword for randomized benchmarking
+_RANDBENCH = "RandBench"  # new keyword for randomized benchmarking
 # dictionary of connections from marker channels to devices,
 _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 # dictionary of IQ parameters that will be used as default if none is supplied
 _PULSE_PARAMS = {'amplitude': 0.0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                  'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
 # allowed values of the Waveform types
-_PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'SquareI','SquareQ','Load Wfm']
+_PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'SquareI', 'SquareQ', 'Load Wfm']
 
 _IQTYPE = np.dtype('<f4')  # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1')  # AWG520 stores marker values as 1 byte
@@ -295,7 +295,7 @@ class WaveEvent(SequenceEvent):
 
     def extract_pulse_params_from_dict(self):
         """This helper method simply extracts the relevant params from the iq dictionary"""
-        self.__ssb_freq = float(self.pulse_params['SB freq'])   # SB freq is in units of Mhz
+        self.__ssb_freq = float(self.pulse_params['SB freq'])  # SB freq is in units of Mhz
         self.__iqscale = float(self.pulse_params['IQ scale factor'])
         self.__phase = float(self.pulse_params['phase'])
         # TODO: should i divide by sampletime ?
@@ -439,6 +439,7 @@ class SquarePulseI(WaveEvent):
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
+
 class SquarePulseQ(WaveEvent):
     """Generates a Wave event with a Square shape, only outputs on Q channel"""
     PULSE_KEYWORD = "SquareQ"
@@ -457,6 +458,7 @@ class SquarePulseQ(WaveEvent):
                         self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
+
 
 class ArbitraryPulse(WaveEvent):
     """Generates a Wave event with any shape given by numerically generated data read from text file"""
@@ -482,7 +484,6 @@ class ArbitraryPulse(WaveEvent):
                            pwidth_idx, self.amplitude, self.skewphase)
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
-
 
 
 class MarkerEvent(SequenceEvent):
@@ -533,7 +534,7 @@ class Green(MarkerEvent):
     def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -552,7 +553,7 @@ class Measure(MarkerEvent):
     def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -571,7 +572,7 @@ class S1(MarkerEvent):
     def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -590,7 +591,7 @@ class S2(MarkerEvent):
     def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
                  sampletime=1.0 * _ns):
         super().__init__(start=start, stop=stop, connection_dict=connection_dict, start_inc=start_inc,
-            stop_inc=stop_inc, dt=dt, sampletime=sampletime)
+                         stop_inc=stop_inc, dt=dt, sampletime=sampletime)
         if connection_dict is None:
             connection_dict = _CONN_DICT
         self.connection_dict = connection_dict
@@ -601,6 +602,39 @@ class S2(MarkerEvent):
         pulse.data_generator()
         self.data = pulse.data
 
+
+class Blank(SequenceEvent):
+    PULSE_KEYWORD = "Blank"
+    """STILL NOT IMPLEMENTED FULLY"""
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+                 sampletime=1.0 * _ns):
+        super().__init__(event_type=_BLANK, start=1.0 * _us, stop=1.1 * _us, start_increment=0.0, stop_increment=0.0,
+                 sampletime=1.0 * _ns)
+        if connection_dict is None:
+            connection_dict = _CONN_DICT
+        self.connection_dict = connection_dict
+        self.markernum = self.connection_dict[_MW_S1]
+        self.pulse_type = self.PULSE_KEYWORD
+        # pulse = Marker(num=self.markeridx, width=self.dur_idx, markernum=self.markernum, marker_on=self.t1_idx,
+        #                marker_off=self.t2_idx)
+        pulse.data_generator()
+        self.data = pulse.data
+
+class Full(SequenceEvent):
+    PULSE_KEYWORD = "Blank"
+    """STILL NOT IMPLEMENTED FULLY"""
+    def __init__(self, start=1e-6, stop=1.1e-6, connection_dict=None, start_inc=0, stop_inc=0, dt=0,
+                 sampletime=1.0 * _ns):
+        super().__init__(event_type=_BLANK, start=1.0 * _us, stop=1.1 * _us, start_increment=0.0, stop_increment=0.0,
+                 sampletime=1.0 * _ns)
+        if connection_dict is None:
+            connection_dict = _CONN_DICT
+        self.connection_dict = connection_dict
+        self.markernum = self.connection_dict[_MW_S1]
+        self.pulse_type = self.PULSE_KEYWORD
+        # pulse = Marker(num=self.markeridx, width=self.dur_idx, markernum=self.markernum, marker_on=self.t1_idx,
+        #                marker_off=self.t2_idx)
+        pulse.data_generator()
 
 class Channel:
     """Provides functionality for a sequence of :class:`sequence events <SequenceEvent>`.
@@ -691,19 +725,19 @@ class Channel:
                 event = ArbitraryPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams,
                                        start_inc=start_inc,
                                        stop_inc=stop_inc, filename=fname, dt=dt, sampletime=self.sampletime)
-        elif pulse_type == _GREEN_AOM:
-            event = Green(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+        elif self.ch_type == _MARKER:
+            if pulse_type == _GREEN_AOM:
+                event = Green(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                               stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
-        elif pulse_type == _ADWIN_TRIG:
-            event = Measure(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+            elif pulse_type == _ADWIN_TRIG:
+                event = Measure(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                                 stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
-        elif pulse_type == _MW_S1:
-            event = S1(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+            elif pulse_type == _MW_S1:
+                event = S1(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                            stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
-        elif pulse_type == _MW_S2:
-            event = S2(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
+            elif pulse_type == _MW_S2:
+                event = S2(start=time_on, stop=time_off, connection_dict=self.connection_dict, start_inc=start_inc,
                            stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
-
         else:
             event = SequenceEvent(start=time_on, stop=time_off, start_increment=start_inc,
                                   stop_increment=stop_inc, sampletime=self.sampletime)
@@ -711,7 +745,6 @@ class Channel:
         self.event_train.append(event)
         self.event_start_times.append(event.start)
         self.event_stop_times.append(event.stop)
-
 
     def add_event_train(self, time_on=1e-6, time_off=1.1e-6, separation=0.0, events_in_train=1, pulse_type='Gauss',
                         start_inc=0.0, stop_inc=0.0, dt=0.0, fname=None):
@@ -726,19 +759,237 @@ class Channel:
         :param dt: amount to increment
         :param fname: filename for arbitrary pulses
         """
-        # add this pulse to the current pulse channel
-        self.add_event(time_on=time_on, time_off=time_off, pulse_type=pulse_type, start_inc=start_inc,
-                       stop_inc=stop_inc,dt=dt, fname=fname)  # make sure we add the increment first
-        width = self.event_train[0].duration
-        sep = float(separation)
-        if events_in_train > 1:
-            for nn in range(events_in_train - 1):
-                t_on = time_on + (nn + 1) * (width + sep)
-                t_off = time_off + (nn + 1) * (width + sep)
-                # no need to add any more increments
-                self.add_event(time_on=t_on, time_off=t_off, pulse_type=pulse_type, fname=fname)
+        if self.ch_type == _RANDBENCH:
+            width = time_off - time_on
+            sep = float(separation)
+            self.randomize_gate_events(events_in_train, width, sep)
+        else:
+            # add this pulse to the current pulse channel
+            self.add_event(time_on=time_on, time_off=time_off, pulse_type=pulse_type, start_inc=start_inc,
+                           stop_inc=stop_inc, dt=dt, fname=fname)  # make sure we add the increment first
+            width = self.event_train[0].duration
+            sep = float(separation)
+            if events_in_train > 1:
+                for nn in range(events_in_train - 1):
+                    t_on = time_on + (nn + 1) * (width + sep)
+                    t_off = time_off + (nn + 1) * (width + sep)
+                    # no need to add any more increments
+                    self.add_event(time_on=t_on, time_off=t_off, pulse_type=pulse_type, fname=fname)
         self.set_latest_channel_event()
         self.set_first_channel_event()
+
+    def randomize_gate_events(self, compgatelength: int=2, paulinum: int=0, width: float, sep: float):
+        """This function implements a channel that will randomize the pulse sequence.
+        :param compgatelength: length of the computational gate sequence
+        :param width: width of each event
+        :param sep: separation between events
+        """
+        """we have 3 types of pulses to generate: Pauli Gates (pi_x, pi_y and pi_z), Computational Gates (pi/2_x, 
+        pi/2_y, pi/2_z) and the R gate (This is a custom gate to make sure the final measurement is an eigenstate of 
+        sigma_z) 
+
+        Parameters:
+        Nl Number of different truncation lengths
+        Ng = Different computational gate sequences
+        Np = Number of Pauli Randomization
+        Ne = Number of Total experiments
+
+        """
+        l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then
+        # truncated Nl times.
+        Ng = 4  # Number of Computational gate sequences
+        P = ['(identity)', '(+pi_x)', '(+pi_y)', '(+pi_z)', '(-pi_x)', '(-pi_y)', '(-pi_z)']  # The Set of Pauli gates
+        G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
+        L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
+
+        def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
+            # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
+            return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
+
+        """"Pauli operators and their eigenstates"""
+        I = np.array([[1, 0], [0, 1]])  # Identity
+        X = np.array([[0, 1], [1, 0]])  # Sx
+        Y = np.array([[0, -1j], [1j, 0]])  # Sy
+        Z = np.array([[1, 0], [0, -1]])  # Sz
+
+        z0 = np.array([[1], [0]])  # |+z>
+        z1 = np.array([[0], [1]])  # |-z>
+        # x0 = np.round(np.array([[1], [1]]) / np.sqrt(2), 3)  # |+x>
+        # x1 = np.round(np.array([[1], [-1]]) / np.sqrt(2), 3)  # |-x>
+        # y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
+        # y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
+
+        gate = {'(identity)': I,
+                '(+pi_x)': rotation(X, np.pi),
+                '(-pi_x)': rotation(-1 * X, np.pi),
+                '(+pi_y)': rotation(Y, np.pi),
+                '(-pi_y)': rotation(-1 * Y, np.pi),
+                '(+pi/2_x)': rotation(X, np.pi / 2),
+                '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                '(+pi/2_y)': rotation(Y, np.pi / 2),
+                '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                '(+pi_z)': rotation(Z, np.pi),
+                '(-pi_z)': rotation(-1 * Z, np.pi),
+                '(+pi/2_z)': rotation(Z, np.pi / 2),
+                '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                }
+        r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
+                  '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                  '(+pi/2_y)': rotation(Y, np.pi / 2),
+                  '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                  '(+pi/2_z)': rotation(Z, np.pi / 2),
+                  '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                  }
+        replace_z_pi_dictionary = {'(identity)': '(Identity)',
+                                   '(+pi_x)': '(-pi_X)',
+                                   '(-pi_x)': '(+pi_X)',
+                                   '(+pi_y)': '(-pi_Y)',
+                                   '(-pi_y)': '(+pi_Y)',
+                                   '(+pi/2_x)': '(-pi/2_X)',
+                                   '(-pi/2_x)': '(+pi/2_X)',
+                                   '(+pi/2_y)': '(-pi/2_Y)',
+                                   '(-pi/2_y)': '(+pi/2_Y)',
+                                   }
+        replace_z_cw_dictionary = {'(identity)': '(identity)',
+                                   '(+pi_x)': '(+pi_y)',
+                                   '(+pi_y)': '(-pi_x)',
+                                   '(-pi_x)': '(-pi_y)',
+                                   '(-pi_y)': '(+pi_x)',
+                                   '(+pi_z)': '(identity)',
+                                   '(-pi_z)': '(identity)'
+                                   }
+        replace_z_ccw_dictionary = {'(identity)': '(identity)',
+                                    '(+pi_x)': '(-pi_y)',
+                                    '(+pi_y)': '(+pi_x)',
+                                    '(-pi_x)': '(+pi_y)',
+                                    '(-pi_y)': '(-pi_x)',
+                                    '(+pi_z)': '(identity)',
+                                    '(-pi_z)': '(identity)'
+                                    }
+        """
+        Generate the Ng computational gate sequences
+        """
+
+        def save_comp_seq(Ng, l_max):
+
+            loc = maindir / 'SeqDesigns/RB/'
+            file = loc / 'RB_Pauli.txt'
+            try:
+                os.mkdir(file)
+            except FileExistsError:
+                pass
+
+            if os.path.exists(file):
+                Comp_seq_list = np.genfromtxt(file, dtype=str, delimiter='\n')
+                Comp_seq_list = Comp_seq_list.reshape(int(len(Comp_seq_list) / l_max), l_max)
+            else:
+                Comp_seq_list = []
+                for i in range(Ng):
+                    Comp_seq_list.append([])
+                for seq in Comp_seq_list:
+                    for i in range(l_max):
+                        seq.append(random.choice(G))
+                f = open(file, 'w')
+                for i in Comp_seq_list:
+                    for j in i:
+                        f.write(j + '\n')
+                f.close()
+            return Comp_seq_list
+
+        """
+        Choose one of the Ng sequences (j = 0, .. , Ng-1)  truncate it to length l 
+        """
+
+        def gen_G_list(Comp_seq_list, l, j):
+            G_list = Comp_seq_list[j][:l]
+            return G_list
+
+        """Generate a list of l+2 Pauli gates randomly"""
+
+        def gen_P_list(l):
+            P_list = []
+            for i in range(l + 2):
+                P_list.append(random.choice(P))
+            return P_list
+
+        def find_R(gate_list):
+            M = I
+            Rlist = []
+            final_state = 'z0'
+            for i in gate_list:
+                M = np.matmul(gate[i], M)
+            for i in r_gate:
+                M2 = np.matmul(r_gate[i], M)
+                if np.allclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M2, z0)))),
+                               1) or np.allclose(
+                    abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M2, z0)))), 1):
+                    Rlist.append(i)
+            R = random.choice(Rlist)
+            M3 = np.matmul(r_gate[R], M)
+            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z0'
+            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z1'
+            else:
+                print("error!!!")
+            return R, final_state
+
+        """"Generate the full sequence"""
+
+        def full_sequence(l, j):
+            G_list = gen_G_list(Comp_seq_list,l, j)
+            P_list = gen_P_list(l)
+            R, final_state = find_R(G_list)
+            sequence = []
+            for i in range(l):
+                sequence.append(P_list[i])
+                sequence.append(G_list[i])
+            sequence.append(P_list[-2])
+            sequence.append(R)
+            sequence.append(P_list[-1])
+            print("the list of pauli gates is", P_list)
+            print("The list of computational gates is", G_list)
+            print("R = " + R)
+            print("The original sequence is", sequence)
+            return sequence
+
+        """"Replace the z gates by Identity followed by a change in the qubit frame"""
+
+        def replace_z(old_sequence):
+            flag = 0
+            new_sequence = []
+            gate = '(identity)'
+            for i in old_sequence:
+                if ((i in ['(+pi/2_z)']) and flag == 0) or ((i in ['(-pi/2_z)']) and flag == 1):
+                    gate = '(identity)'
+                    flag = -1
+                elif ((i in ['(-pi/2_z)']) and flag == 0) or ((i in ['(+pi/2_z)']) and flag == 1):
+                    gate = '(identity)'
+                    flag = -2
+                elif flag == -1:
+                    gate = replace_z_cw_dictionary[i]
+                elif flag == -2:
+                    gate = replace_z_ccw_dictionary[i]
+                elif i not in ['(+pi_z)', '(-pi_z)'] and flag == 0:
+                    gate = i
+                elif i not in ['(+pi_z)', '(-pi_z)'] and flag == 1:
+                    gate = replace_z_pi_dictionary[i]
+                elif i in ['(+pi_z)', '(-pi_z)'] and flag == 0:
+                    flag = 1
+                    gate = '(identity)'
+                elif i in ['(+pi_z)', '(-pi_z)'] and flag == 1:
+                    flag = 0
+                    gate = '(identity)'
+                new_sequence.append(gate)
+            return new_sequence
+
+        Comp_seq_list = save_comp_seq(Ng, l_max)
+        l = L[compgatelength]  # Choose the truncation length from the L list (l=0,..,Nl-1).
+        k = paulinum  # Choose which computational gate sequence to use (k=0,...,Ng-1).
+        sequence = full_sequence(l, k)
+        final_sequence = replace_z(sequence)
+        print("the final sequence is", final_sequence)
+
 
     def delete_event(self, index):
         if self.num_of_events > 0:
@@ -753,14 +1004,14 @@ class Channel:
 
     def insert_channel_events(self, newchan):
         """This method inserts new events from another channel into the channel of the same type"""
-         # if the new channel events conflict with the current channel we need to insert it carefully
+        # if the new channel events conflict with the current channel we need to insert it carefully
         earliest_start_time = self.first_channel_event
         latest_stop_time = self.latest_channel_event
         latest_start_time = np.amax(np.array(self.event_start_times, dtype=np.float32))
         push_time = float(latest_start_time - earliest_start_time)
 
         if self.ch_type == newchan.ch_type:
-            events = newchan.event_train   # get all the events in the newchan
+            events = newchan.event_train  # get all the events in the newchan
             self.num_of_events += len(events)  # update the number of events
             self.event_channel_index += len(events)  # update the event index
             for idx, evt in enumerate(newchan.event_train):
@@ -779,13 +1030,12 @@ class Channel:
             self.event_start_times.extend(newchan.event_start_times)  # extend the start times
             self.event_stop_times.extend(newchan.event_stop_times)  # extedn the stop times
             # store the new start and stop times in the arrays
-            for idx,evt in enumerate(self.event_train):
+            for idx, evt in enumerate(self.event_train):
                 self.event_start_times[idx] = evt.start
                 self.event_stop_times[idx] = evt.stop
             # update the first and latest channel events
-            self.set_first_channel_event()   # keep track of the new first channel event
+            self.set_first_channel_event()  # keep track of the new first channel event
             self.set_latest_channel_event()  # and the last channel event
-
 
         # # now we check all the other channels to see if we need to change any of their start/stop times
         # self.adjust_channel_times(chantype=newchan.ch_type)
@@ -809,7 +1059,7 @@ class Channel:
             self.first_channel_event = self.event_train[0].start
         else:
             self.first_channel_event = 0
-        self.event_start_times.sort()   # we will also keep this array sorted
+        self.event_start_times.sort()  # we will also keep this array sorted
 
     def set_latest_channel_event(self):
         self.latest_channel_event = 0
@@ -818,7 +1068,6 @@ class Channel:
                 self.latest_channel_event = self.event_train[i].stop
 
         self.event_stop_times.sort()
-
 
     # def get_event_start_times(self):
     #     for idx, evt in self.event_train:
@@ -896,7 +1145,7 @@ class Sequence:
 
         if pulseparams is None:
             self.pulseparams = _PULSE_PARAMS
-        #if pulseparams == None:
+        # if pulseparams == None:
         #    self.pulseparams = {'amplitude': 100, 'pulsewidth': 20, 'SB freq': 0.00, 'IQ scale factor': 1.0,'phase': 0.0, 'skew phase':0.0, 'num pulses': 1}
         else:
             self.pulseparams = pulseparams
@@ -939,7 +1188,7 @@ class Sequence:
 
     def set_latest_sequence_event(self):
         self.latest_sequence_event = 0
-        for id,chan in enumerate(self.channels):
+        for id, chan in enumerate(self.channels):
             if chan.latest_channel_event > self.latest_sequence_event:
                 self.latest_sequence_event = chan.latest_channel_event
         if self.num_of_wait_events > 0:
@@ -975,8 +1224,6 @@ class Sequence:
         else:
             return False
 
-
-
     def adjust_channel_times(self, chantype='a1'):
         """this is a critical method that adjusts channel times for all other channels besides the one specified.
         THis is often needed when we either increment times in a given channel that would then end up conflicting
@@ -1000,9 +1247,9 @@ class Sequence:
                     temp2 = evt.stop_increment
                     # check if the inserted channel start time conflicts with previous start times
                     if (evt.start > earliest_start_time) and (evt.start < latest_stop_time):
-                        evt.start_increment = 1    # set the increments to 1
+                        evt.start_increment = 1  # set the increments to 1
                         evt.stop_increment = 1
-                        evt.increment_time(dt=push_time)     # increment the event
+                        evt.increment_time(dt=push_time)  # increment the event
                     # restore the old values of increment
                     evt.start_increment = temp1
                     evt.stop_increment = temp2
@@ -1057,9 +1304,9 @@ class Sequence:
                             self.logger.warning(f"only 3 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N in any order
-                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)'\
-                                r'(?P<incp>\+\+)?|(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?'  ## Gurudev: trying this
-                            m = re.search(patt,s)
+                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)' \
+                                   r'(?P<incp>\+\+)?|(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?'  ## Gurudev: trying this
+                            m = re.search(patt, s)
                             if m:
                                 if m.group('amp'):
                                     val = float(m.group('amp'))  # the match is returned in group 'amp'
@@ -1089,9 +1336,9 @@ class Sequence:
                             raise RuntimeError(f"only 4 optional parameters supported for {pulsetype} channels")
                         for s in opt_params[1:]:
                             # the allowed patterns are amp = N.N, phase = N.N, num = N, fname = ABC in any order
-                            patt =  r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)'\
-                                    r'(?P<incp>\+\+)?|(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?|'\
-                                    r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
+                            patt = r'(amp\s*\=\s*)(?P<amp>\d\.?\d*)|(phase\s*\=\s*)(?P<phase>\d\.?\d*)' \
+                                   r'(?P<incp>\+\+)?|(n\s*=\s*)(?P<num>\d{,4})(?P<incn>\+\+)?|' \
+                                   r'(fname\s*=\s*)(?P<file>\w+)\.(?P<ext>txt|csv)'
                             m = re.search(patt, s)
                             if m:
                                 if m.group('amp'):
@@ -1123,7 +1370,7 @@ class Sequence:
                 self.logger.error('Runtime warning/error: {0}'.format(err))
                 sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
         else:  # if channel type is marker, then only one other parameter is allowed, the number of pulses
-            pulsetype = self.seq[seq_idx][0]   # the pulsetype and channel name are identical for marker types
+            pulsetype = self.seq[seq_idx][0]  # the pulsetype and channel name are identical for marker types
             try:
                 if opt_params is None:
                     num_events = 1
@@ -1138,123 +1385,11 @@ class Sequence:
             except (RuntimeWarning, RuntimeError) as err:
                 self.logger.error('Runtime warning/error: {0}'.format(err))
                 sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
-        return pulsetype, amplitude_scale, num_events, fname,phase
+        return pulsetype, amplitude_scale, num_events, fname, phase
 
-
-    def randomize_gate_sequence(self,compgatelength):
+    def randomize_gate_sequence(self, compgatelength):
         """This function implements a randomization of the computational gate sequence.
         :param compgatelength: length of the computational gate sequence"""
-
-        def find_R(gate_list):
-            M = I
-            Rlist = []
-            final_state = 'z0'
-            for i in gate_list:
-                M = np.matmul(gate[i], M)
-            for i in r_gate:
-                M2 = np.matmul(r_gate[i], M)
-                if np.allclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M2, z0)))),
-                        1) or np.allclose(
-                    abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M2, z0)))), 1):
-                    Rlist.append(i)
-            R = random.choice(Rlist)
-            M3 = np.matmul(r_gate[R], M)
-            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
-                final_state = 'z0'
-            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
-                final_state = 'z1'
-            else:
-                print("error!!!")
-            return R, final_state
-
-        def generate_computation_gates(self,Nl=2,Ng=2,Np=2,Ne=2):
-            """
-            we have 3 types of pulses to generate:
-            Pauli Gates (pi_x, pi_y and pi_z), Computational Gates (pi/2_x, pi/2_y, pi/2_z) and the R gate (This is a custom gate to make sure the
-            final measurement is an eigenstate of sigma_z)
-
-            Parameters:
-            :param Nl: Number of different truncation lengths
-            :param Ng: Different computational gate sequences
-            :param Np: Number of Pauli Randomization
-            :param Ne:  Number of Total experiments
-
-            """
-            import random
-            l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then truncated Nl times.
-            P = ['(identity)', '(+pi_x)', '(+pi_y)', '(-pi_x)', '(-pi_y)']  # The Set of Pauli gates
-            G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
-            L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
-            l = compgatelength
-            """
-            Generate the Ng computational gate sequences
-            """
-            Comp_seq_list = [[], [], [], []]
-            for seq in Comp_seq_list:
-                for i in range(l_max):
-                    seq.append(random.choice(G))
-            """
-            Choose one of the Ng sequences randomly truncate it to length l (should be done to all Ng sequences, not just one sequence)
-            """
-            G_list = Comp_seq_list[random.randint(0, 3)][:l]
-
-            """Generate a list of l+2 Pauli gates randomly"""
-            P_list = []
-            for i in range(l + 2):
-                P_list.append(random.choice(P))
-            # print(P_list)
-            # print(G_list)
-
-            """"Pauli operators and their eigenstates"""
-            I = np.array([[1, 0], [0, 1]])  # Identity
-            X = np.array([[0, 1], [1, 0]])  # Sx
-            Y = np.array([[0, -1j], [1j, 0]])  # Sy
-            Z = np.array([[1, 0], [0, -1]])  # Sz
-
-            z0 = np.array([[1], [0]])  # |+z>
-            z1 = np.array([[0], [1]])  # |-z>
-            x0 = np.round(np.array([[1], [1]]) / np.sqrt(2), 3)  # |+x>
-            x1 = np.round(np.array([[1], [-1]]) / np.sqrt(2), 3)  # |-x>
-            y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
-            y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
-
-            def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
-                # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
-                return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
-
-            gate = {'(identity)': I,
-                    '(+pi_x)': rotation(X, np.pi),
-                    '(-pi_x)': rotation(-1 * X, np.pi),
-                    '(+pi_y)': rotation(Y, np.pi),
-                    '(-pi_y)': rotation(-1 * Y, np.pi),
-                    '(+pi/2_x)': rotation(X, np.pi / 2),
-                    '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
-                    '(+pi/2_y)': rotation(Y, np.pi / 2),
-                    '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
-                    '(+pi_z)': rotation(Z, np.pi),
-                    '(-pi_z)': rotation(-1 * Z, np.pi),
-                    '(+pi/2_z)': rotation(Z, np.pi / 2),
-                    '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
-                    }
-            r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
-                      '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
-                      '(+pi/2_y)': rotation(Y, np.pi / 2),
-                      '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
-                      '(+pi/2_z)': rotation(Z, np.pi / 2),
-                      '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
-                      }
-
-
-
-        """"Generate the full sequence"""
-        R, final_state = find_R(G_list)
-        sequence = []
-        for i in range(l):
-            sequence.append(P_list[i])
-            sequence.append(G_list[i])
-        sequence.append(P_list[-2])
-        sequence.append(R)
-        sequence.append(P_list[-1])
 
     def create_channels_from_seq(self, dt=0.0):
         """This method parses the sequence definition which is currently just a list of list of strings, and converts
@@ -1271,10 +1406,10 @@ class Sequence:
         self.set_first_sequence_event()
         self.set_latest_sequence_event()
         temp_pulseparams = self.pulseparams.copy()  # this must be done as pulseparams is an immutable dict
-        for i in range(len(self.seq)):          # loop through the list of list of strings
-            self.pulseparams = temp_pulseparams.copy()   # get the original pulse params
+        for i in range(len(self.seq)):  # loop through the list of list of strings
+            self.pulseparams = temp_pulseparams.copy()  # get the original pulse params
             chan_name = self.seq[i][0]  # the first element is the name of the channel
-            if chan_name not in ch_type:   # if the channel does not exist already
+            if chan_name not in ch_type:  # if the channel does not exist already
                 ch_type.append(chan_name)
                 # the first 3 in the list are mandatory
                 t_start[i], t_stop[i], start_inc[i], stop_inc[i] = find_start_stop_increment_times(pulse=self.seq[i])
@@ -1302,17 +1437,19 @@ class Sequence:
                 self.pulseparams['num pulses'] = nevents
                 self.pulseparams['phase'] = phase  # added this on 2020-07-08 to change the phase as well
                 num_event_train[i] = nevents
-                for (id,chan) in enumerate(self.channels):
+                for (id, chan) in enumerate(self.channels):
                     if chan.ch_type == chan_name:
                         tempchan = Channel(ch_type=chan_name, delay=self.delay, pulse_params=self.pulseparams,
-                            connection_dict=self.connectiondict, sampletime=self.timeres, event_channel_idx=
-                            self.channels[-1].event_channel_index + 1)
+                                           connection_dict=self.connectiondict, sampletime=self.timeres,
+                                           event_channel_idx=
+                                           self.channels[-1].event_channel_index + 1)
                         tempchan.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
-                                   stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
+                                                 stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt,
+                                                 fname=fname)
                         chan.insert_channel_events(tempchan)
 
         for i in range(len(self.seq)):
-            self.adjust_channel_times(chantype=ch_type[i])   # if we need to adjust all the channels after this
+            self.adjust_channel_times(chantype=ch_type[i])  # if we need to adjust all the channels after this
         self.set_first_sequence_event()
         self.set_latest_sequence_event()
 
@@ -1329,7 +1466,7 @@ class Sequence:
         # create all the channels from the self.seq object
         self.create_channels_from_seq(dt=dt)
         # now we need to find the data length i.e. the largest stop time in the list of stop times
-        maxend = np.int64(self.latest_sequence_event / self.timeres)+1
+        maxend = np.int64(self.latest_sequence_event / self.timeres) + 1
         # print("the max. event value is {}".format(self.maxend))
         # now we can init the arrays
         # dummydata = np.zeros(maxend, dtype=_MARKTYPE)
@@ -1357,7 +1494,8 @@ class Sequence:
                 for (n, evt) in enumerate(channel.event_train):
                     c2m1[evt.t1_idx:evt.t2_idx] = evt.data
                 c2m1 = np.roll(c2m1, -mwdelay)
-                self.logger.warning('Value error: only MW switch connected is S2 using Ch1, M1, this channel will do nothing')
+                self.logger.warning(
+                    'Value error: only MW switch connected is S2 using Ch1, M1, this channel will do nothing')
             elif channel.ch_type == _ADWIN_TRIG:
                 for (n, evt) in enumerate(channel.event_train):
                     c2m2[evt.t1_idx:evt.t2_idx] = evt.data
