@@ -12,12 +12,12 @@ def make_seq():
     filestr= 'IQdata.txt'
     print(filestr)
     # print(str(wfmdir.resolve()))
-    # seq='Green,0.01e-7,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\n' + \
-    #     'Wave,1.8e-6,2.2e-6,Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
+    seq='Green,0.01e-7,8e-7\nS2,9e-7,1.7e-6\nWave,9e-7,1.4e-6,Sech\nWave,1.4e-6,1.8e-6,Gauss\n' + \
+         'Wave,1.8e-6,2.2e-6,Square\n'+'Wave,2.2e-6,2.6e-6,Lorentz\nWave,2.6e-6,3e-6,Load Wfm,fname='+filestr
     # seq = 'Wave,2.6e-6,3e-6,Load Wfm,f='+filestr+',amp = 0.4'
-    seq='Wave,2e-6,5e-6,SquareQ'
+    #seq='Wave,2e-6,5e-6,SquareQ'
     #seq = 'Green,0.01e-6,1e-6'
-    #seq = 'Wave,1e-7,3e-7,Gauss\nWave,4e-7,6e-7,Gauss,amp=1.5,phase=90.0'
+    #seq = 'Wave,1e-7,2e-7,Lorentz,n=4\nWave,4e-7,5e-7,Gauss,amp=0.5,phase=90.0'
     #seq = 'Wave,9e-7,1.4e-6,Gauss\nWave,1e-7,3e-7,Load Wfm,fname='+filestr+'\n'+'Green,1.5e-6,2.5e-6'
     #seq = 'Wave,9e-7,1.4e-6,Gauss\nWave,1e-7,3e-7,Load Wfm'+ '\n' + 'Green,1.5e-6,2.5e-6'
     # seq = 'Wave,9e-7+t,1.4e-6+t,Gauss\n'+'Green,1.5e-6,2.5e-6\n'+'S2,5e-7,1.5e-6\n'+'S2,2e-6,2.5e-6\n' + \
@@ -25,7 +25,7 @@ def make_seq():
     # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,Sech,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,SquareI,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     # seq = 'S1,1e-6,1.01e-6+t\nGreen,1.02e-6+t,4.02e-6+t\nMeasure,1.02e-6+t,1.12e-6+t'
-    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 10e-5, 'IQ scale factor': 1.0, 'phase': 0.0,
+    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 10e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase': 0.0, 'num pulses': 1}
     #delay = [8.2e-7,1e-8]   # use this format for delay now and pass it to Sequence object
     s = Sequence(seq,pulseparams=newparams,timeres=0.1)
@@ -50,14 +50,14 @@ def make_seq_list():
     # print(str(wfmdir.resolve()))
     # notice the sequence below scans time by setting all times after the pulse that is being scanned are also moved
     # seq = 'Green,1.6e-6,2.5e-6\n'Wave,1e-6+t,1.5e-6+t,Sech\n Measure,1.5e-6+t,1.8e-6+t'
-    # seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.05e-6+t,4.025e-6+t\n'+ \
-    #       'Measure,1.025e-6+t,1.125e-6+t'
+    seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.5e-6+t,4.5e-6+t\n'+ \
+           'Measure,1.5e-6+t,1.7e-6+t'
     # seq = 'Wave,2.6e-6,3e-6,Load Wfm,fname='+filestr+',amp = 0.4'
-    seq = 'Wave,2.6e-6,3e-6,Gauss,n=2++\nGreen,3.5e-6,5e-6'
+    # seq = 'Wave,2.6e-6,3e-6,Gauss,n=2++\nGreen,3.5e-6,5e-6'
     #  seq = 'Green,0.0,1e-6'
     newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase':0.0, 'num pulses': 3}
-    newscanparams = {'type':'number','start': 2, 'stepsize': 2, 'steps': 3}
+    newscanparams = {'type':'time','start': 1e-7, 'stepsize': 2e-7, 'steps': 3}
     s = SequenceList(seq, pulseparams=newparams, timeres=1, scanparams=newscanparams)
     s.create_sequence_list()
     for nn in list(range(len(s.sequencelist))):
@@ -94,6 +94,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    test_sequence()
-    # test_seq_list()
+    #test_sequence()
+    test_seq_list()
     #make_long_seq()
