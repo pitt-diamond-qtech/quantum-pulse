@@ -56,7 +56,7 @@ def make_seq_list():
     # seq = 'Wave,2.6e-6,3e-6,Load Wfm,fname='+filestr+',amp = 0.4'
     # seq = 'Wave,2.6e-6,3e-6,Gauss,n=2++\nGreen,3.5e-6,5e-6'
     #  seq = 'Green,0.0,1e-6'
-    seq = 'RandBench,1e-6,1.125e-6,Gauss,amp=1++,n=3,phase=0'
+    seq = 'RandBench,1e-6,1.125e-6,Gauss,amp=1++,phase=0'
     newparams = {'amplitude': 500.0, 'pulsewidth': 10e-9, 'SB freq': 10e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase': 0.0, 'num pulses': 1}
     #newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
