@@ -51,7 +51,7 @@ _RANDBENCH = "RandBench"  # new keyword for randomized benchmarking
 # dictionary of connections from marker channels to devices,
 _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 # dictionary of IQ parameters that will be used as default if none is supplied
-_PULSE_PARAMS = {'amplitude': 0.0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0,
+_PULSE_PARAMS = {'amplitude': 1000.0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                  'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
 # allowed values of the Waveform types
 _PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'SquareI', 'SquareQ', 'Load Wfm']
@@ -650,6 +650,7 @@ class Channel:
 
     def __init__(self, ch_type=None, event_train=None, delay=None, pulse_params=None, connection_dict=None,
                  event_channel_idx=0, sampletime=1.0 * _ns,**kwargs):
+
         if ch_type is None:
             ch_type = _MARKER
         if delay is None:
@@ -660,7 +661,7 @@ class Channel:
             connection_dict = _CONN_DICT
         if event_train is None:
             event_train = []  # add empty event
-        super().__init__(**kwargs)
+        # super().__init__(**kwargs)
         self.logger = logging.getLogger('seqlogger.channel')
         self.event_train = event_train
         self.delay = delay
@@ -894,38 +895,45 @@ class RandomGateChannel(Channel):
         :param lengths_list: list of lengths out of which one will be used to truncate the events
         :param numcompgateseqs: how many computational gate sequences to use
         """
-    def __init__(self,**kwargs):
+    def __init__(self,ch_type=_RANDBENCH, pulse_params=None, sampletime=1.0 * _ns,**kwargs):
+        super().__init__(ch_type=ch_type, pulse_params=pulse_params, sampletime=sampletime, **kwargs)
         kwargdic = dict([])
         for k, v in kwargs.items():
             kwargdic[k] = v
-        if kwargdic['ch_type'] is None:
-            kwargdic['ch_type'] = _RANDBENCH
-        if kwargdic['pulse_params'] is None:
-            kwargdic['pulse_params'] = _PULSE_PARAMS
-        if kwargdic['sampletime'] is None:
-            kwargdic['sampletime'] = 1.0 * _ns
-        if kwargdic['connection_dict'] is None:
-            kwargdic['connection_dict'] = _CONN_DICT
-        if kwargdic['delay'] is None:
-            kwargdic['delay'] = [0,0]
-        if kwargdic['change_amp'] is None:
-            kwargdic['change_amp'] = False
-        if kwargdic['change_width'] is None:
-            kwargdic['change_width'] = True
-        if kwargdic['paulinum'] is None:
-            kwargdic['paulinum'] = 0
-        pulse_params = kwargdic['pulse_params']
-        sampletime = kwargdic['sampletime']
-        ch_type = kwargdic['ch_type']
-        delay = kwargdic['delay']
+        # if kwargdic['ch_type'] is None:
+        #     kwargdic['ch_type'] = _RANDBENCH
+        # if kwargdic['pulse_params'] is None:
+        #     kwargdic['pulse_params'] = _PULSE_PARAMS
+        # if kwargdic['sampletime'] is None:
+        #     kwargdic['sampletime'] = 1.0 * _ns
+        # if kwargdic['connection_dict'] is None:
+        #     kwargdic['connection_dict'] = _CONN_DICT
+        # if kwargdic['delay'] is None:
+        #     kwargdic['delay'] = [0,0]
+        # if kwargdic['change_amp'] is None:
+        #     kwargdic['change_amp'] = False
+        # if kwargdic['change_width'] is None:
+        #     kwargdic['change_width'] = True
+        # if kwargdic['paulinum'] is None:
+        #     kwargdic['paulinum'] = 0
+        # pulse_params = kwargdic['pulse_params']
+        # sampletime = kwargdic['sampletime']
+        # ch_type = kwargdic['ch_type']
+        # delay = kwargdic['delay']
         trunc_lengths = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
-        if kwargdic['lengths_list'] is None:
+        if 'change_amp' not in kwargdic:
+            kwargdic['change_amp'] = False
+        if 'change_width' not in kwargdic:
+            kwargdic['change_width'] = False
+        if 'lengths_list' not in kwargdic:
             kwargdic['lengths_list']= trunc_lengths
+        if 'numcompgateseqs' not in kwargdic:
+            kwargdic['numcompgateseqs']= 4
         self.lengths_list = kwargdic['lengths_list']
         self.num_comp_gate_seqs = kwargdic['numcompgateseqs']
         self.change_width = kwargdic['change_width']
         self.change_amp = kwargdic['change_amp']
-        super().__init__(ch_type=ch_type, pulse_params=pulse_params, sampletime=sampletime,delay=delay)
+
 
     def set_pauli_num(self,num=0):
         self.num_comp_gate_seqs = num
@@ -1031,7 +1039,7 @@ class RandomGateChannel(Channel):
             loc = maindir / 'SeqDesigns/RB/'
             file = loc / 'RB_Pauli.txt'
             try:
-                os.mkdir(file)
+                os.mkdir(loc)
             except FileExistsError:
                 pass
 
@@ -1139,19 +1147,22 @@ class RandomGateChannel(Channel):
                 new_sequence.append(gate)
             return new_sequence
 
-        def strings_to_event(gate: str = '(identity)', t_on=time_on, t_off=time_off):
+        def strings_to_event(gate: str = '(identity)'):
             """We need to convert the list of strings into actual events. we assume that the pulse info given to the
             object is for a pi/2 pulse. if we need other gates such as pi pulse, we could change either the width
             or the amplitude """
-            temp_pulseparams = self.pulse_params.copy()
-            phase = temp_pulseparams['phase']  # it is assumed this phase given is for x-axis
-            amp = temp_pulseparams['amplitude']
-            width = t_off - t_on
+            #temp_pulseparams = self.pulse_params.copy()
+            #phase = temp_pulseparams['phase']  # it is assumed this phase given is for x-axis
+            #amp = temp_pulseparams['amplitude']
+            amp = 1.0
+            widthfactor = 1.0
+            phase = 0
             change_amp = self.change_amp
             change_width = self.change_width
             if gate == '(identity)':
+                amp = 0  # we want identity to have 0 amplitude
                 if change_width:
-                    width = 2 * (t_off - t_on)
+                    widthfactor = 2.0
                 elif change_amp:
                     amp = 2 * amp
                 else:
@@ -1159,44 +1170,44 @@ class RandomGateChannel(Channel):
             elif gate == '(pi/2_x)' or gate == '(pi/2_X)':
                 pass
             elif gate == '(-pi/2_x)' or gate == '(-pi/2_X)':
-                phase = phase + 180
+                phase = 180
             elif gate == '(pi/2_y)' or gate == '(pi/2_Y)':
-                phase = phase + 90
+                phase =  90
             elif gate == '(-pi/2_y)' or gate == '(-pi/2_Y)':
-                phase = phase + 270
+                phase =  270
             elif gate == '(pi_x)' or gate == '(pi_X)':
                 if change_width:
-                    width = 2 * (t_off - t_on)
+                    widthfactor = 2.0
                 elif change_amp:
                     amp = 2 * amp
                 else:
                     pass
             elif gate == '(-pi_x)' or gate == '(-pi_X)':
                 if change_width:
-                    width = 2 * (t_off - t_on)
+                    widthfactor = 2 * (t_off - t_on)
                 elif change_amp:
                     amp = 2 * amp
                 else:
                     pass
-                phase = phase + 180
+                phase = 180
             elif gate == '(pi_y)' or gate == '(pi_Y)':
                 if change_width:
-                    width = 2 * (t_off - t_on)
+                    widthfactor = 2 * (t_off - t_on)
                 elif change_amp:
                     amp = 2 * amp
                 else:
                     pass
-                phase = phase + 90
+                phase = 90
             elif gate == '(-pi_y)' or gate == '(-pi_Y)':
                 if change_width:
-                    width = 2 * (t_off - t_on)
+                    widthfactor = 2 * (t_off - t_on)
                 elif change_amp:
                     amp = 2 * amp
                 else:
                     pass
-                phase = phase + 270
+                phase = 270
 
-            return amp, width, phase
+            return amp, widthfactor, phase
 
         def closest(lst, K):
             lst = np.asarray(lst)
@@ -1208,21 +1219,38 @@ class RandomGateChannel(Channel):
         length = closest(self.lengths_list,events_in_train)
         #length = self.lengths_list[events_in_train]  # Choose the truncation length from the L list (l=0,..,Nl-1).
         pauli_k = random.randint(0,self.num_comp_gate_seqs-1)  # Choose randomly which computational gate sequence to use (k=0,...,Ng-1).
-        sequence = full_sequence(length, pauli_k)
-        final_sequence = replace_z(sequence)
+        sequence = full_sequence(length, pauli_k)   # find the full sequence
+        final_sequence = replace_z(sequence)  # replace Pi_z rotations by identity and frame switching
         print("the final sequence is", final_sequence)
+        ## Now we convert the sequence into a list of events
+        temp_pulseparams = self.pulse_params.copy()   # get a copy of pulse params
         num_events = len(final_sequence)
-
+        # find the params for the first event
+        amp, widthfactor, phase = strings_to_event(final_sequence[0])
+        self.pulse_params['amplitude'] = temp_pulseparams['amplitude']*amp
+        self.pulse_params['phase'] = temp_pulseparams['phase']+phase
+        # create first event with an event width given by multiplying the width factor if needed
+        event_width = (time_off - time_on)*widthfactor
+        self.add_event(time_on=time_on, time_off=time_on+event_width, pulse_type=pulse_type, start_inc=start_inc,
+                       stop_inc=stop_inc, dt=dt, fname=fname)  # make sure we add the increment first
+        # if the event width is too small, update it to the correct duration
+        if self.event_train[0].duration > event_width:
+            event_width = self.event_train[0].duration
+        # now do the same for the other events
         if num_events > 1:
-            temp_pulseparams = self.pulse_params.copy()
             for nn in range(num_events-1):
-                amp, width, phase = strings_to_event(final_sequence[nn], t_on=time_on, t_off=time_off)
-                t_on = time_on + (nn + 1) * (width + sep)
-                t_off = time_off + (nn + 1) * (width + sep)
-                self.pulse_params = temp_pulseparams
-                self.pulse_params['amplitude'] = amp
-                self.pulse_params['phase'] = phase
+                amp, widthfactor, phase = strings_to_event(final_sequence[nn+1])
+                self.pulse_params = temp_pulseparams.copy()
+                self.pulse_params['amplitude'] *= amp
+                self.pulse_params['phase'] += phase
+                event_width = (time_off - time_on) * widthfactor
+                if self.event_train[nn].duration > event_width:
+                    event_width = self.event_train[0].duration*widthfactor
+                t_on = time_on + (nn+1) * (event_width + sep)
+                t_off = t_on + event_width
                 self.add_event(time_on=t_on, time_off=t_off, pulse_type=pulse_type, fname=fname)
+        self.set_first_channel_event()
+        self.set_latest_channel_event()
         return final_sequence
 
 
@@ -1302,6 +1330,9 @@ class Sequence:
         # right now these are boolean variables, perhaps later we may want to allow for these to be numbers specified by user
         self.change_amp = False
         self.change_width = False
+        self.paulinum = 4 # this variable is used in random benchmarking to pick one of the pauli random sequences
+        # this variable is used in RB to fix the truncation lengths
+        self.trunc_lengths = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]
         # init the arrays
         self.wavedata = None
         self.c1markerdata = None
@@ -1343,7 +1374,7 @@ class Sequence:
             evt_ch_idx = 0
 
         if ch_type == _RANDBENCH:
-            channel = RandomGateChannel(delay=self.delay, pulse_parms=temp_pulseparams,
+            channel = RandomGateChannel(ch_type=ch_type,delay=self.delay, pulse_params=temp_pulseparams,
                                             connection_dict=self.connectiondict, sampletime=self.timeres,
                                             event_channel_idx=evt_ch_idx,change_amp=self.change_amp,change_width=self.change_width)
         else:
@@ -1439,7 +1470,7 @@ class Sequence:
         ## GURUDEV 2021-07-23: for Randomized benchmarking, we need to know whether the width or the amplitude of the
         # event should be changed to make pi pulses
         change_amp = False
-        change_width = True
+        change_width = False
         if ch_type == _WAVE:  # if the ch_type is Wave or RandBench, then we need several
             # other params
             simple_ptypes = _PULSE_TYPES[0:-1]  # the simple pulsetypes e.g. Gauss, Sech etc
@@ -1643,7 +1674,14 @@ class Sequence:
                 self.add_channel(ch_type=ch_type[i])
                 # get this last added channel
                 ch = self.channels[-1]
-                ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
+                if ch.ch_type == _RANDBENCH:
+                    #ch.set_pauli_num(self.paulinum)
+                    #ch.set_lengths_list(self.trunc_lengths)
+                    ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
+                                       stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt,
+                                       fname=fname)
+                else:
+                    ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
                                    stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
             else:  # we have an existing channel of this name
                 # get all the parameters of the pulses to be added to the existing channel
@@ -1726,6 +1764,10 @@ class Sequence:
         self.wavedata = np.array((waveI, waveQ))
 
 
+class RandomSequence(Sequence):
+    pass
+
+
 class SequenceList(object):
     def __init__(self, sequence, delay=None, scanparams=None, pulseparams=None, connectiondict=None, timeres=1):
         """This class creates a list of sequence objects that each have the waveforms for one step in the scanlist.
@@ -1770,14 +1812,16 @@ class SequenceList(object):
             s.create_sequence(dt=0)
             self.sequencelist.append(s)
         elif self.scanparams['type'] == 'random scan':
+            rng = np.random.default_rng()
             # generate a list of random truncation lengths for the scans
-            self.scanlist = random.randint(self.scanparams['start'],self.scanparams['stop']-1)
+            self.scanlist = rng.integers(self.scanparams['start'],self.scanparams['stop']-1)
             # choose which of the pauli gate sequences you will run encoded in the parameter steps
-            self.paulinums = random.randint(0,self.scanparams['steps'])
+            self.paulinums = rng.integers(0,self.scanparams['steps'])
 
             for x in self.scanlist:
-
-                s = Sequence(self.sequence,delay=self.delay,pulseparams=self.pulseparams)
+                s = Sequence(self.sequence,delay=self.delay,pulseparams=self.pulseparams,connectiondict=self.connectiondict, timeres=self.timeres)
+                s.trunc_lengths = self.scanlist
+                s.paulinum = self.paulinums
         else:
             for x in self.scanlist:
                 self.pulseparams = temp_pulseparams.copy()
