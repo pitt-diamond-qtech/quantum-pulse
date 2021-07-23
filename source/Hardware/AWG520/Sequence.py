@@ -617,8 +617,8 @@ class Blank(SequenceEvent):
         self.pulse_type = self.PULSE_KEYWORD
         # pulse = Marker(num=self.markeridx, width=self.dur_idx, markernum=self.markernum, marker_on=self.t1_idx,
         #                marker_off=self.t2_idx)
-        pulse.data_generator()
-        self.data = pulse.data
+        #pulse.data_generator()
+        #self.data = pulse.data
 
 class Full(SequenceEvent):
     PULSE_KEYWORD = "Blank"
@@ -634,7 +634,7 @@ class Full(SequenceEvent):
         self.pulse_type = self.PULSE_KEYWORD
         # pulse = Marker(num=self.markeridx, width=self.dur_idx, markernum=self.markernum, marker_on=self.t1_idx,
         #                marker_off=self.t2_idx)
-        pulse.data_generator()
+        #pulse.data_generator()
 
 class Channel:
     """Provides functionality for a sequence of :class:`sequence events <SequenceEvent>`.
@@ -759,237 +759,20 @@ class Channel:
         :param dt: amount to increment
         :param fname: filename for arbitrary pulses
         """
-        if self.ch_type == _RANDBENCH:
-            width = time_off - time_on
-            sep = float(separation)
-            self.randomize_gate_events(events_in_train, width, sep)
-        else:
-            # add this pulse to the current pulse channel
-            self.add_event(time_on=time_on, time_off=time_off, pulse_type=pulse_type, start_inc=start_inc,
-                           stop_inc=stop_inc, dt=dt, fname=fname)  # make sure we add the increment first
-            width = self.event_train[0].duration
-            sep = float(separation)
-            if events_in_train > 1:
-                for nn in range(events_in_train - 1):
-                    t_on = time_on + (nn + 1) * (width + sep)
-                    t_off = time_off + (nn + 1) * (width + sep)
-                    # no need to add any more increments
-                    self.add_event(time_on=t_on, time_off=t_off, pulse_type=pulse_type, fname=fname)
+
+        # add this pulse to the current pulse channel
+        self.add_event(time_on=time_on, time_off=time_off, pulse_type=pulse_type, start_inc=start_inc,
+                       stop_inc=stop_inc, dt=dt, fname=fname)  # make sure we add the increment first
+        width = self.event_train[0].duration
+        sep = float(separation)
+        if events_in_train > 1:
+            for nn in range(events_in_train - 1):
+                t_on = time_on + (nn + 1) * (width + sep)
+                t_off = time_off + (nn + 1) * (width + sep)
+                # no need to add any more increments
+                self.add_event(time_on=t_on, time_off=t_off, pulse_type=pulse_type, fname=fname)
         self.set_latest_channel_event()
         self.set_first_channel_event()
-
-    def randomize_gate_events(self, compgatelength: int=2, paulinum: int=0, width: float, sep: float):
-        """This function implements a channel that will randomize the pulse sequence.
-        :param compgatelength: length of the computational gate sequence
-        :param width: width of each event
-        :param sep: separation between events
-        """
-        """we have 3 types of pulses to generate: Pauli Gates (pi_x, pi_y and pi_z), Computational Gates (pi/2_x, 
-        pi/2_y, pi/2_z) and the R gate (This is a custom gate to make sure the final measurement is an eigenstate of 
-        sigma_z) 
-
-        Parameters:
-        Nl Number of different truncation lengths
-        Ng = Different computational gate sequences
-        Np = Number of Pauli Randomization
-        Ne = Number of Total experiments
-
-        """
-        l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then
-        # truncated Nl times.
-        Ng = 4  # Number of Computational gate sequences
-        P = ['(identity)', '(+pi_x)', '(+pi_y)', '(+pi_z)', '(-pi_x)', '(-pi_y)', '(-pi_z)']  # The Set of Pauli gates
-        G = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
-        L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
-
-        def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
-            # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
-            return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
-
-        """"Pauli operators and their eigenstates"""
-        I = np.array([[1, 0], [0, 1]])  # Identity
-        X = np.array([[0, 1], [1, 0]])  # Sx
-        Y = np.array([[0, -1j], [1j, 0]])  # Sy
-        Z = np.array([[1, 0], [0, -1]])  # Sz
-
-        z0 = np.array([[1], [0]])  # |+z>
-        z1 = np.array([[0], [1]])  # |-z>
-        # x0 = np.round(np.array([[1], [1]]) / np.sqrt(2), 3)  # |+x>
-        # x1 = np.round(np.array([[1], [-1]]) / np.sqrt(2), 3)  # |-x>
-        # y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
-        # y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
-
-        gate = {'(identity)': I,
-                '(+pi_x)': rotation(X, np.pi),
-                '(-pi_x)': rotation(-1 * X, np.pi),
-                '(+pi_y)': rotation(Y, np.pi),
-                '(-pi_y)': rotation(-1 * Y, np.pi),
-                '(+pi/2_x)': rotation(X, np.pi / 2),
-                '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
-                '(+pi/2_y)': rotation(Y, np.pi / 2),
-                '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
-                '(+pi_z)': rotation(Z, np.pi),
-                '(-pi_z)': rotation(-1 * Z, np.pi),
-                '(+pi/2_z)': rotation(Z, np.pi / 2),
-                '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
-                }
-        r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
-                  '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
-                  '(+pi/2_y)': rotation(Y, np.pi / 2),
-                  '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
-                  '(+pi/2_z)': rotation(Z, np.pi / 2),
-                  '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
-                  }
-        replace_z_pi_dictionary = {'(identity)': '(Identity)',
-                                   '(+pi_x)': '(-pi_X)',
-                                   '(-pi_x)': '(+pi_X)',
-                                   '(+pi_y)': '(-pi_Y)',
-                                   '(-pi_y)': '(+pi_Y)',
-                                   '(+pi/2_x)': '(-pi/2_X)',
-                                   '(-pi/2_x)': '(+pi/2_X)',
-                                   '(+pi/2_y)': '(-pi/2_Y)',
-                                   '(-pi/2_y)': '(+pi/2_Y)',
-                                   }
-        replace_z_cw_dictionary = {'(identity)': '(identity)',
-                                   '(+pi_x)': '(+pi_y)',
-                                   '(+pi_y)': '(-pi_x)',
-                                   '(-pi_x)': '(-pi_y)',
-                                   '(-pi_y)': '(+pi_x)',
-                                   '(+pi_z)': '(identity)',
-                                   '(-pi_z)': '(identity)'
-                                   }
-        replace_z_ccw_dictionary = {'(identity)': '(identity)',
-                                    '(+pi_x)': '(-pi_y)',
-                                    '(+pi_y)': '(+pi_x)',
-                                    '(-pi_x)': '(+pi_y)',
-                                    '(-pi_y)': '(-pi_x)',
-                                    '(+pi_z)': '(identity)',
-                                    '(-pi_z)': '(identity)'
-                                    }
-        """
-        Generate the Ng computational gate sequences
-        """
-
-        def save_comp_seq(Ng, l_max):
-
-            loc = maindir / 'SeqDesigns/RB/'
-            file = loc / 'RB_Pauli.txt'
-            try:
-                os.mkdir(file)
-            except FileExistsError:
-                pass
-
-            if os.path.exists(file):
-                Comp_seq_list = np.genfromtxt(file, dtype=str, delimiter='\n')
-                Comp_seq_list = Comp_seq_list.reshape(int(len(Comp_seq_list) / l_max), l_max)
-            else:
-                Comp_seq_list = []
-                for i in range(Ng):
-                    Comp_seq_list.append([])
-                for seq in Comp_seq_list:
-                    for i in range(l_max):
-                        seq.append(random.choice(G))
-                f = open(file, 'w')
-                for i in Comp_seq_list:
-                    for j in i:
-                        f.write(j + '\n')
-                f.close()
-            return Comp_seq_list
-
-        """
-        Choose one of the Ng sequences (j = 0, .. , Ng-1)  truncate it to length l 
-        """
-
-        def gen_G_list(Comp_seq_list, l, j):
-            G_list = Comp_seq_list[j][:l]
-            return G_list
-
-        """Generate a list of l+2 Pauli gates randomly"""
-
-        def gen_P_list(l):
-            P_list = []
-            for i in range(l + 2):
-                P_list.append(random.choice(P))
-            return P_list
-
-        def find_R(gate_list):
-            M = I
-            Rlist = []
-            final_state = 'z0'
-            for i in gate_list:
-                M = np.matmul(gate[i], M)
-            for i in r_gate:
-                M2 = np.matmul(r_gate[i], M)
-                if np.allclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M2, z0)))),
-                               1) or np.allclose(
-                    abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M2, z0)))), 1):
-                    Rlist.append(i)
-            R = random.choice(Rlist)
-            M3 = np.matmul(r_gate[R], M)
-            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
-                final_state = 'z0'
-            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
-                final_state = 'z1'
-            else:
-                print("error!!!")
-            return R, final_state
-
-        """"Generate the full sequence"""
-
-        def full_sequence(l, j):
-            G_list = gen_G_list(Comp_seq_list,l, j)
-            P_list = gen_P_list(l)
-            R, final_state = find_R(G_list)
-            sequence = []
-            for i in range(l):
-                sequence.append(P_list[i])
-                sequence.append(G_list[i])
-            sequence.append(P_list[-2])
-            sequence.append(R)
-            sequence.append(P_list[-1])
-            print("the list of pauli gates is", P_list)
-            print("The list of computational gates is", G_list)
-            print("R = " + R)
-            print("The original sequence is", sequence)
-            return sequence
-
-        """"Replace the z gates by Identity followed by a change in the qubit frame"""
-
-        def replace_z(old_sequence):
-            flag = 0
-            new_sequence = []
-            gate = '(identity)'
-            for i in old_sequence:
-                if ((i in ['(+pi/2_z)']) and flag == 0) or ((i in ['(-pi/2_z)']) and flag == 1):
-                    gate = '(identity)'
-                    flag = -1
-                elif ((i in ['(-pi/2_z)']) and flag == 0) or ((i in ['(+pi/2_z)']) and flag == 1):
-                    gate = '(identity)'
-                    flag = -2
-                elif flag == -1:
-                    gate = replace_z_cw_dictionary[i]
-                elif flag == -2:
-                    gate = replace_z_ccw_dictionary[i]
-                elif i not in ['(+pi_z)', '(-pi_z)'] and flag == 0:
-                    gate = i
-                elif i not in ['(+pi_z)', '(-pi_z)'] and flag == 1:
-                    gate = replace_z_pi_dictionary[i]
-                elif i in ['(+pi_z)', '(-pi_z)'] and flag == 0:
-                    flag = 1
-                    gate = '(identity)'
-                elif i in ['(+pi_z)', '(-pi_z)'] and flag == 1:
-                    flag = 0
-                    gate = '(identity)'
-                new_sequence.append(gate)
-            return new_sequence
-
-        Comp_seq_list = save_comp_seq(Ng, l_max)
-        l = L[compgatelength]  # Choose the truncation length from the L list (l=0,..,Nl-1).
-        k = paulinum  # Choose which computational gate sequence to use (k=0,...,Ng-1).
-        sequence = full_sequence(l, k)
-        final_sequence = replace_z(sequence)
-        print("the final sequence is", final_sequence)
-
 
     def delete_event(self, index):
         if self.num_of_events > 0:
@@ -1094,6 +877,337 @@ class Channel:
     #     self.__first_channel_event = var
 
 
+class RandomGateChannel(Channel):
+    # def __init__(self,ch_type=None, event_train=None, delay=None, pulse_params=None, connection_dict=None,
+    #              event_channel_idx=0, sampletime=1.0 * _ns):
+    #     super().__init__(ch_type=ch_type, event_train=event_train, delay=delay, pulse_params=pulse_params,
+    #                      connection_dict=connection_dict,event_channel_idx=event_channel_idx, sampletime=sampletime)
+    """Provides functionality for a random sequence of :class:`sequence events <SequenceEvent>`.
+        :param ch_type: type of channel, e.g. Marker, Wave, RBenchMark
+        :param event_train: A collection of :class:`sequence events <SequenceEvent>`.
+        :param delay: Delay in the format [AOM delay, MW delay].
+        :param pulse_params: A dictionary containing parameters for the IQ modulator: amplitude, pulseWidth,
+                            SB frequency, IQ scale factor, phase, skewPhase.
+        :param connection_dict: A dictionary of the connections between AWG channels and switches/IQ modulators.
+        :param event_channel_idx: index of event in channel where event train is added
+        :param sampletime: the sampling time (clock rate) used for this channel
+        :param lengths_list: list of lengths out of which one will be used to truncate the events
+        :param paulinum: which of the pauli gate sequences to use
+        """
+    def __init__(self,**kwargs):
+        kwargdic = dict([])
+        for k, v in kwargs.items():
+            kwargdic[k] = v
+        if kwargdic['ch_type'] is None:
+            kwargdic['ch_type'] = _RANDBENCH
+        if kwargdic['pulse_params'] is None:
+            kwargdic['pulse_params'] = _PULSE_PARAMS
+        if kwargdic['sampletime'] is None:
+            kwargdic['sampletime'] = 1.0 * _ns
+        if kwargdic['connection_dict'] is None:
+            kwargdic['connection_dict'] = _CONN_DICT
+        if kwargdic['delay'] is None:
+            kwargdic['delay'] = [0,0]
+        pulse_params = kwargdic['pulse_params']
+        sampletime = kwargdic['sampletime']
+        ch_type = kwargdic['ch_type']
+        delay = kwargdic['delay']
+        L = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
+        if kwargdic['lengths_list'] is None:
+            kwargdic['lengths_list']= L
+        self.lengths_list = kwargdic['lengths_list']
+        self.paulinum = 0
+        self.change_width = True
+        self.change_amp = False
+        super().__init__(ch_type=ch_type, pulse_params=pulse_params, sampletime=sampletime,delay=delay)
+
+    def add_event_train(self,time_on=1e-6, time_off=1.1e-6, separation=0.0, events_in_train=1, pulse_type='Gauss',
+                        start_inc=0.0, stop_inc=0.0, dt=0.0, fname=None):
+        """This function implements a channel that will randomize the pulse sequence.
+        :param events_in_train: length of the computational gate sequence
+        :param separation: separation between events
+        """
+        """we have 3 types of pulses to generate: Pauli Gates (pi_x, pi_y and pi_z), Computational Gates (pi/2_x, 
+        pi/2_y, pi/2_z) and the R gate (This is a custom gate to make sure the final measurement is an eigenstate of 
+        sigma_z) 
+
+        Parameters:
+        Nl Number of different truncation lengths
+        Ng = Different computational gate sequences
+        Np = Number of Pauli Randomization
+        Ne = Number of Total experiments
+
+        """
+        sep = float(separation)
+        l_max = 100  # Number of Computational gates that will be generated in each of the Ng sequences and then
+        # truncated Nl times.
+        Ng = 4  # Number of Computational gate sequences
+        pauli_gates = ['(identity)', '(+pi_x)', '(+pi_y)', '(+pi_z)', '(-pi_x)', '(-pi_y)', '(-pi_z)']  # The Set of Pauli gates
+        comp_gates = ['(+pi/2_x)', '(+pi/2_y)', '(-pi/2_x)', '(-pi/2_y)']  # The set of Comp. gates
+
+        def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
+            # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
+            return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
+
+        """"Pauli operators and their eigenstates"""
+        I = np.array([[1, 0], [0, 1]])  # Identity
+        X = np.array([[0, 1], [1, 0]])  # Sx
+        Y = np.array([[0, -1j], [1j, 0]])  # Sy
+        Z = np.array([[1, 0], [0, -1]])  # Sz
+
+        z0 = np.array([[1], [0]])  # |+z>
+        z1 = np.array([[0], [1]])  # |-z>
+        # x0 = np.round(np.array([[1], [1]]) / np.sqrt(2), 3)  # |+x>
+        # x1 = np.round(np.array([[1], [-1]]) / np.sqrt(2), 3)  # |-x>
+        # y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
+        # y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
+
+        gate = {'(identity)': I,
+                '(+pi_x)': rotation(X, np.pi),
+                '(-pi_x)': rotation(-1 * X, np.pi),
+                '(+pi_y)': rotation(Y, np.pi),
+                '(-pi_y)': rotation(-1 * Y, np.pi),
+                '(+pi/2_x)': rotation(X, np.pi / 2),
+                '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                '(+pi/2_y)': rotation(Y, np.pi / 2),
+                '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                '(+pi_z)': rotation(Z, np.pi),
+                '(-pi_z)': rotation(-1 * Z, np.pi),
+                '(+pi/2_z)': rotation(Z, np.pi / 2),
+                '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                }
+        r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
+                  '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
+                  '(+pi/2_y)': rotation(Y, np.pi / 2),
+                  '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+                  '(+pi/2_z)': rotation(Z, np.pi / 2),
+                  '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                  }
+        replace_z_pi_dictionary = {'(identity)': '(identity)',
+                                   '(+pi_x)': '(-pi_X)',
+                                   '(-pi_x)': '(+pi_X)',
+                                   '(+pi_y)': '(-pi_Y)',
+                                   '(-pi_y)': '(+pi_Y)',
+                                   '(+pi/2_x)': '(-pi/2_X)',
+                                   '(-pi/2_x)': '(+pi/2_X)',
+                                   '(+pi/2_y)': '(-pi/2_Y)',
+                                   '(-pi/2_y)': '(+pi/2_Y)',
+                                   }
+        replace_z_cw_dictionary = {'(identity)': '(identity)',
+                                   '(+pi_x)': '(+pi_y)',
+                                   '(+pi_y)': '(-pi_x)',
+                                   '(-pi_x)': '(-pi_y)',
+                                   '(-pi_y)': '(+pi_x)',
+                                   '(+pi_z)': '(identity)',
+                                   '(-pi_z)': '(identity)'
+                                   }
+        replace_z_ccw_dictionary = {'(identity)': '(identity)',
+                                    '(+pi_x)': '(-pi_y)',
+                                    '(+pi_y)': '(+pi_x)',
+                                    '(-pi_x)': '(+pi_y)',
+                                    '(-pi_y)': '(-pi_x)',
+                                    '(+pi_z)': '(identity)',
+                                    '(-pi_z)': '(identity)'
+                                    }
+        """
+        Generate the Ng computational gate sequences
+        """
+
+        def save_comp_seq(Ng, l_max):
+
+            loc = maindir / 'SeqDesigns/RB/'
+            file = loc / 'RB_Pauli.txt'
+            try:
+                os.mkdir(file)
+            except FileExistsError:
+                pass
+
+            if os.path.exists(file):
+                Comp_seq_list = np.genfromtxt(file, dtype=str, delimiter='\n')
+                Comp_seq_list = Comp_seq_list.reshape(int(len(Comp_seq_list) / l_max), l_max)
+            else:
+                Comp_seq_list = []
+                for i in range(Ng):
+                    Comp_seq_list.append([])
+                for seq in Comp_seq_list:
+                    for i in range(l_max):
+                        seq.append(random.choice(comp_gates))
+                f = open(file, 'w')
+                for i in Comp_seq_list:
+                    for j in i:
+                        f.write(j + '\n')
+                f.close()
+            return Comp_seq_list
+
+        """
+        Choose one of the Ng sequences (j = 0, .. , Ng-1)  truncate it to length l 
+        """
+
+        def gen_G_list(Comp_seq_list, l, j):
+            G_list = Comp_seq_list[j][:l]
+            return G_list
+
+        """Generate a list of l+2 Pauli gates randomly"""
+
+        def gen_P_list(l):
+            P_list = []
+            for i in range(l + 2):
+                P_list.append(random.choice(pauli_gates))
+            return P_list
+
+        def find_R(gate_list):
+            M = I
+            Rlist = []
+            final_state = 'z0'
+            for i in gate_list:
+                M = np.matmul(gate[i], M)
+            for i in r_gate:
+                M2 = np.matmul(r_gate[i], M)
+                if np.allclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M2, z0)))),
+                               1) or np.allclose(
+                    abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M2, z0)))), 1):
+                    Rlist.append(i)
+            R = random.choice(Rlist)
+            M3 = np.matmul(r_gate[R], M)
+            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z0'
+            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M3, z0)))), 1):
+                final_state = 'z1'
+            else:
+                print("error!!!")
+            return R, final_state
+
+        """"Generate the full sequence"""
+
+        def full_sequence(l, j):
+            G_list = gen_G_list(Comp_seq_list, l, j)
+            P_list = gen_P_list(l)
+            R, final_state = find_R(G_list)
+            sequence = []
+            for i in range(l):
+                sequence.append(P_list[i])
+                sequence.append(G_list[i])
+            sequence.append(P_list[-2])
+            sequence.append(R)
+            sequence.append(P_list[-1])
+            print("the list of pauli gates is", P_list)
+            print("The list of computational gates is", G_list)
+            print("R = " + R)
+            print("The original sequence is", sequence)
+            return sequence
+
+        """"Replace the z gates by Identity followed by a change in the qubit frame"""
+
+        def replace_z(old_sequence):
+            flag = 0
+            new_sequence = []
+            gate = '(identity)'
+            for i in old_sequence:
+                if ((i in ['(+pi/2_z)']) and flag == 0) or ((i in ['(-pi/2_z)']) and flag == 1):
+                    gate = '(identity)'
+                    flag = -1
+                elif ((i in ['(-pi/2_z)']) and flag == 0) or ((i in ['(+pi/2_z)']) and flag == 1):
+                    gate = '(identity)'
+                    flag = -2
+                elif flag == -1:
+                    gate = replace_z_cw_dictionary[i]
+                elif flag == -2:
+                    gate = replace_z_ccw_dictionary[i]
+                elif i not in ['(+pi_z)', '(-pi_z)'] and flag == 0:
+                    gate = i
+                elif i not in ['(+pi_z)', '(-pi_z)'] and flag == 1:
+                    gate = replace_z_pi_dictionary[i]
+                elif i in ['(+pi_z)', '(-pi_z)'] and flag == 0:
+                    flag = 1
+                    gate = '(identity)'
+                elif i in ['(+pi_z)', '(-pi_z)'] and flag == 1:
+                    flag = 0
+                    gate = '(identity)'
+                new_sequence.append(gate)
+            return new_sequence
+
+        def sequence_to_event(gate: str = '(identity)', t_on=time_on, t_off=time_off):
+            """We need to convert the list of strings into actual events. we assume that the pulse info given to the
+            object is for a pi/2 pulse. if we need other gates such as pi pulse, we could change either the width
+            or the amplitude """
+            temp_pulseparams = self.pulse_params.copy()
+            phase = temp_pulseparams['phase']  # it is assumed this phase given is for x-axis
+            amp = temp_pulseparams['amplitude']
+            width = t_off - t_on
+            change_amp = self.change_amp
+            change_width = self.change_width
+            if gate == '(identity)':
+                if change_width:
+                    width = 2 * (t_off - t_on)
+                elif change_amp:
+                    amp = 2 * amp
+                else:
+                    pass
+            elif gate == '(pi/2_x)' or gate == '(pi/2_X)':
+                pass
+            elif gate == '(-pi/2_x)' or gate == '(-pi/2_X)':
+                phase = phase + 180
+            elif gate == '(pi/2_y)' or gate == '(pi/2_Y)':
+                phase = phase + 90
+            elif gate == '(-pi/2_y)' or gate == '(-pi/2_Y)':
+                phase = phase + 270
+            elif gate == '(pi_x)' or gate == '(pi_X)':
+                if change_width:
+                    width = 2 * (t_off - t_on)
+                elif change_amp:
+                    amp = 2 * amp
+                else:
+                    pass
+            elif gate == '(-pi_x)' or gate == '(-pi_X)':
+                if change_width:
+                    width = 2 * (t_off - t_on)
+                elif change_amp:
+                    amp = 2 * amp
+                else:
+                    pass
+                phase = phase + 180
+            elif gate == '(pi_y)' or gate == '(pi_Y)':
+                if change_width:
+                    width = 2 * (t_off - t_on)
+                elif change_amp:
+                    amp = 2 * amp
+                else:
+                    pass
+                phase = phase + 90
+            elif gate == '(-pi_y)' or gate == '(-pi_Y)':
+                if change_width:
+                    width = 2 * (t_off - t_on)
+                elif change_amp:
+                    amp = 2 * amp
+                else:
+                    pass
+                phase = phase + 270
+
+            return amp, width, phase
+
+        Comp_seq_list = save_comp_seq(Ng, l_max)
+        length = self.lengths_list[events_in_train]  # Choose the truncation length from the L list (l=0,..,Nl-1).
+        pauli_k = self.paulinum  # Choose which computational gate sequence to use (k=0,...,Ng-1).
+        sequence = full_sequence(length, pauli_k)
+        final_sequence = replace_z(sequence)
+        print("the final sequence is", final_sequence)
+        num_events = len(final_sequence)
+
+        if num_events > 1:
+            temp_pulseparams = self.pulse_params.copy()
+            for nn in range(num_events-1):
+                amp, width, phase = sequence_to_event(final_sequence[nn], t_on=time_on, t_off=time_off)
+                t_on = time_on + (nn + 1) * (width + sep)
+                t_off = time_off + (nn + 1) * (width + sep)
+                self.pulse_params = temp_pulseparams
+                self.pulse_params['amplitude'] = amp
+                self.pulse_params['phase'] = phase
+                self.add_event(time_on=t_on, time_off=t_off, pulse_type=pulse_type, fname=fname)
+        return final_sequence
+
+
+
+
 def find_start_stop_increment_times(pulse):
     """This method finds the start, stop and increment factors from a list of strings"""
     start, stop, start_increment, stop_increment = (0.0, 0.0, 0.0, 0.0)
@@ -1188,7 +1302,7 @@ class Sequence:
 
     def set_latest_sequence_event(self):
         self.latest_sequence_event = 0
-        for id, chan in enumerate(self.channels):
+        for idx, chan in enumerate(self.channels):
             if chan.latest_channel_event > self.latest_sequence_event:
                 self.latest_sequence_event = chan.latest_channel_event
         if self.num_of_wait_events > 0:
@@ -1199,13 +1313,24 @@ class Sequence:
         """Adds a channel of specified channel type, but does not yet add the events data"""
         self.num_of_channels += 1
         temp_pulseparams = self.pulseparams.copy()
+
         if self.num_of_channels > 1:
-            channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=temp_pulseparams,
-                              connection_dict=self.connectiondict, sampletime=self.timeres, event_channel_idx=
-                              self.channels[-1].event_channel_index + 1)
+            if ch_type == _RANDBENCH:
+                channel = RandomGateChannel(delay=self.delay, pulse_parms=temp_pulseparams,
+                                            connection_dict=self.connectiondict, sampletime=self.timeres,
+                                            event_channel_idx=self.channels[-1].event_channel_index + 1)
+            else:
+                channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=temp_pulseparams,
+                                  connection_dict=self.connectiondict, sampletime=self.timeres, event_channel_idx=
+                                  self.channels[-1].event_channel_index + 1)
         else:
-            channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=self.pulseparams,
-                              sampletime=self.timeres, connection_dict=self.connectiondict, event_channel_idx=0)
+            if ch_type == _RANDBENCH:
+                channel = RandomGateChannel(delay=self.delay, pulse_parms=temp_pulseparams,
+                                            connection_dict=self.connectiondict, sampletime=self.timeres,
+                                            event_channel_idx=0)
+            else:
+                channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=self.pulseparams,
+                                  sampletime=self.timeres, connection_dict=self.connectiondict, event_channel_idx=0)
         self.channels.append(channel)
         self.channel_sampletimes.append(self.timeres)
         self.seq_channel_indices.append(channel.event_channel_index)
@@ -1231,7 +1356,7 @@ class Sequence:
         :param chantype: string that gives the channel type that will not be adjusted """
         # first figure out which channel we are being asked to ignore
         insertchan = self.channels[0]
-        for (id, chan) in enumerate(self.channels):
+        for (idx, chan) in enumerate(self.channels):
             if chan.ch_type == chantype:
                 insertchan = chan
         # here we get all the start and stop times that we need from that channel
@@ -1239,7 +1364,7 @@ class Sequence:
         latest_stop_time = insertchan.latest_channel_event
         latest_start_time = np.amax(np.array(insertchan.event_start_times, dtype=np.float32))
         push_time = float(latest_start_time - earliest_start_time)
-        for (id, chan) in enumerate(self.channels):
+        for (idx, chan) in enumerate(self.channels):
             if chan.ch_type != insertchan.ch_type:
                 for idx, evt in enumerate(chan.event_train):
                     # store any values of the start_increment and stop intcrement from the event
@@ -1387,10 +1512,6 @@ class Sequence:
                 sys.stderr.write('Runtime warning/error: {0}\n'.format(err))
         return pulsetype, amplitude_scale, num_events, fname, phase
 
-    def randomize_gate_sequence(self, compgatelength):
-        """This function implements a randomization of the computational gate sequence.
-        :param compgatelength: length of the computational gate sequence"""
-
     def create_channels_from_seq(self, dt=0.0):
         """This method parses the sequence definition which is currently just a list of list of strings, and converts
         it to Channel objects.  Eventually may include more sophisticated parsing techniques, e.g. using a
@@ -1437,7 +1558,7 @@ class Sequence:
                 self.pulseparams['num pulses'] = nevents
                 self.pulseparams['phase'] = phase  # added this on 2020-07-08 to change the phase as well
                 num_event_train[i] = nevents
-                for (id, chan) in enumerate(self.channels):
+                for (idx, chan) in enumerate(self.channels):
                     if chan.ch_type == chan_name:
                         tempchan = Channel(ch_type=chan_name, delay=self.delay, pulse_params=self.pulseparams,
                                            connection_dict=self.connectiondict, sampletime=self.timeres,
