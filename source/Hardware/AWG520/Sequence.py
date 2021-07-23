@@ -1218,10 +1218,12 @@ class RandomGateChannel(Channel):
         # find the length that is closest to the truncation lengths list
         length = closest(self.lengths_list,events_in_train)
         #length = self.lengths_list[events_in_train]  # Choose the truncation length from the L list (l=0,..,Nl-1).
-        pauli_k = random.randint(0,self.num_comp_gate_seqs-1)  # Choose randomly which computational gate sequence to use (k=0,...,Ng-1).
+        # Choose randomly which computational gate sequence to use (k=0,...,Ng-1).
+        pauli_k = random.randint(0,self.num_comp_gate_seqs-1)
         sequence = full_sequence(length, pauli_k)   # find the full sequence
         final_sequence = replace_z(sequence)  # replace Pi_z rotations by identity and frame switching
         print("the final sequence is", final_sequence)
+
         ## Now we convert the sequence into a list of events
         temp_pulseparams = self.pulse_params.copy()   # get a copy of pulse params
         num_events = len(final_sequence)
@@ -1807,22 +1809,29 @@ class SequenceList(object):
         # dt = float(self.scanparams['stepsize'])
         temp_pulseparams = self.pulseparams.copy()  # store a temporary copy of the pulseparams variable
         if self.scanparams['type'] == 'no scan':
+            # the no scan may be useful for testing sequences
             s = Sequence(self.sequence, delay=self.delay, pulseparams=self.pulseparams,
                          connectiondict=self.connectiondict, timeres=self.timeres)
             s.create_sequence(dt=0)
             self.sequencelist.append(s)
+        # now we do the random scan
         elif self.scanparams['type'] == 'random scan':
             rng = np.random.default_rng()
-            # generate a list of random truncation lengths for the scans
-            self.scanlist = rng.integers(self.scanparams['start'],self.scanparams['stop']-1)
-            # choose which of the pauli gate sequences you will run encoded in the parameter steps
-            self.paulinums = rng.integers(0,self.scanparams['steps'])
-
+            stop = self.scanparams['start'] + self.scanparams['steps'] * self.scanparams['stepsize']
+            # generate a list of random truncation lengths for the scans, the number of lengths given by steps param
+            self.scanlist = rng.integers(self.scanparams['start'],stop,
+                                         self.scanparams['steps'])
+            # choose how many pauli gate sequences you will run encoded in the parameter stepsize
+            self.paulinum = self.scanparams['stepsize']
             for x in self.scanlist:
                 s = Sequence(self.sequence,delay=self.delay,pulseparams=self.pulseparams,connectiondict=self.connectiondict, timeres=self.timeres)
                 s.trunc_lengths = self.scanlist
-                s.paulinum = self.paulinums
+                s.paulinum = self.paulinum
+                print("scan length is",x)
+                s.create_sequence(dt=0.0)
+                self.sequencelist.append(s)
         else:
+            # all other types of scans
             for x in self.scanlist:
                 self.pulseparams = temp_pulseparams.copy()
                 if self.scanparams['type'] == 'time':

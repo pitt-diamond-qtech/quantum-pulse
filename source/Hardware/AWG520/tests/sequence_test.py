@@ -56,9 +56,12 @@ def make_seq_list():
     # seq = 'Wave,2.6e-6,3e-6,Load Wfm,fname='+filestr+',amp = 0.4'
     # seq = 'Wave,2.6e-6,3e-6,Gauss,n=2++\nGreen,3.5e-6,5e-6'
     #  seq = 'Green,0.0,1e-6'
-    newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
-                 'skew phase':0.0, 'num pulses': 3}
-    newscanparams = {'type':'time','start': 1e-7, 'stepsize': 2e-7, 'steps': 3}
+    seq = 'RandBench,1e-6,1.125e-6,Gauss,amp=1++,n=3,phase=0'
+    newparams = {'amplitude': 500.0, 'pulsewidth': 10e-9, 'SB freq': 10e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
+                 'skew phase': 0.0, 'num pulses': 1}
+    #newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
+    #             'skew phase':0.0, 'num pulses': 3}
+    newscanparams = {'type':'random scan','start': 1, 'stepsize': 2, 'steps': 3}
     s = SequenceList(seq, pulseparams=newparams, timeres=1, scanparams=newscanparams)
     s.create_sequence_list()
     for nn in list(range(len(s.sequencelist))):
@@ -95,6 +98,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    test_sequence()
-    #test_seq_list()
+    #test_sequence()
+    test_seq_list()
     #make_long_seq()
