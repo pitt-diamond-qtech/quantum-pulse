@@ -447,7 +447,6 @@ class appGUI(QtWidgets.QMainWindow):
         self.scan['type'] = scantypes.get(selection)
         self.choosescanValidator()
 
-
     def updateAvg(self):
         self.parameters[3] = int(self.ui.lineEditAvgNum.text())
 

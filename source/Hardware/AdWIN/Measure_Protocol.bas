@@ -30,8 +30,8 @@ init:
   r=0
   Par_10=0
 
-  count_time = (Par_3  -10)/10 'added on 2/6/20 to allow passing parameter from Python
-  reset_time = (Par_4 - 30)/10  'added on 2/6/20 to allow passing parameter from Python
+  count_time = (Par_3-10)/10 'added on 2/6/20 to allow passing parameter from Python
+  reset_time = (Par_4-30)/10  'added on 2/6/20 to allow passing parameter from Python
 
 
 event:
