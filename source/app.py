@@ -87,12 +87,13 @@ class appGUI(QtWidgets.QMainWindow):
         # self.mw = {'PTS':[True, '2870.0', False, '2840.0','1','100','2940.0'],'SRS':[False, '2870.0', False, '2840.0','1','100','2940.0']}
         self.awgparams= {'awg device': 'awg520', 'time resolution': 1, 'pulseshape': 'Square', 'enable IQ': False}
         self.pulseparams = {'amplitude': 1000, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
-        self.parameters = [50000, 300, 2000, 10, 10, 705e-9, 10e-9]
+        self.parameters = [50000, 300, 2000, 10, 10, 715e-9, 10e-9]
         # should make into dictionary with keys ['sample', 'count time', 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay']
         self.timeRes = 1  # default value for AWG time resolution
 
         self.init_metadata_text_box()
         self.init_seq_text_box()
+        self.scan_random = False  # boolean value to check whether this is a randomized benchmarking scan (because the plot is different for RB)
 
         self.standingby = False
 
@@ -332,6 +333,7 @@ class appGUI(QtWidgets.QMainWindow):
         '''This function creates all the threads needed to carry out I/O with hardware. '''
         self.uThread = UploadThread()
         self.uThread.done.connect(self.uploadDone) # when the done signal is emitted we handle it using uploadDone
+        self.uThread.rbinfo.connect(self.updateRBinfo) # updates the RB fields in the app (final states, seqs and scan lengths) once it's being received by the seqlist class
         self.sThread = ScanThread()
         self.sThread.data.connect(self.dataBack) # when data signal is emitted we handle using dataBack
         # self.sThread.tracking.connect(self.trackingBack) # when tracking signal is emitted we handle using trackingback
@@ -443,8 +445,11 @@ class appGUI(QtWidgets.QMainWindow):
 
     def updateScanType(self):
         selection = self.ui.scantypecomboBox.currentIndex()
-        scantypes = {0:'amplitude', 1:'time', 2: 'number', 3:'Carrier frequency', 4:'SB freq', 5:'pulsewidth', 6:'phase', -1:'no scan'}
+        scantypes = {0:'amplitude', 1:'time', 2: 'number', 3:'Carrier frequency', 4:'SB freq', 5:'pulsewidth', 6:'phase', 7:'random scan', -1:'no scan'}
         self.scan['type'] = scantypes.get(selection)
+        # testing whether the scan is a Randomized Benchmarking scan
+        if self.scan['type'] == scantypes[7]: self.scan_random = True  # Sets the scan_random variable to True if the user selects 'random scan'
+        else: self.scan_random = False
         self.choosescanValidator()
 
 
@@ -468,6 +473,8 @@ class appGUI(QtWidgets.QMainWindow):
             regexp = QtCore.QRegExp("\\d{1,6}(\\.)?\\d{,6}(e|E)?([+-])?\\d")  # we don't allow for pulsewidths larger than 1000 ns for now
         elif selector == 6: # phase scan
             regexp = QtCore.QRegExp("(?:36[0]|3[0-5][0-9]|[12][0-9][0-9]|[1-9]?[0-9])?$")  # we don't allow for pulsewidths larger than 1000 ns for now
+        elif selector == 7: # random scan
+            regexp = QtCore.QRegExp("[0-9]{,3}") # can at most have 3 digits
         else:
             regexp = QtCore.QRegExp("[0-9]*")
         validator = QtGui.QRegExpValidator(regexp)
@@ -499,6 +506,16 @@ class appGUI(QtWidgets.QMainWindow):
     #     self.ui.lineEditScanStop.setValidator(validator)
     #     self.ui.lineEditScanNum.setValidator(QtGui.QIntValidator(1, 1000))  # we allow for at most 1000 steps at the moment
     #     self.ui.lineEditAvgNum.setValidator(QtGui.QIntValidator(1, 1000))  # same with number of averages
+
+    def updateRBinfo(self, final_states, final_seqs, x_arr):
+        # this function is used to capture information about the scan when the scan is randomized benchmarking
+        self.rb_x_arr = x_arr  # sent for plotting
+        sort_index = np.argsort(np.array(x_arr))  # returns the indices that sorts the x_arr
+        final_states_sorted = [final_states[i] for i in sort_index]
+        final_seqs_sorted = [final_seqs[i] for i in sort_index]
+        self.ui.rbStatestext.setText(' '.join(final_states_sorted))
+        temp = [' '.join(seqs) for seqs in final_seqs_sorted]
+        self.ui.rbSeqstext.setText('\n\n'.join(temp))
 
 
     def updateScanStop(self):
@@ -772,7 +789,9 @@ class appGUI(QtWidgets.QMainWindow):
                     f.write(str(self.tab_data[self.avgCount - 1][i][0]) + '\t' + str(
                         self.tab_data[self.avgCount - 1][i][1]) + '\n')
                 f.close()
-            self.updateDataPlot()
+            if self.scan_random: self.updateRBplot()
+            else: self.updateDataPlot()
+
 
         if self.dataCount == len(self.raw_data):
             self.scanDone()
@@ -796,7 +815,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.checkBoxAutoSave.setEnabled(True)
         self.ui.checkBoxAutoSave.setEnabled(True)
         self.dataPlot_renew = True
-        self.updateDataPlot()
+        if self.scan_random: self.updateRBplot()
+        else: self.updateDataPlot()
 
         if self.ui.checkBoxAutoSave.checkState():
             f = open(self.dir_log, 'w')
@@ -875,6 +895,19 @@ class appGUI(QtWidgets.QMainWindow):
 
         self.ui.mplDataPlot.draw()
     # end scanning functions
+
+    def updateRBplot(self):
+        # This function updates the plot when the scan is a random scan -> Scatter Plot
+        self.ui.mplDataPlot.axes.clear()
+        avgData = numpy.average(self.tab_data[:self.avgCount], 0)
+        [sigData, refData] = numpy.transpose(avgData)
+        print(len(self.rb_x_arr), len(sigData), len(refData))
+        print(self.rb_x_arr)
+
+        self.ui.mplDataPlot.axes.set_xlim(min(self.rb_x_arr)-1,max(self.rb_x_arr)+1)
+        self.ui.mplDataPlot.axes.scatter(self.rb_x_arr, refData, c='k')
+        self.ui.mplDataPlot.axes.scatter(self.rb_x_arr, sigData, c='r')
+        self.ui.mplDataPlot.draw()
 
 if __name__ == '__main__':
 

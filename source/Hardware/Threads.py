@@ -68,11 +68,14 @@ class UploadThread(QtCore.QThread):
     6. mwparams = mw params dict
     7. timeRes = awg clock rate in ns
 
-    This class emits one Pyqtsignal
-    1. done  - when the upload is finished
+    This class emits two Pyqtsignals
+    1. done  - to let the app know when the upload is finished
+    2. rbinfo - to communicate the random scan info such as final sequence list, final states list, and the scan lengths to the app
     """
-    # this method only has one PyQt signal done which is emitted once the upload is finished
-    done=QtCore.pyqtSignal()
+
+    done = QtCore.pyqtSignal()
+    rbinfo = QtCore.pyqtSignal(list,list,list) # rbinfo emits a signal of (final states, final sequences, scan lengths)
+
     def __init__(self,parent=None, dirPath=dirPath, awgPath=awgPath):
         #super().__init__(self)
         QtCore.QThread.__init__(self,parent)
@@ -115,6 +118,7 @@ class UploadThread(QtCore.QThread):
 
         # enable_scan_pts = self.mw['PTS'][2]
         scan_carrier_freq = (self.scan['type'] == 'Carrier frequency')
+        scan_random = (self.scan['type'] == 'random scan') # if the scan is a random scan, it should update the RB fields in the app. This is a boolean generated for this purpose.
         # do_enable_iq = self.awgparams['enable IQ']
         # npulses = self.pulseparams['num pulses']
         # if scan_carrier_freq:
@@ -127,6 +131,11 @@ class UploadThread(QtCore.QThread):
         # write the files to the AWG520/sequencefiles directory
         self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
         self.awgfile.write_sequence(sequences=self.sequences,seqfilename="scan.seq",repeat= samples)
+        if scan_random:
+            final_states = list(list(zip(*self.sequences.rbinfo_list))[0])
+            final_seqs = list(list(zip(*self.sequences.rbinfo_list))[1])
+            x_arr = self.sequences.rbscanlengths
+            self.rbinfo.emit(final_states, final_seqs, x_arr)
         # -----------------------------------------------------------------------------------------------
         # now upload the files
         # self.done.emit()

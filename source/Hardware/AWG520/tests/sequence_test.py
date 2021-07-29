@@ -25,8 +25,8 @@ def make_seq():
     # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,Sech,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     # seq = 'Green,0.6e-6,0.7e-6\nWave,1e-6+t,1.5e-6+t,SquareI,a=0.5,n=2\nMeasure,1.5e-6+t,1.8e-6+t'
     # seq = 'S1,1e-6,1.01e-6+t\nGreen,1.02e-6+t,4.02e-6+t\nMeasure,1.02e-6+t,1.12e-6+t'
-    seq = 'RandBench,1e-6,1.125e-6,Gauss,amp=1++,n=3,phase=0'
-    newparams = {'amplitude': 500.0, 'pulsewidth': 10e-9, 'SB freq': 10e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
+    seq = 'RandBench,1e-6,1.500e-6,Gauss,width++,n=3,phase=0'
+    newparams = {'amplitude': 500.0, 'pulsewidth': 10e-9, 'SB freq': 0, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase': 0.0, 'num pulses': 1}
     #delay = [8.2e-7,1e-8]   # use this format for delay now and pass it to Sequence object
     s = Sequence(seq,pulseparams=newparams,timeres=0.1)
@@ -51,19 +51,19 @@ def make_seq_list():
     # print(str(wfmdir.resolve()))
     # notice the sequence below scans time by setting all times after the pulse that is being scanned are also moved
     # seq = 'Green,1.6e-6,2.5e-6\n'Wave,1e-6+t,1.5e-6+t,Sech\n Measure,1.5e-6+t,1.8e-6+t'
-    seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.5e-6+t,4.5e-6+t\n'+ \
-           'Measure,1.5e-6+t,1.7e-6+t'
+    # seq = 'S2,1e-6,1.025e-6\n'+'S2,1.03e-6+t,1.05e-6+t\n'+ 'Green,1.5e-6+t,4.5e-6+t\n'+ 'Measure,1.5e-6+t,1.7e-6+t'
     # seq = 'Wave,2.6e-6,3e-6,Load Wfm,fname='+filestr+',amp = 0.4'
-    # seq = 'Wave,2.6e-6,3e-6,Gauss,n=2++\nGreen,3.5e-6,5e-6'
+    # seq = 'Wave,2.6e-6,3e-6,Gauss,n=1++\nGreen,3.5e-6,5e-6'
     #  seq = 'Green,0.0,1e-6'
-    seq = 'RandBench,1e-6,1.125e-6,Gauss,amp=1++,phase=0'
+    seq = 'RandBench,1e-6,1.125e-6,Square,width++'
     newparams = {'amplitude': 500.0, 'pulsewidth': 10e-9, 'SB freq': 10e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
                  'skew phase': 0.0, 'num pulses': 1}
     #newparams = {'amplitude': 1000.0, 'pulsewidth': 10e-9, 'SB freq': 1e-7, 'IQ scale factor': 1.0, 'phase': 0.0,
     #             'skew phase':0.0, 'num pulses': 3}
-    newscanparams = {'type':'random scan','start': 1, 'stepsize': 2, 'steps': 3}
+    newscanparams = {'type':'random scan','start': 1, 'stepsize': 2, 'steps': 5}
     s = SequenceList(seq, pulseparams=newparams, timeres=1, scanparams=newscanparams)
     s.create_sequence_list()
+    print(s.rbinfo_list)
     for nn in list(range(len(s.sequencelist))):
         xstop = s.sequencelist[nn].latest_sequence_event
         points = len(s.sequencelist[nn].c1markerdata)
@@ -72,7 +72,7 @@ def make_seq_list():
         c2dat = s.sequencelist[nn].c2markerdata
         tt = np.linspace(0, xstop, points)*1e6
         plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :], 'b-', tt, c1dat, 'g--',tt,c2dat,'+')
-        #plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :])
+        plt.plot(tt, ydat[0, :], 'r-', tt, ydat[1, :])
         plt.show()
     # plt.plot(tt,s.wavedata[1,:])
 
@@ -98,6 +98,6 @@ def test_seq_list():
     make_seq_list()
 
 if __name__ == '__main__':
-    #test_sequence()
+    # test_sequence()
     test_seq_list()
     #make_long_seq()

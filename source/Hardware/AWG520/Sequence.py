@@ -920,7 +920,7 @@ class RandomGateChannel(Channel):
         # sampletime = kwargdic['sampletime']
         # ch_type = kwargdic['ch_type']
         # delay = kwargdic['delay']
-        trunc_lengths = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
+        trunc_lengths = [2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]  # The list of different truncation lengths
         if 'change_amp' not in kwargdic:
             kwargdic['change_amp'] = False
         if 'change_width' not in kwargdic:
@@ -979,23 +979,36 @@ class RandomGateChannel(Channel):
         # y0 = np.round(np.array([[1], [1j]]) / np.sqrt(2), 3)  # |+y>
         # y1 = np.round(np.array([[1], [-1j]]) / np.sqrt(2), 3)  # |-y>
 
-        def rotation(spin_axis, angle):  # takes a rotation axis and angle and returns a rotation matrix
+        def rotation(spin_axis, angle):  # takes a rotation axis and an angle and returns a rotation matrix
             # return round(np.cos(angle/2),3)*I -1j* round(np.sin(angle/2),3)*spin_axis
             return np.cos(angle / 2) * I - 1j * np.sin(angle / 2) * spin_axis
 
-        gate = {'(identity)': I,
-                '(+pi_x)': rotation(X, np.pi),
-                '(-pi_x)': rotation(-1 * X, np.pi),
-                '(+pi_y)': rotation(Y, np.pi),
-                '(-pi_y)': rotation(-1 * Y, np.pi),
-                '(+pi/2_x)': rotation(X, np.pi / 2),
-                '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
-                '(+pi/2_y)': rotation(Y, np.pi / 2),
-                '(-pi/2_y)': rotation(-1 * Y, np.pi / 2),
+        gate = {'(identity)' : I,
+                '(+pi_x)' : rotation(X,np.pi),
+                '(-pi_x)' : rotation(-1*X,np.pi),
+                '(+pi_y)' : rotation(Y,np.pi),
+                '(-pi_y)' : rotation(-1*Y,np.pi),
+                '(+pi/2_x)' : rotation(X,np.pi /2),
+                '(-pi/2_x)' : rotation(-1*X,np.pi /2),
+                '(+pi/2_y)' : rotation(Y,np.pi/2),
+                '(-pi/2_y)' : rotation(-1*Y,np.pi/2),
                 '(+pi_z)': rotation(Z, np.pi),
                 '(-pi_z)': rotation(-1 * Z, np.pi),
                 '(+pi/2_z)': rotation(Z, np.pi / 2),
-                '(-pi/2_z)': rotation(-1 * Z, np.pi / 2)
+                '(-pi/2_z)': rotation(-1 * Z, np.pi / 2),
+                '(Identity)' : I,
+                '(+pi_X)' : rotation(X,np.pi),
+                '(-pi_X)' : rotation(-1*X,np.pi),
+                '(+pi_Y)' : rotation(Y,np.pi),
+                '(-pi_Y)' : rotation(-1*Y,np.pi),
+                '(+pi/2_X)' : rotation(X,np.pi /2),
+                '(-pi/2_X)' : rotation(-1*X,np.pi /2),
+                '(+pi/2_Y)' : rotation(Y,np.pi/2),
+                '(-pi/2_Y)' : rotation(-1*Y,np.pi/2),
+                '(+pi_Z)': rotation(Z, np.pi),
+                '(-pi_Z)': rotation(-1 * Z, np.pi),
+                '(+pi/2_Z)': rotation(Z, np.pi / 2),
+                '(-pi/2_Z)': rotation(-1 * Z, np.pi / 2)
                 }
         r_gate = {'(+pi/2_x)': rotation(X, np.pi / 2),
                   '(-pi/2_x)': rotation(-1 * X, np.pi / 2),
@@ -1147,6 +1160,19 @@ class RandomGateChannel(Channel):
                 new_sequence.append(gate)
             return new_sequence
 
+        def find_final_state(gate_list):
+            M = I
+            for i in gate_list:
+                M = np.matmul(gate[i], M)
+
+            if np.isclose(abs(np.inner(np.ndarray.flatten(z0), np.ndarray.flatten(np.matmul(M, z0)))), 1):
+                final_state_final = 'z0'
+            elif np.isclose(abs(np.inner(np.ndarray.flatten(z1), np.ndarray.flatten(np.matmul(M, z0)))), 1):
+                final_state_final = 'z1'
+            else:
+                print("error!!!")
+            return final_state_final
+
         def strings_to_event(gate: str = '(identity)'):
             """We need to convert the list of strings into actual events. we assume that the pulse info given to the
             object is for a pi/2 pulse. if we need other gates such as pi pulse, we could change either the width
@@ -1161,38 +1187,35 @@ class RandomGateChannel(Channel):
             change_width = self.change_width
             if gate == '(identity)':
                 amp = 0  # we want identity to have 0 amplitude
-                if change_width:
-                    widthfactor = 2.0
-                elif change_amp:
-                    amp = 2 * amp
-                else:
-                    pass
-            elif gate == '(pi/2_x)' or gate == '(pi/2_X)':
+            elif gate == '(+pi/2_x)' or gate == '(+pi/2_X)':
                 pass
             elif gate == '(-pi/2_x)' or gate == '(-pi/2_X)':
                 phase = 180
-            elif gate == '(pi/2_y)' or gate == '(pi/2_Y)':
+            elif gate == '(+pi/2_y)' or gate == '(+pi/2_Y)':
                 phase =  90
             elif gate == '(-pi/2_y)' or gate == '(-pi/2_Y)':
                 phase =  270
-            elif gate == '(pi_x)' or gate == '(pi_X)':
+            elif gate == '(+pi_x)' or gate == '(+pi_X)':
                 if change_width:
                     widthfactor = 2.0
+                    # widthfactor = 2.0 * (t_off - t_on)
                 elif change_amp:
                     amp = 2 * amp
                 else:
                     pass
             elif gate == '(-pi_x)' or gate == '(-pi_X)':
                 if change_width:
-                    widthfactor = 2 * (t_off - t_on)
+                    widthfactor = 2.0
+                    # widthfactor = 2 * (t_off - t_on)
                 elif change_amp:
                     amp = 2 * amp
                 else:
                     pass
                 phase = 180
-            elif gate == '(pi_y)' or gate == '(pi_Y)':
+            elif gate == '(+pi_y)' or gate == '(+pi_Y)':
                 if change_width:
-                    widthfactor = 2 * (t_off - t_on)
+                    widthfactor = 2.0
+                    # widthfactor = 2 * (t_off - t_on)
                 elif change_amp:
                     amp = 2 * amp
                 else:
@@ -1200,7 +1223,8 @@ class RandomGateChannel(Channel):
                 phase = 90
             elif gate == '(-pi_y)' or gate == '(-pi_Y)':
                 if change_width:
-                    widthfactor = 2 * (t_off - t_on)
+                    widthfactor = 2.0
+                    # widthfactor = 2 * (t_off - t_on)
                 elif change_amp:
                     amp = 2 * amp
                 else:
@@ -1222,7 +1246,9 @@ class RandomGateChannel(Channel):
         pauli_k = random.randint(0,self.num_comp_gate_seqs-1)
         sequence = full_sequence(length, pauli_k)   # find the full sequence
         final_sequence = replace_z(sequence)  # replace Pi_z rotations by identity and frame switching
-        print("the final sequence is", final_sequence)
+
+        # print("the final sequence is", final_sequence)
+        # print(f'The final state is: {find_final_state(final_sequence)}')
 
         ## Now we convert the sequence into a list of events
         temp_pulseparams = self.pulse_params.copy()   # get a copy of pulse params
@@ -1231,29 +1257,34 @@ class RandomGateChannel(Channel):
         amp, widthfactor, phase = strings_to_event(final_sequence[0])
         self.pulse_params['amplitude'] = temp_pulseparams['amplitude']*amp
         self.pulse_params['phase'] = temp_pulseparams['phase']+phase
+        self.pulse_params['pulsewidth'] = temp_pulseparams['pulsewidth']*widthfactor
         # create first event with an event width given by multiplying the width factor if needed
         event_width = (time_off - time_on)*widthfactor
         self.add_event(time_on=time_on, time_off=time_on+event_width, pulse_type=pulse_type, start_inc=start_inc,
                        stop_inc=stop_inc, dt=dt, fname=fname)  # make sure we add the increment first
         # if the event width is too small, update it to the correct duration
-        if self.event_train[0].duration > event_width:
-            event_width = self.event_train[0].duration
+        # if self.event_train[0].duration > event_width:
+        #     event_width = self.event_train[0].duration
         # now do the same for the other events
+        cum_event_train_duration = time_on + event_width
         if num_events > 1:
             for nn in range(num_events-1):
                 amp, widthfactor, phase = strings_to_event(final_sequence[nn+1])
                 self.pulse_params = temp_pulseparams.copy()
                 self.pulse_params['amplitude'] *= amp
                 self.pulse_params['phase'] += phase
+                self.pulse_params['pulsewidth'] *= widthfactor
                 event_width = (time_off - time_on) * widthfactor
-                if self.event_train[nn].duration > event_width:
-                    event_width = self.event_train[0].duration*widthfactor
-                t_on = time_on + (nn+1) * (event_width + sep)
+                # if self.event_train[nn].duration > event_width:
+                #     event_width = self.event_train[0].duration*widthfactor
+                # t_on = time_on + (nn+1) * (event_width + sep)
+                t_on = cum_event_train_duration
                 t_off = t_on + event_width
                 self.add_event(time_on=t_on, time_off=t_off, pulse_type=pulse_type, fname=fname)
+                cum_event_train_duration += event_width
         self.set_first_channel_event()
         self.set_latest_channel_event()
-        return final_sequence
+        return find_final_state(final_sequence), final_sequence
 
 
 
@@ -1306,7 +1337,8 @@ class Sequence:
         self.seq = []
         self.convert_text_to_seq(seqtext)  # this function creates the seq object, a list of list of strings
         self.timeres = float(timeres) * _ns  # old code was written assuming everything in ns, so fix that
-
+        self.rb_nevents = 1  # this was created to account for the nevents variable when the scan is a random scan
+        self.rbinfo_list = []  # a list created to save the random scan info (final states and final sequences)
         if pulseparams is None:
             self.pulseparams = _PULSE_PARAMS
         # if pulseparams == None:
@@ -1334,7 +1366,7 @@ class Sequence:
         self.change_width = False
         self.paulinum = 4 # this variable is used in random benchmarking to pick one of the pauli random sequences
         # this variable is used in RB to fix the truncation lengths
-        self.trunc_lengths = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]
+        self.trunc_lengths = [2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96]
         # init the arrays
         self.wavedata = None
         self.c1markerdata = None
@@ -1678,10 +1710,12 @@ class Sequence:
                 ch = self.channels[-1]
                 if ch.ch_type == _RANDBENCH:
                     #ch.set_pauli_num(self.paulinum)
-                    #ch.set_lengths_list(self.trunc_lengths)
-                    ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
+                    ch.set_lengths_list(self.trunc_lengths)
+                    nevents = self.rb_nevents  # this is the nevents value for random benchmarking
+                    final_state, final_seq = ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
                                        stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt,
                                        fname=fname)
+                    self.rbinfo_list = [final_state, final_seq]
                 else:
                     ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
                                    stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
@@ -1804,6 +1838,8 @@ class SequenceList(object):
         self.timeres = timeres
         self.sequence = sequence
         self.sequencelist = []
+        self.rbinfo_list = []
+        self.rbscanlengths = []
 
     def create_sequence_list(self):
         # dt = float(self.scanparams['stepsize'])
@@ -1816,20 +1852,27 @@ class SequenceList(object):
             self.sequencelist.append(s)
         # now we do the random scan
         elif self.scanparams['type'] == 'random scan':
-            rng = np.random.default_rng()
-            stop = self.scanparams['start'] + self.scanparams['steps'] * self.scanparams['stepsize']
+            # rng = np.random.default_rng()
+            stop = self.scanparams['start'] + (self.scanparams['steps']-1) * self.scanparams['stepsize']
             # generate a list of random truncation lengths for the scans, the number of lengths given by steps param
-            self.scanlist = rng.integers(self.scanparams['start'],stop,
-                                         self.scanparams['steps'])
+            # self.scanlist = rng.integers(self.scanparams['start'],stop,self.scanparams['steps'])
+            # modified this as: we first generate a uniform list and then shuffle it for the purpose of interleaving. because the earlier method was repeating length values
+            self.scanlist = np.linspace(self.scanparams['start'], stop, self.scanparams['steps'])
+            random.shuffle(self.scanlist)
+            self.scanlist = self.scanlist.astype(int)
             # choose how many pauli gate sequences you will run encoded in the parameter stepsize
             self.paulinum = self.scanparams['stepsize']
             for x in self.scanlist:
                 s = Sequence(self.sequence,delay=self.delay,pulseparams=self.pulseparams,connectiondict=self.connectiondict, timeres=self.timeres)
                 s.trunc_lengths = self.scanlist
                 s.paulinum = self.paulinum
+                s.rb_nevents = x
                 print("scan length is",x)
                 s.create_sequence(dt=0.0)
+                self.rbinfo_list.append(s.rbinfo_list)
+                self.rbscanlengths.append(x)
                 self.sequencelist.append(s)
+            print(self.rbscanlengths)
         else:
             # all other types of scans
             for x in self.scanlist:
