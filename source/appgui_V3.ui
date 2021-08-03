@@ -1078,7 +1078,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>30</y>
+         <y>10</y>
          <width>221</width>
          <height>81</height>
         </rect>
@@ -1318,7 +1318,7 @@ p, li { white-space: pre-wrap; }
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>160</y>
+         <y>130</y>
          <width>181</width>
          <height>32</height>
         </rect>
@@ -1380,7 +1380,7 @@ p, li { white-space: pre-wrap; }
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>130</y>
+         <y>100</y>
          <width>71</width>
          <height>21</height>
         </rect>
@@ -1392,6 +1392,43 @@ p, li { white-space: pre-wrap; }
        </property>
        <property name="text">
         <string>Scan type</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEditCompSeqNum">
+       <property name="geometry">
+        <rect>
+         <x>120</x>
+         <y>170</y>
+         <width>81</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>1</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="placeholderText">
+        <string>CompSeqNum</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="labelCompSeqNum">
+       <property name="geometry">
+        <rect>
+         <x>30</x>
+         <y>170</y>
+         <width>81</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Comp. Seq. # (j)</string>
        </property>
       </widget>
      </widget>

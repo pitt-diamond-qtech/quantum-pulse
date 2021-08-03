@@ -94,7 +94,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.init_metadata_text_box()
         self.init_seq_text_box()
         self.scan_random = False  # boolean value to check whether this is a randomized benchmarking scan (because the plot is different for RB)
-
+        self.ui.lineEditCompSeqNum.hide()
+        self.ui.labelCompSeqNum.hide()
         self.standingby = False
 
         self.setup_connections() # this sets up all the connections for push buttons and line edits etc
@@ -194,6 +195,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.lineEditScanStep.editingFinished.connect(self.updateScanNum)
         self.ui.lineEditScanStop.editingFinished.connect(self.updateScanNum)
         self.ui.lineEditScanNum.editingFinished.connect(self.updateScanStop)
+        self.ui.lineEditCompSeqNum.editingFinished.connect(self.updateCompSeqNum)
+
         # setup default text and slots for changing the sequence samples, count time, and reset time parameters
         self.ui.lineEditSamples.setPlaceholderText('50000')
         self.ui.lineEditCountTime.setPlaceholderText('300')
@@ -448,7 +451,10 @@ class appGUI(QtWidgets.QMainWindow):
         scantypes = {0:'amplitude', 1:'time', 2: 'number', 3:'Carrier frequency', 4:'SB freq', 5:'pulsewidth', 6:'phase', 7:'random scan', -1:'no scan'}
         self.scan['type'] = scantypes.get(selection)
         # testing whether the scan is a Randomized Benchmarking scan
-        if self.scan['type'] == scantypes[7]: self.scan_random = True  # Sets the scan_random variable to True if the user selects 'random scan'
+        if self.scan['type'] == scantypes[7]:
+            self.scan_random = True  # Sets the scan_random variable to True if the user selects 'random scan'
+            self.ui.lineEditCompSeqNum.show()
+            self.ui.labelCompSeqNum.show()
         else: self.scan_random = False
         self.choosescanValidator()
 
@@ -547,6 +553,10 @@ class appGUI(QtWidgets.QMainWindow):
     # end amplitude scan updates
     # begin PTS scan updates
 
+    def updateCompSeqNum(self):
+        '''this function updates the Comp Seq Number'''
+        self.CompSeqNum = int(self.ui.lineEditCompSeqNum.text())
+
     def enablePTS(self, checkState):
         if checkState:
             #self.ui.checkBoxScanPTS.setEnabled(True)
@@ -620,6 +630,8 @@ class appGUI(QtWidgets.QMainWindow):
         self.uThread.pulseparams = self.pulseparams
         self.uThread.mw=self.mw
         self.uThread.timeRes=self.timeRes
+        if self.scan_random == True: self.uThread.CompSeqNum=self.CompSeqNum
+        else: self.uThread.CompSeqNum=1
         #--------------------------------------------------------------
         # and now comment out the lines below this block
         # # create files

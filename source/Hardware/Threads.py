@@ -126,8 +126,8 @@ class UploadThread(QtCore.QThread):
         #     #self.scan['type'] = 'frequency'
         #     self.scan['type'] = 'no scan' # this tells the SeqList class to simply put one sequence as the PTS will
         #     # scan the frequency
-        # now create teh sequences
-        self.sequences = SequenceList(sequence=self.seq, delay=delay,pulseparams = self.pulseparams,scanparams = self.scan, timeres=self.timeRes)
+        # now create the sequences
+        self.sequences = SequenceList(sequence=self.seq, delay=delay,pulseparams = self.pulseparams,scanparams = self.scan, timeres=self.timeRes, compseqnum=self.CompSeqNum)
         # write the files to the AWG520/sequencefiles directory
         self.awgfile = AWGFile(ftype='SEQ',timeres = self.timeRes)
         self.awgfile.write_sequence(sequences=self.sequences,seqfilename="scan.seq",repeat= samples)

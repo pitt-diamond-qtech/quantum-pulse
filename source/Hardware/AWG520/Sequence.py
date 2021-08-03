@@ -929,10 +929,13 @@ class RandomGateChannel(Channel):
             kwargdic['lengths_list']= trunc_lengths
         if 'numcompgateseqs' not in kwargdic:
             kwargdic['numcompgateseqs']= 4
+        if 'compseqnum' not in kwargdic:
+            kwargdic['compseqnum']= 1
         self.lengths_list = kwargdic['lengths_list']
         self.num_comp_gate_seqs = kwargdic['numcompgateseqs']
         self.change_width = kwargdic['change_width']
         self.change_amp = kwargdic['change_amp']
+        self.comp_seq_num = kwargdic['compseqnum']
 
 
     def set_pauli_num(self,num=0):
@@ -1243,8 +1246,10 @@ class RandomGateChannel(Channel):
         length = closest(self.lengths_list,events_in_train)
         #length = self.lengths_list[events_in_train]  # Choose the truncation length from the L list (l=0,..,Nl-1).
         # Choose randomly which computational gate sequence to use (k=0,...,Ng-1).
-        pauli_k = random.randint(0,self.num_comp_gate_seqs-1)
-        sequence = full_sequence(length, pauli_k)   # find the full sequence
+        # pauli_k = random.randint(0,self.num_comp_gate_seqs-1)
+        comp_seq_num = self.comp_seq_num - 1  # we substituded this for pauli_k so that the user can input the j (= 1...N_G)
+        sequence = full_sequence(length, comp_seq_num)   # find the full sequence
+
         final_sequence = replace_z(sequence)  # replace Pi_z rotations by identity and frame switching
 
         # print("the final sequence is", final_sequence)
@@ -1410,7 +1415,7 @@ class Sequence:
         if ch_type == _RANDBENCH:
             channel = RandomGateChannel(ch_type=ch_type,delay=self.delay, pulse_params=temp_pulseparams,
                                             connection_dict=self.connectiondict, sampletime=self.timeres,
-                                            event_channel_idx=evt_ch_idx,change_amp=self.change_amp,change_width=self.change_width)
+                                            event_channel_idx=evt_ch_idx,change_amp=self.change_amp,change_width=self.change_width, compseqnum = self.comp_seq_num)
         else:
             channel = Channel(ch_type=ch_type, delay=self.delay, pulse_params=temp_pulseparams,
                                   connection_dict=self.connectiondict, sampletime=self.timeres, event_channel_idx=
@@ -1805,7 +1810,7 @@ class RandomSequence(Sequence):
 
 
 class SequenceList(object):
-    def __init__(self, sequence, delay=None, scanparams=None, pulseparams=None, connectiondict=None, timeres=1):
+    def __init__(self, sequence, delay=None, scanparams=None, pulseparams=None, connectiondict=None, timeres=1, **kwargs):
         """This class creates a list of sequence objects that each have the waveforms for one step in the scanlist.
         :param sequence: string that will be interpreted in same manner as Sequence class def
         :param delay: list with [AOM delay, MW delay] , possibly other delays to be added.
@@ -1815,6 +1820,7 @@ class SequenceList(object):
         :param timeres: clock rate in ns
         :param scanparams : a dictionary that specifies the type, start, stepsize, number of steps
         """
+        self.comp_seq_num = kwargs['compseqnum']
         if delay is None:
             delay = [0.0, 0.0]
         if scanparams is None:
@@ -1867,6 +1873,7 @@ class SequenceList(object):
                 s.trunc_lengths = self.scanlist
                 s.paulinum = self.paulinum
                 s.rb_nevents = x
+                s.comp_seq_num = self.comp_seq_num
                 print("scan length is",x)
                 s.create_sequence(dt=0.0)
                 self.rbinfo_list.append(s.rbinfo_list)
