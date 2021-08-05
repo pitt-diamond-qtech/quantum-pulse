@@ -1720,7 +1720,7 @@ class Sequence:
                     final_state, final_seq = ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
                                        stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt,
                                        fname=fname)
-                    self.rbinfo_list = [final_state, final_seq]
+                    self.rbinfo_list = [final_state, final_seq]  # gathering these data to pass it to the app
                 else:
                     ch.add_event_train(time_on=t_start[i], time_off=t_stop[i], start_inc=start_inc[i],
                                    stop_inc=stop_inc[i], pulse_type=ptype, events_in_train=nevents, dt=dt, fname=fname)
@@ -1821,6 +1821,7 @@ class SequenceList(object):
         :param scanparams : a dictionary that specifies the type, start, stepsize, number of steps
         """
         self.comp_seq_num = kwargs['compseqnum']
+        self.pauli_rand_num = kwargs['paulirandnum']
         if delay is None:
             delay = [0.0, 0.0]
         if scanparams is None:
@@ -1866,12 +1867,14 @@ class SequenceList(object):
             self.scanlist = np.linspace(self.scanparams['start'], stop, self.scanparams['steps'])
             random.shuffle(self.scanlist)
             self.scanlist = self.scanlist.astype(int)
+            # for each truncation length, we need N_p pauli randomizations.
+            self.scanlist = np.repeat(self.scanlist, self.pauli_rand_num)
             # choose how many pauli gate sequences you will run encoded in the parameter stepsize
-            self.paulinum = self.scanparams['stepsize']
+            # self.paulinum = self.scanparams['stepsize']
             for x in self.scanlist:
                 s = Sequence(self.sequence,delay=self.delay,pulseparams=self.pulseparams,connectiondict=self.connectiondict, timeres=self.timeres)
                 s.trunc_lengths = self.scanlist
-                s.paulinum = self.paulinum
+                # s.paulinum = self.paulinum
                 s.rb_nevents = x
                 s.comp_seq_num = self.comp_seq_num
                 print("scan length is",x)

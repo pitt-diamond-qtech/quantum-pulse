@@ -94,8 +94,12 @@ class appGUI(QtWidgets.QMainWindow):
         self.init_metadata_text_box()
         self.init_seq_text_box()
         self.scan_random = False  # boolean value to check whether this is a randomized benchmarking scan (because the plot is different for RB)
-        self.ui.lineEditCompSeqNum.hide()
+        self.CompSeqNum = int(self.ui.lineEditCompSeqNum.text())
+        self.PauliRandNum = int(self.ui.lineEditPauliRandNum.text())
         self.ui.labelCompSeqNum.hide()
+        self.ui.labelPauliRandNum.hide()
+        self.ui.lineEditCompSeqNum.hide()
+        self.ui.lineEditPauliRandNum.hide()
         self.standingby = False
 
         self.setup_connections() # this sets up all the connections for push buttons and line edits etc
@@ -196,6 +200,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.lineEditScanStop.editingFinished.connect(self.updateScanNum)
         self.ui.lineEditScanNum.editingFinished.connect(self.updateScanStop)
         self.ui.lineEditCompSeqNum.editingFinished.connect(self.updateCompSeqNum)
+        self.ui.lineEditPauliRandNum.editingFinished.connect(self.updatePauliRandNum)
 
         # setup default text and slots for changing the sequence samples, count time, and reset time parameters
         self.ui.lineEditSamples.setPlaceholderText('50000')
@@ -453,9 +458,20 @@ class appGUI(QtWidgets.QMainWindow):
         # testing whether the scan is a Randomized Benchmarking scan
         if self.scan['type'] == scantypes[7]:
             self.scan_random = True  # Sets the scan_random variable to True if the user selects 'random scan'
-            self.ui.lineEditCompSeqNum.show()
             self.ui.labelCompSeqNum.show()
-        else: self.scan_random = False
+            self.ui.labelPauliRandNum.show()
+            self.ui.lineEditCompSeqNum.show()
+            self.ui.lineEditPauliRandNum.show()
+            self.ui.label_8.setText('# of Lengths (Nl)')
+            self.ui.label_10.setText('# of Runs (Ne)')
+        else:
+            self.scan_random = False
+            self.ui.labelCompSeqNum.hide()
+            self.ui.labelPauliRandNum.hide()
+            self.ui.lineEditCompSeqNum.hide()
+            self.ui.lineEditPauliRandNum.hide()
+            self.ui.label_8.setText('# of Steps')
+            self.ui.label_10.setText('# of Averages')
         self.choosescanValidator()
 
 
@@ -557,6 +573,10 @@ class appGUI(QtWidgets.QMainWindow):
         '''this function updates the Comp Seq Number'''
         self.CompSeqNum = int(self.ui.lineEditCompSeqNum.text())
 
+    def updatePauliRandNum(self):
+        '''this function updates the Pauli Randomization Number'''
+        self.PauliRandNum = int(self.ui.lineEditPauliRandNum.text())
+
     def enablePTS(self, checkState):
         if checkState:
             #self.ui.checkBoxScanPTS.setEnabled(True)
@@ -630,8 +650,9 @@ class appGUI(QtWidgets.QMainWindow):
         self.uThread.pulseparams = self.pulseparams
         self.uThread.mw=self.mw
         self.uThread.timeRes=self.timeRes
-        if self.scan_random == True: self.uThread.CompSeqNum=self.CompSeqNum
-        else: self.uThread.CompSeqNum=1
+        self.uThread.CompSeqNum=self.CompSeqNum
+        self.uThread.PauliRandNum=self.PauliRandNum
+
         #--------------------------------------------------------------
         # and now comment out the lines below this block
         # # create files
@@ -743,6 +764,7 @@ class appGUI(QtWidgets.QMainWindow):
         numavgs = self.parameters[3]
         start = self.scan['start']
         step = self.scan['stepsize']
+        if self.scan_random: self.scan['steps'] = int(self.scan['steps'])*self.PauliRandNum  # accounting for pauli randomizations
         numsteps = int(self.scan['steps'])
         use_pts = self.mw['PTS'][0]
         enable_scan_pts = self.mw['PTS'][2]
