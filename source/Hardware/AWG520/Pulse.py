@@ -61,8 +61,8 @@ class Pulse(object):
 
     def q_generator(self,data):
         tempx = np.arange(self.width * 1.0)
-        self.Q_data = np.array(data * np.sin(2 * np.pi * (tempx * self.ssb_freq  + self.phase/360.0 + self.skew_phase/360.0)) * self.iqscale, dtype=_IQTYPE)
-        # self.I_data = np.array(data)
+        # self.Q_data = np.array(data * np.sin(2 * np.pi * (tempx * self.ssb_freq  + self.phase/360.0 + self.skew_phase/360.0)) * self.iqscale, dtype=_IQTYPE)
+        self.Q_data = np.array(data)
         self.I_data = np.zeros(len(data))
 
 class Gaussian(Pulse):
