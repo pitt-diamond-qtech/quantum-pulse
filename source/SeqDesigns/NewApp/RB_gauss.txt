@@ -1,0 +1,4 @@
+S2,0,4.025e-6
+RandBench,1e-6,1.200e-6,Gauss,width++,phase=0
+Green,1.200e-6,4.200e-6
+Measure,1.200e-6,1.300e-6

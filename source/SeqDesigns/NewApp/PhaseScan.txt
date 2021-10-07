@@ -1,0 +1,5 @@
+S2,0,1.500e-6
+Wave,1.000e-6,1.020e-6,SquareI
+Wave,1.020e-6,1.040e-6,Square
+Green,1.040e-6,4.040e-6
+Measure,1.040e-6,1.140e-6

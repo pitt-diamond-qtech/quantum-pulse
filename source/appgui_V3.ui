@@ -1078,7 +1078,7 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>30</y>
+         <y>10</y>
          <width>221</width>
          <height>81</height>
         </rect>
@@ -1238,10 +1238,10 @@ p, li { white-space: pre-wrap; }
        <widget class="QLabel" name="label_8">
         <property name="geometry">
          <rect>
-          <x>40</x>
+          <x>10</x>
           <y>130</y>
-          <width>61</width>
-          <height>16</height>
+          <width>81</width>
+          <height>20</height>
          </rect>
         </property>
         <property name="font">
@@ -1251,6 +1251,9 @@ p, li { white-space: pre-wrap; }
         </property>
         <property name="text">
          <string># of Steps</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
         </property>
        </widget>
        <widget class="QLineEdit" name="lineEditScanStart">
@@ -1298,10 +1301,10 @@ p, li { white-space: pre-wrap; }
        <widget class="QLabel" name="label_10">
         <property name="geometry">
          <rect>
-          <x>20</x>
+          <x>0</x>
           <y>160</y>
           <width>91</width>
-          <height>16</height>
+          <height>20</height>
          </rect>
         </property>
         <property name="font">
@@ -1312,13 +1315,16 @@ p, li { white-space: pre-wrap; }
         <property name="text">
          <string># of Averages</string>
         </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
        </widget>
       </widget>
       <widget class="QComboBox" name="scantypecomboBox">
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>160</y>
+         <y>130</y>
          <width>181</width>
          <height>32</height>
         </rect>
@@ -1333,7 +1339,7 @@ p, li { white-space: pre-wrap; }
         <number>0</number>
        </property>
        <property name="maxCount">
-        <number>7</number>
+        <number>8</number>
        </property>
        <item>
         <property name="text">
@@ -1370,12 +1376,17 @@ p, li { white-space: pre-wrap; }
          <string>Phase</string>
         </property>
        </item>
+       <item>
+        <property name="text">
+         <string>Random Scan</string>
+        </property>
+       </item>
       </widget>
       <widget class="QLabel" name="label">
        <property name="geometry">
         <rect>
          <x>20</x>
-         <y>130</y>
+         <y>100</y>
          <width>71</width>
          <height>21</height>
         </rect>
@@ -1387,6 +1398,108 @@ p, li { white-space: pre-wrap; }
        </property>
        <property name="text">
         <string>Scan type</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEditCompSeqNum">
+       <property name="geometry">
+        <rect>
+         <x>80</x>
+         <y>180</y>
+         <width>41</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>1</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="placeholderText">
+        <string/>
+       </property>
+      </widget>
+      <widget class="QLabel" name="labelCompSeqNum">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>180</y>
+         <width>71</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>CompSeq# (j)</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="labelPauliRandNum">
+       <property name="geometry">
+        <rect>
+         <x>150</x>
+         <y>180</y>
+         <width>16</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Np</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="lineEditPauliRandNum">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>170</x>
+         <y>180</y>
+         <width>41</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>8</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>8</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="placeholderText">
+        <string/>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QWidget" name="tab_4">
+      <attribute name="title">
+       <string>RB Info</string>
+      </attribute>
+      <widget class="QTextBrowser" name="rbStatestext">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>20</y>
+         <width>451</width>
+         <height>31</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QTextBrowser" name="rbSeqstext">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>60</y>
+         <width>451</width>
+         <height>151</height>
+        </rect>
        </property>
       </widget>
      </widget>
