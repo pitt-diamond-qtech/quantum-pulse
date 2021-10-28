@@ -87,7 +87,7 @@ class appGUI(QtWidgets.QMainWindow):
         # self.mw = {'PTS':[True, '2870.0', False, '2840.0','1','100','2940.0'],'SRS':[False, '2870.0', False, '2840.0','1','100','2940.0']}
         self.awgparams= {'awg device': 'awg520', 'time resolution': 1, 'pulseshape': 'Square', 'enable IQ': False}
         self.pulseparams = {'amplitude': 1000, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0, 'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
-        self.parameters = [50000, 300, 2000, 10, 10, 715e-9, 10e-9]
+        self.parameters = [50000, 300, 2000, 10, 10, 690e-9, 10e-9]
         # should make into dictionary with keys ['sample', 'count time', 'reset time', 'avg', 'threshold', 'AOM delay', 'microwave delay']
         self.timeRes = 1  # default value for AWG time resolution
 
@@ -100,6 +100,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.labelPauliRandNum.hide()
         self.ui.lineEditCompSeqNum.hide()
         self.ui.lineEditPauliRandNum.hide()
+        self.rb_final_states = []
         self.standingby = False
 
         self.setup_connections() # this sets up all the connections for push buttons and line edits etc
@@ -531,6 +532,7 @@ class appGUI(QtWidgets.QMainWindow):
     def updateRBinfo(self, final_states, final_seqs, x_arr):
         # this function is used to capture information about the scan when the scan is randomized benchmarking
         self.rb_x_arr = x_arr  # sent for plotting
+        self.rb_final_states = final_states
         sort_index = np.argsort(np.array(x_arr))  # returns the indices that sorts the x_arr
         final_states_sorted = [final_states[i] for i in sort_index]
         final_seqs_sorted = [final_seqs[i] for i in sort_index]
@@ -885,11 +887,20 @@ class appGUI(QtWidgets.QMainWindow):
 
             if self.dir != '':
                 f = open(self.dir, 'a')
-                for i in range(self.avgCount * numsteps):
-                    f.write(str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\n')
+                if self.scan_random:
+                    rb_final_states_copy = np.array(self.rb_final_states)
+                    rb_final_states_copy = np.where(rb_final_states_copy == 'z0', 0, rb_final_states_copy)
+                    rb_final_states_copy = np.where(rb_final_states_copy == 'z1', 1, rb_final_states_copy)
+
+                    for i in range(self.avgCount * numsteps):
+                        f.write(str(self.rb_x_arr[i%numsteps]) + '\t' + str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\t' + str(rb_final_states_copy[i%numsteps]) +'\n')
+                else:
+                    for i in range(self.avgCount * numsteps):
+                        f.write(str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\n')
                 f.close()
 
                 f = open(self.dir_log, 'w')
+
                 f.write(str(self.parameters) + '\n' + str(self.scan) + '\n' + str(self.mw) + '\n' + str(self.avgCount) + '\n')
                 for each_x in self.x_arr:
                     f.write(str(each_x) + '\t')
