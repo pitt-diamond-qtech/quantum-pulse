@@ -18,6 +18,8 @@
 import numpy as np
 import sys
 import logging
+from scipy.interpolate import interp1d
+
 
 _DAC_BITS = 10   # AWG 520 has only 10 bits
 _DAC_UPPER = 1024.0 # DAC has only 1024 levels
@@ -107,6 +109,111 @@ class Lorentzian(Pulse):
         data = np.float32(self.amp * (self.deviation**2)/(4* (np.power(data - self.mean,2) + (self.deviation/2)**2)))
                                # making a Lorentzian function
         self.iq_generator(data)
+
+#Gerono class added on 10/28/2021
+class Gerono(Pulse):
+    def __init__(self, num, width, ssb_freq, iqscale, phase,deviation, amp,skew_phase=0):
+        super().__init__(num, width, ssb_freq, iqscale, phase, skew_phase)
+        self.amp = amp * self.vmax/_DAC_UPPER # amp can be a value anywhere from 0 - 1000
+
+
+    def data_generator(self):
+
+        n_points = 5000
+        l_max = 2*np.pi
+        l = self.build_l(l_max, n_points)
+        phi = np.pi/2
+        alpha = self.calculate_alpha(phi)
+
+        x, y = self.gerono_func(alpha, l)  # Require l_max = np.pi
+
+        #Numerically calculate the pulse function.
+        pulse_func, t_of_l_list, kappa = self.core_calculation(l, x, y)
+
+        data = np.linspace(min(t_of_l_list), max(t_of_l_list), num=self.width,dtype=_IQTYPE)
+        data = np.float32(self.amp*pulse_func(data))  # Gerono goes here
+        data = self.NormalizeGerono(data)
+        self.iq_generator(data)
+
+    # Gerono parametrization
+    def gerono_func(self,alpha, l):
+        """Note that this function return x and y of l at the same time.
+
+            Note also that we are using the sympy functions sin, cos and not the numpy np.cos, ..."""
+        x = alpha / 2. * np.sin(2 * l)
+        y = np.sin(l)
+        return x, y
+
+    # Calculating alpha
+    def calculate_alpha(self,phi):
+        alpha = -1/(np.tan(phi/2))
+        return alpha
+
+    def NormalizeGerono(self,data):
+        return data/(np.max(abs(data)))
+
+    def num_integrate(self,x, l):
+        """Numerical integration."""
+        # Dubious integration (sum of the list instead of "smarter" quadrature).
+        # Pros, it is fast and the results are good enough.
+        dl = l[2] - l[1]
+        return np.cumsum(x) * dl
+
+
+    def link_t_and_l(self,l, integrated_part):
+        """Realize the link between lambda (l) and  the time"""
+        t_of_l_list = self.num_integrate(integrated_part, l)
+        # calculate the function l(t) by cubic interpolation
+        return t_of_l_list
+
+
+    def calculate_derivate(self,x, y, l):
+        """Calculate all the derivatives that are required.
+            Note that after this process, two points are removed from each list.
+            (this is the reason why I've added two points in the build_l function)"""
+        dl = l[1] - l[0]
+        # Calculate derivations
+        x_prime = np.diff(x)  / dl
+        y_prime = np.diff(y) / dl
+        x_prime2 = np.diff(x_prime) / dl
+        y_prime2 = np.diff(y_prime) / dl
+
+        # remove the last points of l and x and x_prime (idem for y) to get every list of same length
+        l = l[:-2]
+        x = x[:-2]
+        y = y[:-2]
+        x_prime = x_prime[:-1]
+        y_prime = y_prime[:-1]
+        return l, x, y, x_prime, y_prime, x_prime2, y_prime2
+
+    def calculate_kappa(self,x_prime, x_prime2, y_prime, y_prime2):
+        """Calculate kappa(l) (and not of "t")."""
+        return (x_prime * y_prime2 - y_prime * x_prime2) / (x_prime ** 2 + y_prime ** 2) ** (3. / 2)
+
+    def build_l(self,l_max, n_points):
+        """Build the lambda function"""
+        l = np.linspace(0, l_max, num=n_points)
+        dl = l[1] - l[0]
+        # Manually add two points that will be removed later, in the dirrentiation process...
+        l = np.concatenate((l, [l.max() + dl, l.max() + 2 * dl]))
+        return l
+
+    def core_calculation(self,l, x, y):
+        """ Generate the interpolated function corresponding to the pulse."""
+
+        # Calculate numerically the derivatives:
+        l, x, y, x_prime, y_prime, x_prime2, y_prime2 = self.calculate_derivate(x, y, l)
+
+        # Calculate kappa of l:
+        kappa = self.calculate_kappa(x_prime, x_prime2, y_prime, y_prime2)
+
+        # Calculate t of l:
+        integrated_part = np.sqrt(x_prime ** 2 + y_prime ** 2)
+        t_of_l_list = self.link_t_and_l(l, integrated_part)
+
+        # Interpolate the pulse function
+        pulse_func = interp1d(t_of_l_list,kappa,  kind='cubic')
+        return pulse_func, t_of_l_list, kappa
 
 class Square(Pulse):
     def __init__(self, num, width, ssb_freq, iqscale, phase, height, skew_phase=0):
