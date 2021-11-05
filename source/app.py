@@ -474,7 +474,6 @@ class appGUI(QtWidgets.QMainWindow):
             self.ui.label_10.setText('# of Averages')
         self.choosescanValidator()
 
-
     def updateAvg(self):
         self.parameters[3] = int(self.ui.lineEditAvgNum.text())
 
