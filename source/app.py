@@ -923,11 +923,20 @@ class appGUI(QtWidgets.QMainWindow):
 
             if self.dir != '':
                 f = open(self.dir, 'a')
-                for i in range(self.avgCount * numsteps):
-                    f.write(str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\n')
+                if self.scan_random:
+                    rb_final_states_copy = np.array(self.rb_final_states)
+                    rb_final_states_copy = np.where(rb_final_states_copy == 'z0', 0, rb_final_states_copy)
+                    rb_final_states_copy = np.where(rb_final_states_copy == 'z1', 1, rb_final_states_copy)
+
+                    for i in range(self.avgCount * numsteps):
+                        f.write(str(self.rb_x_arr[i%numsteps]) + '\t' + str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\t' + str(rb_final_states_copy[i%numsteps]) +'\n')
+                else:
+                    for i in range(self.avgCount * numsteps):
+                        f.write(str(self.raw_data[i][0]) + '\t' + str(self.raw_data[i][1]) + '\n')
                 f.close()
 
                 f = open(self.dir_log, 'w')
+
                 f.write(str(self.parameters) + '\n' + str(self.scan) + '\n' + str(self.mw) + '\n' + str(self.avgCount) + '\n')
                 for each_x in self.x_arr:
                     f.write(str(each_x) + '\t')
