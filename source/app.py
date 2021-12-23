@@ -893,15 +893,22 @@ class appGUI(QtWidgets.QMainWindow):
         db_nv_depth = str(db_metdat[2][25:])
         db_nv_counts =  str(db_metdat[3][17:])
         db_metadata = str(self.ui.textEditMetaData.toPlainText() + self.ui.metadatatextEdit.toPlainText())
-        db_exp = "quantumpulse"
 
         if(self.scan_random):
+            db_exp = "rb"
             rb_final_states_copy = np.array(self.rb_final_states)
             rb_final_states_copy = np.where(rb_final_states_copy == 'z0', 0, rb_final_states_copy)
             rb_final_states_copy = np.where(rb_final_states_copy == 'z1', 1, rb_final_states_copy)
 
-            db_lengths = [int(x) for x in self.rb_x_arr]
-            db_final_states = [int(x) for x in rb_final_states_copy]
+            db_lengths_vals = []
+            db_final_states_vals = []
+
+            for i in range(self.avgCount * int(db_steps)):
+                db_lengths_vals.append(self.rb_x_arr[i%int(db_steps)])
+                db_final_states_vals.append(rb_final_states_copy[i%int(db_steps)])
+
+            db_lengths = [int(x) for x in db_lengths_vals]
+            db_final_states = [int(x) for x in db_final_states_vals]
 
             content = [db_date,db_data_id,db_sig_data,db_ref_data,db_sample,db_count_time,db_reset_time,db_avg,
                        db_threshold,db_aom_delay,db_mw_delay,db_type,db_start,db_stepsize,db_steps,db_pts,db_srs,
@@ -911,6 +918,7 @@ class appGUI(QtWidgets.QMainWindow):
             insert_data_rb(content)
 
         else:
+            db_exp = "quantumpulse"
             content = [db_date,db_data_id,db_sig_data,db_ref_data,db_sample,db_count_time,db_reset_time,db_avg,
                        db_threshold,db_aom_delay,db_mw_delay,db_type,db_start,db_stepsize,db_steps,db_pts,db_srs,
                        db_avgcount,db_x_arr,db_sample_name,db_nv_name,db_waveguide,db_nv_depth,db_nv_counts,db_metadata,db_exp]
