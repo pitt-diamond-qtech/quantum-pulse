@@ -101,6 +101,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.lineEditCompSeqNum.hide()
         self.ui.lineEditPauliRandNum.hide()
         self.standingby = False
+        self.rb_final_states = []
 
         self.setup_connections() # this sets up all the connections for push buttons and line edits etc
         if nohardware:
@@ -531,6 +532,7 @@ class appGUI(QtWidgets.QMainWindow):
     def updateRBinfo(self, final_states, final_seqs, x_arr):
         # this function is used to capture information about the scan when the scan is randomized benchmarking
         self.rb_x_arr = x_arr  # sent for plotting
+        self.rb_final_states = final_states
         sort_index = np.argsort(np.array(x_arr))  # returns the indices that sorts the x_arr
         final_states_sorted = [final_states[i] for i in sort_index]
         final_seqs_sorted = [final_seqs[i] for i in sort_index]
