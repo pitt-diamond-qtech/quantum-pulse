@@ -131,8 +131,8 @@ class Gerono(Pulse):
         pulse_func, t_of_l_list, kappa = self.core_calculation(l, x, y)
 
         data = np.linspace(min(t_of_l_list), max(t_of_l_list), num=self.width,dtype=_IQTYPE)
-        data = np.float32(self.amp*pulse_func(data))  # Gerono goes here
-        data = self.NormalizeGerono(data)
+        data = self.NormalizeGerono(pulse_func(data))
+        data = np.float32(self.amp*data)  # Gerono goes here
         self.iq_generator(data)
 
     # Gerono parametrization
