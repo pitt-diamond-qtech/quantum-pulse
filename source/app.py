@@ -15,7 +15,7 @@
 
 
 from source.Hardware.Threads import UploadThread,ScanThread,KeepThread
-from source.common.utils import get_project_root,create_logger,log_with,insert_data_qp
+from source.common.utils import get_project_root,create_logger,log_with,insert_data_qp,insert_data_rb
 #from SeqEditor.Wrapper import GUI_Wrapper as SeqEditorWrapper
 from source.Hardware.AWG520.Sequence import SequenceList
 from source.Hardware.AWG520.AWG520 import AWGFile
@@ -893,11 +893,27 @@ class appGUI(QtWidgets.QMainWindow):
         db_metadata = str(self.ui.textEditMetaData.toPlainText() + self.ui.metadatatextEdit.toPlainText())
         db_exp = "quantumpulse"
 
-        content = [db_date,db_data_id,db_sig_data,db_ref_data,db_sample,db_count_time,db_reset_time,db_avg,
-                   db_threshold,db_aom_delay,db_mw_delay,db_type,db_start,db_stepsize,db_steps,db_pts,db_srs,
-                   db_avgcount,db_x_arr,db_sample_name,db_nv_name,db_waveguide,db_nv_depth,db_nv_counts,db_metadata,db_exp]
+        if(self.scan_random):
+            rb_final_states_copy = np.array(self.rb_final_states)
+            rb_final_states_copy = np.where(rb_final_states_copy == 'z0', 0, rb_final_states_copy)
+            rb_final_states_copy = np.where(rb_final_states_copy == 'z1', 1, rb_final_states_copy)
 
-        insert_data_qp(content)
+            db_lengths = [int(x) for x in self.rb_x_arr]
+            db_final_states = [int(x) for x in rb_final_states_copy]
+
+            content = [db_date,db_data_id,db_sig_data,db_ref_data,db_sample,db_count_time,db_reset_time,db_avg,
+                       db_threshold,db_aom_delay,db_mw_delay,db_type,db_start,db_stepsize,db_steps,db_pts,db_srs,
+                       db_avgcount,db_x_arr,db_sample_name,db_nv_name,db_waveguide,db_nv_depth,db_nv_counts,
+                       db_lengths,db_final_states,db_metadata,db_exp]
+
+            insert_data_rb(content)
+
+        else:
+            content = [db_date,db_data_id,db_sig_data,db_ref_data,db_sample,db_count_time,db_reset_time,db_avg,
+                       db_threshold,db_aom_delay,db_mw_delay,db_type,db_start,db_stepsize,db_steps,db_pts,db_srs,
+                       db_avgcount,db_x_arr,db_sample_name,db_nv_name,db_waveguide,db_nv_depth,db_nv_counts,db_metadata,db_exp]
+
+            insert_data_qp(content)
 
     def saveData(self):
         self.database()
