@@ -15,7 +15,7 @@
 
 
 from source.Hardware.Threads import UploadThread,ScanThread,KeepThread
-from source.common.utils import get_project_root,create_logger,log_with
+from source.common.utils import get_project_root,create_logger,log_with,insert_data_qp,insert_data_rb
 #from SeqEditor.Wrapper import GUI_Wrapper as SeqEditorWrapper
 from source.Hardware.AWG520.Sequence import SequenceList
 from source.Hardware.AWG520.AWG520 import AWGFile
@@ -102,6 +102,7 @@ class appGUI(QtWidgets.QMainWindow):
         self.ui.lineEditPauliRandNum.hide()
         self.rb_final_states = []
         self.standingby = False
+        self.rb_final_states = []
 
         self.setup_connections() # this sets up all the connections for push buttons and line edits etc
         if nohardware:
@@ -864,7 +865,69 @@ class appGUI(QtWidgets.QMainWindow):
 
         self.standby()
 
+    def database(self):
+        db_metdat = (self.ui.textEditMetaData.toPlainText()).split("\n")
+
+
+        db_date = str(datetime.date.today())
+        db_data_id = str(self.ui.lineEditExpName.text())
+        db_sig_data = [float(row[0]) for row in self.raw_data]
+        db_ref_data = [float(row[1]) for row in self.raw_data]
+        db_sample = self.parameters[0]
+        db_count_time = self.parameters[1]
+        db_reset_time = self.parameters[2]
+        db_avg = self.parameters[3]
+        db_threshold = self.parameters[4]
+        db_aom_delay = self.parameters[5]
+        db_mw_delay = self.parameters[6]
+        db_type = str(self.scan['type'])
+        db_start = float(self.scan['start'])
+        db_stepsize = float(self.scan['stepsize'])
+        db_steps = float(self.scan['steps'])
+        db_pts = str(self.mw['PTS'])
+        db_srs = str(self.mw['SRS'])
+        db_avgcount = self.parameters[3]
+        db_x_arr = [float(x) for x in self.x_arr]
+        db_sample_name = str(db_metdat[0][13:])
+        db_nv_name = str(db_metdat[1][9:])
+        db_waveguide = str(db_metdat[4][11:])
+        db_nv_depth = str(db_metdat[2][25:])
+        db_nv_counts =  str(db_metdat[3][17:])
+        db_metadata = str(self.ui.textEditMetaData.toPlainText() + self.ui.metadatatextEdit.toPlainText())
+
+        if(self.scan_random):
+            db_exp = "rb"
+            rb_final_states_copy = np.array(self.rb_final_states)
+            rb_final_states_copy = np.where(rb_final_states_copy == 'z0', 0, rb_final_states_copy)
+            rb_final_states_copy = np.where(rb_final_states_copy == 'z1', 1, rb_final_states_copy)
+
+            db_lengths_vals = []
+            db_final_states_vals = []
+
+            for i in range(self.avgCount * int(db_steps)):
+                db_lengths_vals.append(self.rb_x_arr[i%int(db_steps)])
+                db_final_states_vals.append(rb_final_states_copy[i%int(db_steps)])
+
+            db_lengths = [int(x) for x in db_lengths_vals]
+            db_final_states = [int(x) for x in db_final_states_vals]
+
+            content = [db_date,db_data_id,db_sig_data,db_ref_data,db_sample,db_count_time,db_reset_time,db_avg,
+                       db_threshold,db_aom_delay,db_mw_delay,db_type,db_start,db_stepsize,db_steps,db_pts,db_srs,
+                       db_avgcount,db_x_arr,db_sample_name,db_nv_name,db_waveguide,db_nv_depth,db_nv_counts,
+                       db_lengths,db_final_states,db_metadata,db_exp]
+
+            insert_data_rb(content)
+
+        else:
+            db_exp = "quantumpulse"
+            content = [db_date,db_data_id,db_sig_data,db_ref_data,db_sample,db_count_time,db_reset_time,db_avg,
+                       db_threshold,db_aom_delay,db_mw_delay,db_type,db_start,db_stepsize,db_steps,db_pts,db_srs,
+                       db_avgcount,db_x_arr,db_sample_name,db_nv_name,db_waveguide,db_nv_depth,db_nv_counts,db_metadata,db_exp]
+
+            insert_data_qp(content)
+
     def saveData(self):
+        self.database()
         # self.getDataDir()
         try:
             date_today = str(datetime.date.today())

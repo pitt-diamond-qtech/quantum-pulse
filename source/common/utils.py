@@ -16,6 +16,7 @@
 from pathlib import Path
 import functools, logging
 import os, inspect
+import psycopg2 as pg2
 
 def get_project_root() -> Path: # new feature in Python 3.x i.e. annotations
     """Returns project root folder."""
@@ -111,3 +112,71 @@ class log_with(object):
             self.logger.info(self.EXIT_MESSAGE.format(func.__name__))   # logging level .info(). Set to .debug() if you want to
             return f_result
         return wrapper
+
+def decorator_insert(original_function):
+    """
+
+    This function is a decorator for any function that would insert data
+    into the DB and is designed in the Query/Content Model.
+
+    """
+    def wrapper_function(*args,**kwargs):
+        a,b = original_function(*args,**kwargs)
+        conn = pg2.connect(database= 'duttlab', user='postgres', password='Duttlab')
+        cur = conn.cursor()
+        executable = cur.mogrify(a,b)
+        cur.execute(executable)
+        conn.commit()
+        conn.close()
+    return wrapper_function
+
+
+@decorator_insert
+def insert_data_qp(params):
+
+    """
+        This function is used to upload data into the SQL DB.
+
+        :param: Takes class params and set of params to be inserted.
+        :type: list
+        :rtype: string,list
+        :return: returns a query string and a list of contents.
+
+    """
+
+    query = 'INSERT INTO QPdata(date,data_id,sig_data,ref_data,sample,count_time,reset_time,avg,threshold,aom_delay,' \
+            'mw_delay,type,start,stepsize,steps,pts,srs,avgcount,x_arr,sample_name,nv_name,waveguide,nv_depth,nv_counts,metadata,exp,time_stamp) ' \
+            'VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP)'
+
+    content = (params[0],params[1],params[2],params[3],params[4],
+               params[5],params[6],params[7],params[8],params[9],
+               params[10],params[11],params[12],params[13],params[14],
+               params[15],params[16],params[17],params[18],params[19],
+               params[20],params[21],params[22],params[23],params[24],params[25])
+
+    return (query,content)
+
+@decorator_insert
+def insert_data_rb(params):
+
+    """
+        This function is used to upload data into the SQL DB.
+
+        :param: Takes class params and set of params to be inserted.
+        :type: list
+        :rtype: string,list
+        :return: returns a query string and a list of contents.
+
+    """
+
+    query = 'INSERT INTO RBdata(date,data_id,sig_data,ref_data,sample,count_time,reset_time,avg,threshold,aom_delay,' \
+            'mw_delay,type,start,stepsize,steps,pts,srs,avgcount,x_arr,sample_name,nv_name,waveguide,nv_depth,nv_counts,lengths,final_states,metadata,exp,time_stamp) ' \
+            'VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP)'
+
+    content = (params[0],params[1],params[2],params[3],params[4],
+               params[5],params[6],params[7],params[8],params[9],
+               params[10],params[11],params[12],params[13],params[14],
+               params[15],params[16],params[17],params[18],params[19],
+               params[20],params[21],params[22],params[23],params[24],params[25],params[26],params[27])
+
+    return (query,content)

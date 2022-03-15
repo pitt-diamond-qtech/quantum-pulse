@@ -29,6 +29,7 @@ frames/
 # Waveform Files #
 ######################
 *.wfm
+*.seq
 
 # Logs and databases #
 ######################

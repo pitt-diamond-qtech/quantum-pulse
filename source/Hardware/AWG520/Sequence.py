@@ -17,7 +17,7 @@
 import numpy as np
 import logging
 from decimal import Decimal, getcontext
-from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ, Marker, Sech, Lorentzian, LoadWave, Pulse, \
+from source.Hardware.AWG520.Pulse import Gaussian, Square, SquareI, SquareQ, Marker, Sech, Lorentzian, Gerono,LoadWave, Pulse, \
     DataIQ
 from source.common.utils import log_with, create_logger, get_project_root
 import re, sys, os, random
@@ -54,7 +54,7 @@ _CONN_DICT = {_MW_S1: None, _MW_S2: 1, _GREEN_AOM: 2, _ADWIN_TRIG: 4}
 _PULSE_PARAMS = {'amplitude': 1000.0, 'pulsewidth': 20e-9, 'SB freq': 0.00, 'IQ scale factor': 1.0,
                  'phase': 0.0, 'skew phase': 0.0, 'num pulses': 1}
 # allowed values of the Waveform types
-_PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'SquareI', 'SquareQ', 'Load Wfm']
+_PULSE_TYPES = ['Gauss', 'Sech', 'Square', 'Lorentz', 'SquareI', 'SquareQ', 'Gerono', 'Load Wfm']
 
 _IQTYPE = np.dtype('<f4')  # AWG520 stores analog values as 4 bytes in little-endian format
 _MARKTYPE = np.dtype('<i1')  # AWG520 stores marker values as 1 byte
@@ -419,6 +419,24 @@ class LorentzPulse(WaveEvent):
         pulse.data_generator()  # generate the data
         self.data = np.array((pulse.I_data, pulse.Q_data))
 
+class GeronoPulse(WaveEvent):
+    """Generates a Wave event with a Gerono shape"""
+    PULSE_KEYWORD = "Gerono"
+
+    def __init__(self, start=1e-6, stop=1.1e-6, pulse_params=None, start_inc=0, stop_inc=0, dt=0, sampletime=1.0 * _ns):
+        super().__init__(start=start, stop=stop, pulse_params=pulse_params, start_inc=start_inc, stop_inc=stop_inc,
+                         dt=dt, sampletime=sampletime)
+        self.pulse_type = self.PULSE_KEYWORD
+        self.extract_pulse_params_from_dict()
+        pwidth_idx = int(self.pulsewidth / self.sampletime)
+        # if duration < 6 * pulsewidth, set it equal to at least that much
+        if self.duration < 8 * self.pulsewidth:
+            self.duration = 8 * self.pulsewidth
+            self.stop = self.start + self.duration
+        pulse = Gerono(self.waveidx, self.dur_idx, self.ssb_freq, self.iqscale, self.phase,
+                         pwidth_idx, self.amplitude, self.skewphase)
+        pulse.data_generator()  # generate the data
+        self.data = np.array((pulse.I_data, pulse.Q_data))
 
 class SquarePulseI(WaveEvent):
     """Generates a Wave event with a Square shape, only outputs on I channel"""
@@ -722,6 +740,9 @@ class Channel:
                                      stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[5]:
                 event = SquarePulseQ(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
+                                     stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
+            elif pulse_type == _PULSE_TYPES[6]:
+                event = GeronoPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams, start_inc=start_inc,
                                      stop_inc=stop_inc, dt=dt, sampletime=self.sampletime)
             elif pulse_type == _PULSE_TYPES[-1]:
                 event = ArbitraryPulse(start=time_on, stop=time_off, pulse_params=temp_pulseparams,
