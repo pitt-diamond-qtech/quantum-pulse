@@ -1,5 +1,5 @@
 ADwin==0.16.2
-certifi==2019.11.28
+certifi==2022.12.7
 Click==7.0
 cycler==0.10.0
 first==2.0.2
